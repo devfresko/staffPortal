@@ -6547,12 +6547,9 @@ function _loadSetupTasks() {
     function _vAttend() {
       var tabs = [
         { id: 'amy',  lbl: '<i class="fas fa-user-clock"></i> My Attendance' },
-        { id: 'alv',  lbl: '<i class="fas fa-umbrella-beach"></i> Leave Summary' },
-        { id: 'alr',  lbl: '<i class="fas fa-plane-departure"></i> Request Leave' },
         { id: 'areg', lbl: '<i class="fas fa-pen-to-square"></i> Regularize' }
       ];
       if (_isManager()) {
-        tabs.push({ id: 'ala',   lbl: '<i class="fas fa-user-shield"></i> Approvals' });
         tabs.push({ id: 'arega', lbl: '<i class="fas fa-clipboard-check"></i> Reg. Approvals' });
         tabs.push({ id: 'amust', lbl: '<i class="fas fa-users"></i> Muster' });
         tabs.push({ id: 'aana',  lbl: '<i class="fas fa-chart-bar"></i> Analytics' });
@@ -6562,25 +6559,18 @@ function _loadSetupTasks() {
       document.getElementById('content').innerHTML =
         '<div class="mod-head">' +
         '<div><div class="mod-title">Attendance & Leave</div><div class="mod-sub">Punch records, leave requests & muster reports</div></div>' +
-        '<button class="btn btn-teal btn-sm" onclick="_goALR()"><i class="fas fa-plus"></i> Request Leave</button>' +
         '</div>' +
         _mkTabs(tabs, at) +
         _mkPanes(tabs, at, [
           '<div id="amyPane">'  + _amyForm()  + '</div>',
-          '<div id="alvPane">'  + _alvForm()  + '</div>',
-          '<div id="alrPane">'  + _alrForm()  + '</div>',
           '<div id="aregPane">' + _aregForm() + '</div>',
-          (_isManager() ? '<div id="alaPane">'   + _alaForm()   + '</div>' : ''),
           (_isManager() ? '<div id="aregaPane">'  + _aregaForm() + '</div>' : ''),
           (_isManager() ? '<div id="amustPane">' + _amustForm() + '</div>' : ''),
           (_isManager() ? '<div id="aanaPane">'  + _aanaForm()  + '</div>' : '')
         ]);
 
       if (at === 'amy')  _loadMyAtt();
-      else if (at === 'alv')  _loadLeave();
-      else if (at === 'alr')  _loadMyLeaveReqs();
       else if (at === 'areg') _loadMyRegularizations();
-      else if (at === 'ala'   && _isManager()) _loadLeaveApprovals();
       else if (at === 'arega' && _isManager()) _loadRegApprovals();
       else if (at === 'amust' && _isManager()) _loadMustTab();
       else if (at === 'aana'  && _isManager()) _loadAttAnalytics();
@@ -6750,7 +6740,7 @@ function _loadSetupTasks() {
         '<option value="All">All Departments</option>' +
         _getDeptOptions() +
         '</select>' +
-        '<label>Month:</label><input type="month" id="aanaMonth" value="' + _currMonth() + '">' +
+        '<label>Month:</label><input type="month" id="aanaMonth" value="' + _currMonth() + '" onchange="_loadAttAnalytics()">' +
         '<button class="btn btn-sm" onclick="_loadAttAnalytics()"><i class="fas fa-search"></i> Load</button>' +
         '<div class="fbar-spacer"></div>' +
         '<input type="text" id="aanaEmpSearch" placeholder="Search employee..." ' +
@@ -6924,17 +6914,9 @@ function _loadSetupTasks() {
       var sumEl = document.getElementById('amySum');
       var tblEl = document.getElementById('amyTable');
       if (!sumEl || !tblEl) return;
-
-      // Use cache for current month
-      var isCurrentMonth = month === _currMonth();
-      if (isCurrentMonth && _D.myAttendance && _D.myAttendance.records) {
-        _renderMyAtt(_D.myAttendance, sumEl, tblEl, month);
-        return;
-      }
-
+      // Always fetch fresh — no cache (attendance data changes on every check-in/out)
       sumEl.innerHTML = _skel(1, 'sk-h6'); tblEl.innerHTML = '';
       _gas('getMyAttendance', [_U.emp_code, month], function(data) {
-        if (isCurrentMonth) _D.myAttendance = data;
         _D.myAtt = data;
         _renderMyAtt(data, sumEl, tblEl, month);
       }, function(e) { sumEl.innerHTML = '<div class="te">Error: ' + _esc(e.message) + '</div>'; });
@@ -7116,7 +7098,7 @@ function _loadSetupTasks() {
         '<option value="All">All Departments</option>' +
         _getDeptOptions() +
         '</select>' +
-        '<label>Month:</label><input type="month" id="mustMonth" value="' + _currMonth() + '">' +
+        '<label>Month:</label><input type="month" id="mustMonth" value="' + _currMonth() + '" onchange="_loadMustTab()">' +
         '<button class="btn btn-sm" onclick="_loadMustTab()"><i class="fas fa-search"></i> Load</button>' +
         '<div class="fbar-spacer"></div>' +
         '<input type="text" id="mustSearch" placeholder="Search employee..." oninput="_filterMuster(this.value)" ' +
@@ -8998,10 +8980,11 @@ function _loadSetupTasks() {
                Manager Approvals · Leave Analytics
     ══════════════════════════════════════════════════════════════════════ */
     var TABS_LEAVE = [
-      { id: 'lreq', lbl: '<i class="fas fa-paper-plane"></i> My Requests' },
-      { id: 'lbal', lbl: '<i class="fas fa-piggy-bank"></i> Leave Balance' },
-      { id: 'lcal', lbl: '<i class="fas fa-calendar-days"></i> Calendar' },
-      { id: 'lapprv', lbl: '<i class="fas fa-stamp"></i> Approvals', mgr: true }
+      { id: 'lreq',  lbl: '<i class="fas fa-paper-plane"></i> My Requests' },
+      { id: 'lbal',  lbl: '<i class="fas fa-piggy-bank"></i> Leave Balance' },
+      { id: 'lcal',  lbl: '<i class="fas fa-calendar-days"></i> Calendar' },
+      { id: 'lsumm', lbl: '<i class="fas fa-chart-pie"></i> Summary' },
+      { id: 'lapprv',lbl: '<i class="fas fa-stamp"></i> Approvals', mgr: true }
     ];
 
     function _vLeave() {
@@ -9018,17 +9001,72 @@ function _loadSetupTasks() {
         '</div>' +
         _mkTabs(tabs, at) +
         _mkPanes(tabs, at, [
-          '<div id="lreqPane">' + _lreqForm() + '</div>',
-          '<div id="lbalPane">' + _lbalForm() + '</div>',
-          '<div id="lcalPane">' + _lcalForm() + '</div>',
+          '<div id="lreqPane">'  + _lreqForm()  + '</div>',
+          '<div id="lbalPane">'  + _lbalForm()  + '</div>',
+          '<div id="lcalPane">'  + _lcalForm()  + '</div>',
+          '<div id="lsummPane">' + _lsummForm() + '</div>',
           (_isManager() ? '<div id="laprvPane">' + _laprvForm() + '</div>' : '')
         ]);
 
-      if (at === 'lreq') _loadMyLeaves();
-      else if (at === 'lbal') _loadLeaveBalance();
-      else if (at === 'lcal') _loadLeaveCalView();
+      if (at === 'lreq')  _loadMyLeaves();
+      else if (at === 'lbal')  _loadLeaveBalance();
+      else if (at === 'lcal')  _loadLeaveCalView();
+      else if (at === 'lsumm') _loadLeaveSummTab();
       else if (at === 'lapprv' && _isManager()) _loadLeaveApprovals();
       if (_ST) setTimeout(function () { _switchTab(_ST); }, 30);
+    }
+
+    // ── Leave Summary tab (replaces old Attendance > Leave Summary) ──────────
+    function _lsummForm() {
+      return '<div class="fbar">' +
+        '<label>Month:</label><input type="month" id="lsummMonth" value="' + _currMonth() + '">' +
+        '<button class="btn btn-sm" onclick="_loadLeaveSummTab()"><i class="fas fa-search"></i> Load</button>' +
+        '</div><div id="lsummContent">' + _skel(2) + '</div>';
+    }
+    function _loadLeaveSummTab() {
+      var month = (document.getElementById('lsummMonth') || {}).value || _currMonth();
+      var el = document.getElementById('lsummContent');
+      if (!el) return;
+      el.innerHTML = _skel(2);
+      _gas('getLeaveSummary', [_U.emp_code, month], function(rows) {
+        var r = (rows && rows[0]) || {};
+        _D.leaveBalance = r;
+        var el2 = document.getElementById('lsummContent');
+        if (!el2) return;
+        el2.innerHTML =
+          '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px">' +
+          [
+            { lbl:'Approved Days', val:r.total_approved||0, c:'var(--G)', ico:'fa-check-circle', desc:'Days approved this month' },
+            { lbl:'Pending',       val:r.total_pending||0,  c:'var(--O)', ico:'fa-clock',        desc:'Awaiting approval' },
+            { lbl:'Rejected',      val:r.total_rejected||0, c:'var(--R)', ico:'fa-times-circle', desc:'Rejected requests' }
+          ].map(function(k) {
+            return '<div class="kpi" style="--kc:'+k.c+'">'+
+              '<div class="kpi-ico"><i class="fas '+k.ico+'"></i></div>'+
+              '<div class="kpi-val">'+k.val+'</div>'+
+              '<div class="kpi-lbl">'+k.lbl+'</div>'+
+              '<div style="font-size:10px;color:var(--tx3);margin-top:4px">'+k.desc+'</div></div>';
+          }).join('') + '</div>' +
+          '<div class="card card-nohover"><div class="sec-title" style="margin-bottom:16px">'+
+          '<i class="fas fa-list-check" style="color:var(--P)"></i> Leave Type Breakdown — '+month+'</div>'+
+          '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">' +
+          [
+            {lbl:'Sick Leave',   val:r.sick_leave||0,   c:'var(--R)', ico:'fa-heart-pulse'},
+            {lbl:'Paid Leave',   val:r.paid_leave||0,   c:'var(--G)', ico:'fa-umbrella'},
+            {lbl:'Casual Leave', val:r.casual_leave||0, c:'var(--O)', ico:'fa-person-walking'},
+            {lbl:'Comp Off',     val:r.comp_off||0,     c:'var(--V)', ico:'fa-swap-arrows'},
+            {lbl:'WFH',          val:r.wfh||0,          c:'var(--T)', ico:'fa-house-laptop'},
+            {lbl:'LWP',          val:r.lwp||0,          c:'var(--tx2)',ico:'fa-circle-minus'}
+          ].map(function(k) {
+            return '<div style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--bg);border:1px solid var(--bdr);border-radius:10px">'+
+              '<div style="width:34px;height:34px;border-radius:8px;background:'+k.c+'22;color:'+k.c+';display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0"><i class="fas '+k.ico+'"></i></div>'+
+              '<div><div style="font-size:18px;font-weight:900;color:'+k.c+'">'+k.val+
+              '<span style="font-size:11px;color:var(--tx2);font-weight:500"> day'+(k.val!==1?'s':'')+'</span></div>'+
+              '<div style="font-size:11px;font-weight:700;color:var(--tx2)">'+k.lbl+'</div></div></div>';
+          }).join('') + '</div></div>';
+      }, function(e) {
+        var el3 = document.getElementById('lsummContent');
+        if (el3) el3.innerHTML = '<div class="te">Error: '+_esc(e.message)+'</div>';
+      });
     }
 
     function _lreqForm() {
@@ -9077,9 +9115,10 @@ function _loadSetupTasks() {
               '<span style="font-size:11px;font-weight:800;color:var(--P);margin-left:8px">(' + (r.num_days || 1) + ' day' + (r.num_days !== 1 ? 's' : '') + ')</span>' +
               '</div>' +
               (r.reason ? '<div style="font-size:12px;color:var(--tx3);margin-bottom:4px"><i class="fas fa-comment"></i> ' + _esc(r.reason) + '</div>' : '') +
+              (r.remark ? '<div style="font-size:12px;color:var(--I);margin-bottom:4px"><i class="fas fa-message-lines"></i> Remark: <em>' + _esc(r.remark) + '</em></div>' : '') +
               '<div style="font-size:11px;color:var(--tx3)">' +
               '<i class="fas fa-clock"></i> Applied: ' + _fmtDateTime(r.requested_at) +
-              (r.approved_by ? ' &nbsp;·&nbsp; <i class="fas fa-user-check"></i> Approved by: ' + _esc(r.approved_by) : '') +
+              (r.approved_by ? ' &nbsp;·&nbsp; <i class="fas fa-user-check"></i> ' + _esc(r.approved_by) : '') +
               '</div>' +
               '</div>' +
               '<div style="font-size:11px;font-weight:800;white-space:nowrap;background:var(--bg);padding:3px 10px;border-radius:999px;border:1px solid var(--bdr)">' +
@@ -9898,7 +9937,7 @@ function _loadSetupTasks() {
         // Delegation
         dmine: _loadDelMine, dout: _loadDelOut, dall: _loadDelAll, dcr: _loadDelCreate,
         // Attendance — all tab IDs mapped to correct loader functions
-        amy: _loadMyAtt, alv: _loadLeave, alr: _loadMyLeaveReqs,
+        amy: _loadMyAtt,
         areg: _loadMyRegularizations, ala: _loadLeaveApprovals,
         arega: _loadRegApprovals, amust: _loadMustTab, aana: _loadAttAnalytics,
         // legacy aliases kept for safety
@@ -9906,7 +9945,7 @@ function _loadSetupTasks() {
         // Performance
         ptop: _loadTopPerformers, pind: _loadIndivPerf, pteam: _loadTeamPerf,
         // Leave management
-        lreq: _loadMyLeaves, lbal: _loadLeaveBalance, lcal: _loadLeaveCalView, lapprv: _loadLeaveApprovals
+        lreq: _loadMyLeaves, lbal: _loadLeaveBalance, lcal: _loadLeaveCalView, lsumm: _loadLeaveSummTab, lapprv: _loadLeaveApprovals
       };
 
       if (loaders[tabId]) {
@@ -10602,11 +10641,8 @@ function _loadSetupTasks() {
       var lEl = document.getElementById('holList');
       var uEl = document.getElementById('holUpcoming');
 
-      // Use cache if same year
-      if (_D.holidays && _D.holidays.length && (!_D.holidayYear || _D.holidayYear === year)) {
-        _renderHolidayData(_D.holidays, year, kEl, lEl, uEl);
-        return;
-      }
+      // Invalidate old cache so user always gets fresh data from sheet
+      _D.holidays = null; _D.holidayYear = null;
 
       if (kEl) kEl.innerHTML = [1, 2, 3].map(function () { return '<div class="sk sk-h6" style="border-radius:14px"></div>'; }).join('');
       if (lEl) lEl.innerHTML = _skel(5, 'sk-h3');
