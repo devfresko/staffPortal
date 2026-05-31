@@ -546,6 +546,64 @@
     .mst-day { text-align: center; min-width: 28px; padding: 4px 2px; font-size: 11px; }
     .mst-cell { text-align: center; font-weight: 800; font-size: 11px; padding: 6px 2px; }
 
+    /* ── Employee Directory ─────────────────────────────────────────────────── */
+    .ed-toolbar {
+      background:var(--sur2); border:1.5px solid var(--bdr); border-radius:14px;
+      padding:14px 18px; margin-bottom:4px;
+    }
+    .ed-search-wrap {
+      display:flex; align-items:center; gap:8px; padding:7px 12px;
+      border:1.5px solid var(--bdr); border-radius:9px; background:var(--bg);
+      color:var(--tx3); min-width:260px;
+    }
+    .ed-search-wrap input {
+      border:none; background:transparent; outline:none; font-size:13px;
+      color:var(--tx); flex:1; min-width:0;
+    }
+    .ed-grid {
+      display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:14px;
+    }
+    .ed-card {
+      background:var(--sur2); border:1.5px solid var(--bdr); border-radius:14px;
+      overflow:hidden; cursor:pointer; transition:transform .15s, box-shadow .15s;
+    }
+    .ed-card:hover { transform:translateY(-3px); box-shadow:0 8px 28px rgba(0,0,0,.1); }
+    .ed-card-alert { border-color:var(--R) !important; }
+    .ed-card-top {
+      height:68px; background:linear-gradient(135deg,var(--Pl) 0%,var(--bg) 100%);
+      display:flex; align-items:flex-start; justify-content:space-between; padding:10px;
+      position:relative;
+    }
+    .ed-avatar {
+      width:52px; height:52px; border-radius:14px; border:3px solid var(--bg);
+      display:flex; align-items:center; justify-content:center;
+      font-weight:900; font-size:18px; flex-shrink:0; position:absolute; bottom:-16px; left:14px;
+      box-shadow:0 2px 10px rgba(0,0,0,.12);
+    }
+    .ed-role-bdg { position:absolute; top:8px; right:8px; }
+    .ed-alert-dot {
+      width:10px; height:10px; border-radius:50%; background:var(--R);
+      position:absolute; top:8px; left:8px; border:2px solid var(--sur2);
+    }
+    .ed-card-body { padding:22px 14px 10px; }
+    .ed-name { font-size:13px; font-weight:800; margin-bottom:5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .ed-dept { font-size:11px; color:var(--tx3); margin-bottom:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .ed-email { font-size:11px; color:var(--tx3); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .ed-overdue-tag {
+      margin-top:8px; font-size:10.5px; font-weight:700; color:var(--R);
+      background:var(--Rl); padding:3px 8px; border-radius:6px; display:inline-block;
+    }
+    .ed-card-foot {
+      padding:10px 14px; border-top:1px solid var(--bdr);
+      display:flex; gap:7px;
+    }
+    .ed-tr { cursor:pointer; }
+    .ed-tr:hover { background:var(--sur2) !important; }
+    .ed-detail-head {
+      display:flex; align-items:center; gap:16px; padding-bottom:16px;
+      border-bottom:1px solid var(--bdr); margin-bottom:16px;
+    }
+
     /* ── Delegation Analytics ────────────────────────────────────────────────── */
     .da-kpi-strip {
       display: grid; grid-template-columns: repeat(6,1fr); gap: 10px; margin-bottom: 16px;
@@ -11164,7 +11222,7 @@ function _loadSetupTasks() {
     function _perfIndPane() {
       return '<div class="fbar">' +
         (_isManager()
-          ? '<label>Employee:</label><select id="pindEmp"><option value="">— My Performance —</option></select>'
+          ? '<label>Employee:</label><select id="pindEmp"><option value="">— My Performance —</option>' + (_D.empDir||[]).map(function(e){return '<option value="'+_esc(e.emp_id)+'">'+_esc(e.name)+'</option>';}).join('') + '</select>'
           : '') +
         '<label>From:</label><input type="date" id="pindFrom" value="' + _daysAgo(30) + '">' +
         '<label>To:</label><input type="date" id="pindTo" value="' + _today() + '">' +
@@ -12006,93 +12064,141 @@ function _loadSetupTasks() {
        Full searchable directory of all staff with contact info, role,
        department and per-employee stats (manager view).
     ══════════════════════════════════════════════════════════════════════ */
+    // ═══════════════════════════════════════════════════════════════════════
+    // EMPLOYEE DIRECTORY — Rich cards with search, filters & quick stats
+    // ═══════════════════════════════════════════════════════════════════════
     function _vEmpDir() {
       document.getElementById('content').innerHTML =
         '<div class="mod-head">' +
-        '<div><div class="mod-title">Employee Directory</div><div class="mod-sub">All staff — contact info, roles and departments</div></div>' +
-        '<div class="mod-head-right">' +
-        '<div class="search-inp"><i class="fas fa-search"></i>' +
-        '<input type="text" id="edSearch" placeholder="Search name, dept, role…" oninput="_filterEmpDir(this.value)" ' +
-        'style="border:none;background:transparent;outline:none;font-size:12.5px;color:var(--tx);padding-left:4px;width:200px">' +
+        '<div><div class="mod-title">Employee Directory</div>' +
+        '<div class="mod-sub">All staff — contact info, roles and departments</div></div>' +
         '</div>' +
-        '<select id="edDeptFlt" onchange="_filterEmpDir(document.getElementById(\'edSearch\').value)" ' +
-        'style="padding:6px 10px;border:1.5px solid var(--bdr);border-radius:8px;font-size:12px;background:var(--bg);color:var(--tx);outline:none">' +
+        // Toolbar
+        '<div class="ed-toolbar">' +
+        '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
+        '<div class="ed-search-wrap"><i class="fas fa-search"></i>' +
+        '<input type="text" id="edSearch" placeholder="Search name, dept, role, email…" oninput="_filterEmpDir(this.value)">' +
+        '</div>' +
+        '<select id="edDeptFlt" class="ana-sel" onchange="_filterEmpDir(document.getElementById(\'edSearch\').value)">' +
         '<option value="">All Departments</option>' +
-        '<option>Admin</option><option>Accounts</option><option>Finance</option>' +
-        '<option>Marketing</option><option>Operations</option>' +
+        _getDeptOptions() +
         '</select>' +
-        '<button class="btn btn-outline btn-sm" onclick="_exportEmpDir()"><i class="fas fa-download"></i> Export</button>' +
+        '<select id="edRoleFlt" class="ana-sel" onchange="_filterEmpDir(document.getElementById(\'edSearch\').value)">' +
+        '<option value="">All Roles</option>' +
+        '<option value="OWNER">Owner</option>' +
+        '<option value="MANAGER">Manager</option>' +
+        '<option value="HR">HR</option>' +
+        '<option value="STAFF">Staff</option>' +
+        '</select>' +
+        '<select id="edView" class="ana-sel" onchange="_setEdView(this.value)">' +
+        '<option value="card">Card View</option>' +
+        '<option value="table">Table View</option>' +
+        '</select>' +
+        '</div>' +
+        '<div style="display:flex;align-items:center;gap:8px;margin-top:8px">' +
+        '<span id="edCount" style="font-size:12px;color:var(--tx3)"></span>' +
+        '<div class="fbar-spacer"></div>' +
+        '<button class="btn btn-sm btn-outline" onclick="_exportEmpDir()"><i class="fas fa-download"></i> Export</button>' +
+        '<button class="btn btn-sm" onclick="_loadEmpDir()"><i class="fas fa-rotate-right"></i> Refresh</button>' +
         '</div>' +
         '</div>' +
-        '<div id="edGrid">' + _skel(6) + '</div>';
+        '<div id="edGrid" style="margin-top:16px">' + _skel(6) + '</div>';
 
       _loadEmpDir();
+    }
+
+    function _setEdView(v) {
+      _D.edView = v;
+      _filterEmpDir((document.getElementById('edSearch')||{}).value || '');
     }
 
     function _loadEmpDir() {
       var el = document.getElementById('edGrid');
       if (!el) return;
-      // Use cache
       if (_D.empDir && _D.empDir.length) { _renderEmpDir(_D.empDir); return; }
       el.innerHTML = _skel(6);
       _gas('getEmployeeDirectory', [], function(emps) {
         _D.empDir = emps || [];
         _renderEmpDir(emps);
-      }, function(e) { el.innerHTML = '<div class="te">Error: ' + _esc(e.message) + '</div>'; });
+      }, function(e) { if(el) el.innerHTML = '<div class="te">Error: ' + _esc(e.message) + '</div>'; });
     }
 
     function _renderEmpDir(emps) {
       var el = document.getElementById('edGrid');
       if (!el) return;
+      var view = _D.edView || 'card';
+      var cEl = document.getElementById('edCount');
+      if (cEl) cEl.textContent = emps.length + ' employee' + (emps.length!==1?'s':'');
+
       if (!emps || !emps.length) {
         el.innerHTML = '<div class="empty-state"><i class="fas fa-address-book"></i><h4>No Employees Found</h4><p>No staff records match the current filter.</p></div>';
         return;
       }
-      el.innerHTML =
-        '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px">' +
-        emps.map(function (e) {
-          var roleClr = e.role === 'OWNER' ? 'var(--R)' : e.role === 'MANAGER' ? 'var(--V)' : 'var(--P)';
-          var roleBg = e.role === 'OWNER' ? 'var(--Rl)' : e.role === 'MANAGER' ? 'var(--Vl)' : 'var(--Pl)';
-          return '<div class="emp-card" onclick="_loadEmpDetail(\'' + _esc(e.emp_id) + '\')">' +
-            '<div class="emp-card-top">' +
-            _avatarEl(e.name, e.photo, 48) +
-            '<div style="flex:1;min-width:0">' +
-            '<div style="font-size:13.5px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _esc(e.name) + '</div>' +
-            '<div style="font-size:11px;color:var(--tx3);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _esc(e.dept || '—') + '</div>' +
+
+      if (view === 'table') {
+        el.innerHTML = '<div class="table-card"><div class="tw"><table><thead><tr>' +
+          '<th>#</th><th>Employee</th><th>Department</th><th>Role</th><th>Email</th>' +
+          '<th style="text-align:center">Overdue</th><th></th>' +
+          '</tr></thead><tbody>' +
+          emps.map(function(e,i) {
+            var rClr = e.role==='OWNER'?'var(--R)':e.role==='MANAGER'?'var(--V)':'var(--P)';
+            var rBg  = e.role==='OWNER'?'var(--Rl)':e.role==='MANAGER'?'var(--Vl)':'var(--Pl)';
+            return '<tr class="ed-tr" onclick="_loadEmpDetail(\''+_esc(e.emp_id)+'\')">' +
+              '<td style="color:var(--tx3);font-weight:700">'+(i+1)+'</td>' +
+              '<td><div style="display:flex;align-items:center;gap:10px">'+_avatarEl(e.name,e.photo,32)+
+              '<div><div style="font-weight:700;font-size:13px">'+_esc(e.name)+'</div>'+
+              '<div style="font-size:10px;color:var(--tx3)">'+_esc(e.emp_id)+'</div></div></div></td>' +
+              '<td><span class="bdg" style="background:var(--sur2)">'+_esc(e.dept||'—')+'</span></td>' +
+              '<td><span class="bdg" style="background:'+rBg+';color:'+rClr+'">'+_esc(e.role)+'</span></td>' +
+              '<td style="font-size:12px;color:var(--tx2)">'+_esc(e.email||'—')+'</td>' +
+              '<td style="text-align:center">'+(e.overdue_delegations>0?'<span style="color:var(--R);font-weight:800">'+e.overdue_delegations+'</span>':'<span style="color:var(--tx3)">—</span>')+'</td>' +
+              '<td><button class="btn btn-xs btn-outline" onclick="event.stopPropagation();_loadEmpDetail(\''+_esc(e.emp_id)+'\')"><i class="fas fa-chart-bar"></i></button></td>' +
+              '</tr>';
+          }).join('')+'</tbody></table></div></div>';
+        return;
+      }
+
+      // Card view
+      el.innerHTML = '<div class="ed-grid">' +
+        emps.map(function(e) {
+          var rClr = e.role==='OWNER'?'var(--R)':e.role==='MANAGER'?'var(--V)':'var(--P)';
+          var rBg  = e.role==='OWNER'?'var(--Rl)':e.role==='MANAGER'?'var(--Vl)':'var(--Pl)';
+          var initials = e.name.split(' ').map(function(w){return w[0]||'';}).join('').substring(0,2).toUpperCase();
+          var hasAlert = e.overdue_delegations > 0;
+          return '<div class="ed-card'+(hasAlert?' ed-card-alert':'')+'" onclick="_loadEmpDetail(\''+_esc(e.emp_id)+'\')">' +
+            // Top strip with avatar
+            '<div class="ed-card-top">' +
+            '<div class="ed-avatar" style="'+(e.photo?'background:url('+_esc(e.photo)+') center/cover':'background:'+rBg+';color:'+rClr)+'">' +
+            (e.photo?'':initials) +
             '</div>' +
-            '<span style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px;background:' + roleBg + ';color:' + roleClr + '">' + _esc(e.role) + '</span>' +
+            '<span class="bdg ed-role-bdg" style="background:'+rBg+';color:'+rClr+'">'+_esc(e.role)+'</span>' +
+            (hasAlert?'<div class="ed-alert-dot" title="'+e.overdue_delegations+' overdue delegations"></div>':'') +
             '</div>' +
-            '<div style="font-size:11.5px;color:var(--tx2);margin-top:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' +
-            '<i class="fas fa-envelope" style="color:var(--P);width:14px"></i> ' + _esc(e.email || '—') +
+            // Info
+            '<div class="ed-card-body">' +
+            '<div class="ed-name">'+_esc(e.name)+'</div>' +
+            '<div class="ed-dept"><i class="fas fa-building" style="width:12px;color:var(--tx4)"></i> '+_esc(e.dept||'—')+'</div>' +
+            '<div class="ed-email" title="'+_esc(e.email)+'"><i class="fas fa-envelope" style="width:12px;color:var(--tx4)"></i> '+_esc((e.email||'').split('@')[0]||'—')+'</div>' +
+            (hasAlert?'<div class="ed-overdue-tag"><i class="fas fa-triangle-exclamation"></i> '+e.overdue_delegations+' overdue</div>':'') +
             '</div>' +
-            (e.overdue_delegations > 0 ?
-              '<div style="margin-top:7px;font-size:11px;font-weight:700;color:var(--R)">' +
-              '<i class="fas fa-triangle-exclamation"></i> ' + e.overdue_delegations + ' overdue delegation' + (e.overdue_delegations > 1 ? 's' : '') +
-              '</div>' : '') +
-            '<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--bdr);display:flex;gap:6px">' +
-            '<button class="btn btn-outline btn-xs" onclick="event.stopPropagation();_copyText(\'' + _esc(e.email) + '\')">' +
-            '<i class="fas fa-copy"></i> Copy Email' +
-            '</button>' +
-            (_isManager() ?
-              '<button class="btn btn-outline btn-xs" onclick="event.stopPropagation();_loadEmpDetail(\'' + _esc(e.emp_id) + '\')">' +
-              '<i class="fas fa-chart-bar"></i> Stats' +
-              '</button>' : '') +
+            // Actions
+            '<div class="ed-card-foot">' +
+            '<button class="btn btn-xs btn-outline" onclick="event.stopPropagation();_copyText(\''+_esc(e.email)+'\')"><i class="fas fa-copy"></i> Email</button>' +
+            (_isManager()?'<button class="btn btn-xs" style="background:var(--Pl);color:var(--P)" onclick="event.stopPropagation();_loadEmpDetail(\''+_esc(e.emp_id)+'\')"><i class="fas fa-chart-bar"></i> Stats</button>':'') +
             '</div>' +
             '</div>';
-        }).join('') +
-        '</div>' +
-        '<div style="margin-top:12px;font-size:12px;color:var(--tx3);font-weight:600">' +
-        emps.length + ' employee' + (emps.length !== 1 ? 's' : '') +
-        '</div>';
+        }).join('') + '</div>';
     }
 
     function _filterEmpDir(q) {
-      var dept = document.getElementById('edDeptFlt') ? document.getElementById('edDeptFlt').value : '';
-      var query = (q || '').toLowerCase();
-      var emps = (_D.empDir || []).filter(function (e) {
-        var match = !query || (e.name + ' ' + e.dept + ' ' + e.role + ' ' + e.email).toLowerCase().indexOf(query) > -1;
-        var dMatch = !dept || e.dept === dept;
-        return match && dMatch;
+      var dept  = (document.getElementById('edDeptFlt') || {}).value || '';
+      var role  = (document.getElementById('edRoleFlt') || {}).value || '';
+      var query = (q || '').toLowerCase().trim();
+      var emps  = (_D.empDir || []).filter(function(e) {
+        var matchQ = !query || (e.name+' '+e.dept+' '+e.role+' '+e.email).toLowerCase().indexOf(query)>=0;
+        var matchD = !dept  || e.dept  === dept;
+        var matchR = !role  || e.role  === role;
+        return matchQ && matchD && matchR;
       });
       _renderEmpDir(emps);
     }
@@ -12100,63 +12206,61 @@ function _loadSetupTasks() {
     function _exportEmpDir() {
       var data = _D.empDir || [];
       if (!data.length) { _toast('Load directory first', 'warn'); return; }
-      var rows = [['Emp ID', 'Name', 'Department', 'Role', 'Email']];
-      data.forEach(function (e) { rows.push([e.emp_id, e.name, e.dept, e.role, e.email]); });
-      _downloadCSV('employee_directory_' + _today() + '.csv', rows);
-      _toast('Directory exported!', 'ok');
+      var head = ['Emp ID','Name','Department','Role','Email','Overdue Delegations'];
+      var csv  = [head.join(',')].concat(data.map(function(e) {
+        return ['"'+e.emp_id+'"','"'+e.name+'"','"'+(e.dept||'')+'"',e.role,'"'+(e.email||'')+'"',e.overdue_delegations||0].join(',');
+      })).join('\n');
+      var a = document.createElement('a');
+      a.href = 'data:text/csv;charset=utf-8,'+encodeURIComponent('\uFEFF'+csv);
+      a.download = 'employee_directory_'+_today()+'.csv'; a.click();
+      _toast('Exported!', 'ok');
     }
 
     function _loadEmpDetail(empId) {
       if (!_isManager()) return;
-      _openModal(
-        '<i class="fas fa-user" style="color:var(--P)"></i> Employee Details',
-        '<div id="empDetailBody">' + _skel(4) + '</div>',
-        null, null, true
-      );
-      setTimeout(function () {
+      _openModal('<i class="fas fa-user" style="color:var(--P)"></i> Employee Profile',
+        '<div id="empDetailBody">' + _skel(4) + '</div>', null, null, true);
+      setTimeout(function() {
         var foot = document.getElementById('mFoot');
-        if (foot) foot.innerHTML = '<button class="btn" onclick="_closeModal()"><i class="fas fa-times"></i> Close</button>';
+        if (foot) foot.innerHTML =
+          '<button class="btn btn-outline" onclick="_closeModal()"><i class="fas fa-times"></i> Close</button>' +
+          '<button class="btn" onclick="_closeModal();_loadV(\'perf\',\'pind\');setTimeout(function(){var s=document.getElementById(\'pindEmp\');if(s){s.value=\''+empId+'\';_loadIndivPerf();}},600)"><i class="fas fa-chart-bar"></i> Full Report</button>';
       }, 30);
 
-      _gas('getEmployeeStats', [empId], function (stats) {
+      _gas('getEmployeeStats', [empId], function(stats) {
         var el = document.getElementById('empDetailBody');
         if (!el) return;
-        var emp = (_D.empDir || []).find(function (e) { return e.emp_id === empId; }) || {};
+        var emp = (_D.empDir||[]).find(function(e){return e.emp_id===empId;})||{};
+        var rClr = emp.role==='OWNER'?'var(--R)':emp.role==='MANAGER'?'var(--V)':'var(--P)';
+        var rBg  = emp.role==='OWNER'?'var(--Rl)':emp.role==='MANAGER'?'var(--Vl)':'var(--Pl)';
         el.innerHTML =
-          '<div style="display:flex;align-items:center;gap:16px;padding-bottom:16px;border-bottom:1px solid var(--bdr);margin-bottom:16px">' +
-          _avatarEl(emp.name || empId, emp.photo, 56) +
+          '<div class="ed-detail-head">' +
+          _avatarEl(emp.name||empId, emp.photo, 60) +
           '<div>' +
-          '<div style="font-size:16px;font-weight:800">' + _esc(emp.name || empId) + '</div>' +
-          '<div style="font-size:12px;color:var(--tx2);margin-top:3px">' + _esc(emp.dept || '—') + ' · ' + _esc(emp.role || '—') + '</div>' +
-          '<div style="font-size:11px;color:var(--tx3);margin-top:2px">' + _esc(emp.email || '—') + '</div>' +
+          '<div style="font-size:17px;font-weight:900;margin-bottom:4px">'+_esc(emp.name||empId)+'</div>' +
+          '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px">' +
+          '<span class="bdg" style="background:'+rBg+';color:'+rClr+'">'+_esc(emp.role||'')+'</span>' +
+          '<span class="bdg" style="background:var(--sur2)">'+_esc(emp.dept||'—')+'</span>' +
           '</div>' +
-          '</div>' +
-          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' +
+          '<div style="font-size:12px;color:var(--tx3)"><i class="fas fa-envelope"></i> '+_esc(emp.email||'—')+'</div>' +
+          '</div></div>' +
+          '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:16px">' +
           [
-            { lbl: 'Tasks Done (Month)', val: stats.tasks_done_this_month || 0, ico: 'fa-check-circle', c: 'var(--G)' },
-            { lbl: 'Tasks Logged (Month)', val: stats.tasks_logged_this_month || 0, ico: 'fa-list', c: 'var(--P)' },
-            { lbl: 'Pending Delegations', val: stats.pending_delegations || 0, ico: 'fa-people-arrows', c: 'var(--O)' },
-            { lbl: 'Present Days (Month)', val: stats.attendance_days_this_month || 0, ico: 'fa-calendar-check', c: 'var(--T)' }
-          ].map(function (k) {
+            {lbl:'Tasks Done (Month)',    val:stats.tasks_done_this_month||0,     ico:'fa-check-circle', c:'var(--G)'},
+            {lbl:'Tasks Logged (Month)',  val:stats.tasks_logged_this_month||0,   ico:'fa-list',         c:'var(--P)'},
+            {lbl:'Pending Delegations',   val:stats.pending_delegations||0,       ico:'fa-people-arrows',c:'var(--O)'},
+            {lbl:'Present Days (Month)',  val:stats.attendance_days_this_month||0,ico:'fa-calendar-check',c:'var(--T)'}
+          ].map(function(k) {
             return '<div style="background:var(--bg);border:1px solid var(--bdr);border-radius:10px;padding:12px;display:flex;align-items:center;gap:10px">' +
-              '<div style="width:32px;height:32px;border-radius:8px;background:' + k.c + '22;color:' + k.c + ';display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0"><i class="fas ' + k.ico + '"></i></div>' +
-              '<div>' +
-              '<div style="font-size:20px;font-weight:900;color:' + k.c + '">' + k.val + '</div>' +
-              '<div style="font-size:10.5px;color:var(--tx2);font-weight:600">' + k.lbl + '</div>' +
-              '</div>' +
-              '</div>';
-          }).join('') +
-          '</div>' +
-          '<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--bdr);display:flex;gap:8px">' +
-          '<button class="btn btn-sm btn-outline" style="flex:1" onclick="_closeModal();_compareEmployees(\'' + empId + '\',\'' + _esc((emp.name || '').split(' ')[0]) + '\',prompt(\'Enter second employee ID:\'),\'\',\'compareResult\')">Compare with…</button>' +
-          '<button class="btn btn-sm" style="flex:1" onclick="_closeModal();_loadV(\'perf\',\'pind\');setTimeout(function(){var s=document.getElementById(\'pindEmp\');if(s){s.value=\'' + empId + '\';_loadIndivPerf();}},600)">View Report</button>' +
-          '</div>';
-      }, function (e) {
-        var el = document.getElementById('empDetailBody');
-        if (el) el.innerHTML = '<div class="te">Error: ' + _esc(e.message) + '</div>';
+              '<div style="width:34px;height:34px;border-radius:9px;background:'+k.c+'22;color:'+k.c+';display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0"><i class="fas '+k.ico+'"></i></div>' +
+              '<div><div style="font-size:22px;font-weight:900;color:'+k.c+'">'+k.val+'</div>' +
+              '<div style="font-size:10px;color:var(--tx2);font-weight:700">'+k.lbl+'</div></div></div>';
+          }).join('')+'</div>';
+      }, function(e) {
+        var el=document.getElementById('empDetailBody');
+        if(el) el.innerHTML='<div class="te">Error: '+_esc(e.message)+'</div>';
       });
     }
-
     /* ══════════════════════════════════════════════════════════════════════
        DASHBOARD MODULE
        Quick-start: KPIs, delegation urgency list, today's checklist
@@ -12319,166 +12423,196 @@ function _loadSetupTasks() {
       }, function (e) { _toast('Error: ' + e.message, 'err'); });
     }
 
-    /* ══════════════════════════════════════════════════════════════════════
-       ANALYTICS MODULE
-       Manager-only full analytics: dept breakdown, status ring chart,
-       delegation KPIs, comparison tool.
-    ══════════════════════════════════════════════════════════════════════ */
+    // ═══════════════════════════════════════════════════════════════════════
+    // ANALYTICS OVERVIEW — Organization-wide performance command centre
+    // Combines: Checklist, Delegations, Attendance in one snapshot
+    // ═══════════════════════════════════════════════════════════════════════
     function _vAnalytics() {
       if (!_isManager()) {
         document.getElementById('content').innerHTML =
-          '<div class="empty-state"><i class="fas fa-lock"></i><h4>Access Restricted</h4><p>Manager access required to view analytics.</p></div>';
+          '<div class="empty-state"><i class="fas fa-lock"></i><h4>Access Restricted</h4></div>';
         return;
       }
-
       document.getElementById('content').innerHTML =
         '<div class="mod-head">' +
-        '<div><div class="mod-title">Analytics Overview</div><div class="mod-sub">Organization-wide performance snapshot</div></div>' +
-        '<div class="mod-head-right">' +
-        '<label style="font-size:12px;font-weight:700;color:var(--tx2)">Month:</label>' +
-        '<input type="month" id="anaMonth" value="' + _currMonth() + '" style="padding:6px 10px;border:1.5px solid var(--bdr);border-radius:8px;font-size:12px;background:var(--bg);color:var(--tx);outline:none">' +
+        '<div><div class="mod-title">Analytics Overview</div>' +
+        '<div class="mod-sub">Organisation-wide performance, tasks, delegations & attendance</div></div>' +
+        '<div style="display:flex;gap:8px;align-items:center">' +
+        '<input type="month" id="anaMonth" class="ana-sel" value="' + _currMonth() + '">' +
         '<button class="btn btn-sm" onclick="_loadAnalytics()"><i class="fas fa-rotate-right"></i> Refresh</button>' +
-        '<button class="btn btn-outline btn-sm" onclick="_exportAnalytics()"><i class="fas fa-download"></i> Export</button>' +
-        '</div>' +
-        '</div>' +
-        '<div class="krow" id="anaKrow">' +
-        [1, 2, 3, 4, 5, 6].map(function () { return '<div class="sk sk-h6" style="border-radius:14px"></div>'; }).join('') +
-        '</div>' +
-        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:18px">' +
-        '<div class="chart-wrap">' +
-        '<div class="chart-head"><div class="chart-title">Department Completion Rates</div><div class="chart-sub">Tasks done as % of planned for each dept</div></div>' +
-        '<div class="chart-inner-md"><canvas id="anaDeptChart"></canvas></div>' +
-        '</div>' +
-        '<div class="chart-wrap">' +
-        '<div class="chart-head"><div class="chart-title">Task Status Distribution</div><div class="chart-sub">Done · Pending · Overdue</div></div>' +
-        '<div class="chart-inner-md"><canvas id="anaStatusChart"></canvas></div>' +
-        '</div>' +
-        '</div>' +
-        '<div class="card card-nohover" style="margin-top:16px">' +
-        '<div class="sec-title" style="margin-bottom:14px"><i class="fas fa-building" style="color:var(--P)"></i> Department Breakdown</div>' +
-        '<div id="anaDeptTable">' + _skel(4) + '</div>' +
-        '</div>';
+        '<button class="btn btn-sm btn-outline" onclick="_exportAnalytics()"><i class="fas fa-download"></i> Export</button>' +
+        '</div></div>' +
+        '<div id="anaRoot">' + _skel(6) + '</div>';
 
       _loadAnalytics();
     }
 
     function _loadAnalytics() {
-      var month = document.getElementById('anaMonth') ? document.getElementById('anaMonth').value : _currMonth();
-      var kEl = document.getElementById('anaKrow');
-      if (kEl) kEl.innerHTML = [1, 2, 3, 4, 5, 6].map(function () { return '<div class="sk sk-h6" style="border-radius:14px"></div>'; }).join('');
+      var root = document.getElementById('anaRoot');
+      if (root) root.innerHTML = _skel(6);
+      var month = (document.getElementById('anaMonth')||{}).value || _currMonth();
 
-      _gas('getAnalyticsSummary', [month], function (data) {
+      _gas('getAnalyticsSummary', [month], function(data) {
         _D.analyticsData = data;
-        var depts = data.dept_breakdown || [];
-        var sb = data.status_breakdown || {};
+        var depts = data.dept_breakdown  || [];
+        var sb    = data.status_breakdown || {};
 
-        if (kEl) kEl.innerHTML = [
-          { lbl: 'Total Employees', val: data.total_employees || 0, c: 'var(--P)', ico: 'fa-users' },
-          { lbl: 'Scheduled Tasks', val: data.total_scheduled || 0, c: 'var(--I)', ico: 'fa-calendar' },
-          { lbl: 'Tasks Done', val: data.total_done || 0, c: 'var(--G)', ico: 'fa-check-circle' },
-          { lbl: 'Completion Rate', val: (data.completion_pct || 0) + '%', c: (data.completion_pct || 0) >= 80 ? 'var(--G)' : 'var(--O)', ico: 'fa-percent' },
-          { lbl: 'Pending Delegations', val: data.pending_dels || 0, c: 'var(--O)', ico: 'fa-people-arrows' },
-          { lbl: 'Overdue Delegations', val: data.overdue_dels || 0, c: (data.overdue_dels > 0 ? 'var(--R)' : 'var(--G)'), ico: 'fa-triangle-exclamation' }
-        ].map(function (k) {
-          return '<div class="kpi" style="--kc:' + k.c + '">' +
-            '<div class="kpi-ico"><i class="fas ' + k.ico + '"></i></div>' +
-            '<div class="kpi-val">' + k.val + '</div>' +
-            '<div class="kpi-lbl">' + k.lbl + '</div>' +
-            '</div>';
-        }).join('');
+        var totalE  = data.total_employees || 0;
+        var totSch  = data.total_scheduled || 0;
+        var totDone = data.total_done || 0;
+        var compPct = data.completion_pct || 0;
+        var pendDel = data.pending_dels || 0;
+        var ovrDel  = data.overdue_dels || 0;
+        var crClr   = compPct>=80?'var(--G)':compPct>=60?'var(--O)':'var(--R)';
 
-        setTimeout(function () {
-          // Dept completion horizontal bar
-          var dcEl = document.getElementById('anaDeptChart');
-          if (dcEl && depts.length) {
-            if (_charts['anadept']) _charts['anadept'].destroy();
-            _charts['anadept'] = new Chart(dcEl.getContext('2d'), {
-              type: 'bar',
-              data: {
-                labels: depts.map(function (d) { return d.dept; }),
-                datasets: [{
-                  label: 'Completion %',
-                  data: depts.map(function (d) { return d.planned > 0 ? Math.round(d.done / d.planned * 100) : 0; }),
-                  backgroundColor: depts.map(function (d) {
-                    var r = d.planned > 0 ? d.done / d.planned * 100 : 0;
-                    return r >= 80 ? 'rgba(47,158,68,.85)' : r >= 60 ? 'rgba(217,119,6,.85)' : 'rgba(224,49,49,.85)';
-                  }),
-                  borderRadius: 6, borderSkipped: false
-                }]
-              },
-              options: {
-                indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                  x: { beginAtZero: true, max: 100, ticks: { callback: function (v) { return v + '%'; }, color: '#94a3b8', font: { size: 11 } }, grid: { color: 'rgba(0,0,0,.05)' } },
-                  y: { ticks: { color: '#94a3b8', font: { size: 11 } }, grid: { display: false } }
-                }
-              }
-            });
-          }
+        var h = '';
 
-          // Status doughnut
-          var scEl = document.getElementById('anaStatusChart');
-          if (scEl) {
-            if (_charts['anastatus']) _charts['anastatus'].destroy();
-            _charts['anastatus'] = new Chart(scEl.getContext('2d'), {
-              type: 'doughnut',
-              data: {
-                labels: ['Done', 'Pending', 'Overdue'],
-                datasets: [{
-                  data: [sb.done || 0, sb.pending || 0, sb.overdue || 0],
-                  backgroundColor: ['rgba(47,158,68,.8)', 'rgba(217,119,6,.8)', 'rgba(224,49,49,.8)'],
-                  borderWidth: 0, hoverOffset: 12
-                }]
-              },
-              options: {
-                responsive: true, maintainAspectRatio: false, cutout: '62%',
-                plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', padding: 16, font: { size: 11 } } } }
-              }
-            });
-          }
-        }, 120);
+        // ── KPI Strip ────────────────────────────────────────────────────
+        h += '<div class="ana-kpi-row" style="grid-template-columns:repeat(6,1fr)">' + [
+          {lbl:'Employees',   val:totalE,           c:'var(--P)',  ico:'fa-users',             sub:'Active staff'},
+          {lbl:'Tasks Planned',val:totSch,           c:'var(--I)',  ico:'fa-calendar-days',     sub:month},
+          {lbl:'Tasks Done',  val:totDone,           c:'var(--G)',  ico:'fa-circle-check',      sub:'Completed'},
+          {lbl:'Completion',  val:compPct+'%',       c:crClr,       ico:'fa-chart-pie',         sub:compPct>=80?'Excellent':compPct>=60?'Average':'Needs attention'},
+          {lbl:'Pending Deleg',val:pendDel,          c:'var(--O)',  ico:'fa-people-arrows',     sub:'Awaiting action'},
+          {lbl:'Overdue Deleg',val:ovrDel,           c:ovrDel>0?'var(--R)':'var(--G)', ico:'fa-triangle-exclamation', sub:ovrDel>0?'Needs attention':'All on time'}
+        ].map(function(k){
+          return '<div class="ana-kpi">'+
+            '<div class="ana-kpi-top"><div class="ana-kpi-ico" style="--kc:'+k.c+'"><i class="fas '+k.ico+'"></i></div>'+
+            '<div class="ana-kpi-val" style="color:'+k.c+'">'+k.val+'</div></div>'+
+            '<div class="ana-kpi-lbl">'+k.lbl+'</div>'+
+            '<div class="ana-kpi-sub">'+k.sub+'</div></div>';
+        }).join('') + '</div>';
 
-        // Dept breakdown table
-        var tblEl = document.getElementById('anaDeptTable');
-        if (tblEl && depts.length) {
-          tblEl.innerHTML =
+        // ── Charts Row ───────────────────────────────────────────────────
+        h += '<div class="ana-charts-grid" style="grid-template-columns:2fr 1fr 1fr;margin-bottom:16px">';
+        h += '<div class="ana-chart-card"><div class="ana-chart-title"><i class="fas fa-building"></i> Dept Completion Rates</div><div style="height:200px"><canvas id="anaDeptChart"></canvas></div></div>';
+        h += '<div class="ana-chart-card"><div class="ana-chart-title"><i class="fas fa-chart-pie"></i> Task Status</div><div style="height:200px"><canvas id="anaStatusChart"></canvas></div></div>';
+        h += '<div class="ana-chart-card"><div class="ana-chart-title"><i class="fas fa-chart-donut"></i> Completion %</div><div style="height:200px"><canvas id="anaCompChart"></canvas></div></div>';
+        h += '</div>';
+
+        // ── Dept Breakdown Table ─────────────────────────────────────────
+        if (depts.length) {
+          h += '<div class="card card-nohover card-sm" style="margin-bottom:16px">' +
+            '<div class="sec-title" style="margin-bottom:12px"><i class="fas fa-building" style="color:var(--P)"></i> Department Breakdown — '+month+'</div>' +
             '<div class="tw"><table><thead><tr>' +
-            '<th>Department</th><th style="text-align:center">Employees</th>' +
-            '<th style="text-align:center">Planned</th><th style="text-align:center">Done</th>' +
-            '<th style="text-align:center">Rate</th><th>Progress</th>' +
+            '<th>Department</th>' +
+            '<th style="text-align:center">Employees</th>' +
+            '<th style="text-align:center">Planned</th>' +
+            '<th style="text-align:center;color:var(--G)">Done</th>' +
+            '<th style="text-align:center;color:var(--R)">Pending</th>' +
+            '<th style="text-align:center">Rate</th>' +
+            '<th style="min-width:120px">Progress</th>' +
             '</tr></thead><tbody>' +
-            depts.map(function (d) {
-              var rate = d.planned > 0 ? Math.round(d.done / d.planned * 100) : 0;
-              var rClr = rate >= 80 ? 'var(--G)' : rate >= 60 ? 'var(--O)' : 'var(--R)';
+            depts.map(function(d) {
+              var rate=d.planned>0?Math.round(d.done/d.planned*100):0;
+              var rClr2=rate>=80?'var(--G)':rate>=60?'var(--O)':'var(--R)';
+              var pending=Math.max(0,(d.planned||0)-(d.done||0));
               return '<tr>' +
-                '<td style="font-weight:800">' + _esc(d.dept) + '</td>' +
-                '<td style="text-align:center">' + (d.employees || 0) + '</td>' +
-                '<td style="text-align:center">' + (d.planned || 0) + '</td>' +
-                '<td style="text-align:center;font-weight:800;color:var(--G)">' + (d.done || 0) + '</td>' +
-                '<td style="text-align:center;font-weight:900;color:' + rClr + '">' + rate + '%</td>' +
-                '<td style="min-width:120px"><div class="pbar-wrap"><div class="pbar" style="width:' + rate + '%;background:' + rClr + '"></div></div></td>' +
+                '<td style="font-weight:800">'+_esc(d.dept)+'</td>' +
+                '<td style="text-align:center;font-weight:700">'+( d.employees||0)+'</td>' +
+                '<td style="text-align:center;font-weight:700">'+( d.planned||0)+'</td>' +
+                '<td style="text-align:center;font-weight:900;color:var(--G)">'+( d.done||0)+'</td>' +
+                '<td style="text-align:center;font-weight:800;color:'+(pending>0?'var(--O)':'var(--tx3)')+'">'+pending+'</td>' +
+                '<td style="text-align:center;font-weight:900;color:'+rClr2+'">'+rate+'%</td>' +
+                '<td><div class="pbar-wrap"><div class="pbar" style="width:'+rate+'%;background:'+rClr2+'"></div></div></td>' +
                 '</tr>';
             }).join('') +
-            '</tbody></table></div>';
-        } else if (tblEl) {
-          tblEl.innerHTML = '<div class="te">No department data for ' + month + '</div>';
+            '</tbody></table></div></div>';
+        } else {
+          h += '<div class="te" style="margin:16px 0"><i class="fas fa-calendar-times"></i> No task data for '+month+'</div>';
         }
-      }, function (e) {
-        if (kEl) kEl.innerHTML = '<div class="te" style="grid-column:1/-1">Error: ' + _esc(e.message) + '</div>';
+
+        // ── Quick Links to other analytics ───────────────────────────────
+        h += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">' + [
+          {icon:'fa-user-clock',   title:'Attendance Analytics', sub:'Presence rates, trends, muster', route:'attana', clr:'var(--T)'},
+          {icon:'fa-diagram-project',title:'Delegation Analytics',sub:'Workload, completion, overdue', route:'delana', clr:'var(--V)'},
+          {icon:'fa-trophy',       title:'Performance Reports',  sub:'Top performers, individual stats', route:'perf',   clr:'var(--G)'},
+        ].map(function(q) {
+          return '<div class="card card-sm" style="cursor:pointer;display:flex;align-items:center;gap:14px;border-left:4px solid '+q.clr+'" onclick="_loadV(\''+q.route+'\')">' +
+            '<div style="width:42px;height:42px;border-radius:10px;background:'+q.clr+'22;color:'+q.clr+';display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0"><i class="fas '+q.icon+'"></i></div>' +
+            '<div><div style="font-weight:800;font-size:13px">'+q.title+'</div><div style="font-size:11px;color:var(--tx3)">'+q.sub+'</div></div>' +
+            '<i class="fas fa-chevron-right" style="margin-left:auto;color:var(--tx4)"></i>' +
+            '</div>';
+        }).join('') + '</div>';
+
+        root.innerHTML = h;
+
+        // ── Charts ───────────────────────────────────────────────────────
+        setTimeout(function() {
+          if (!window.Chart) return;
+          var isDk=document.body.classList.contains('dark');
+          var gc=isDk?'rgba(255,255,255,0.05)':'rgba(0,0,0,0.05)', tc=isDk?'#94a3b8':'#64748b';
+          function mkC(id,type,labels,datasets,extra){
+            var cv=document.getElementById(id); if(!cv)return;
+            if(cv._ci){try{cv._ci.destroy();}catch(e){}}
+            function dm(a,b){var r=Object.assign({},a);Object.keys(b||{}).forEach(function(k){r[k]=(b[k]&&typeof b[k]==='object'&&!Array.isArray(b[k]))?dm(a[k]||{},b[k]):b[k];});return r;}
+            var isR=(type==='pie'||type==='doughnut');
+            var base={responsive:true,maintainAspectRatio:false,
+              plugins:{legend:{labels:{color:tc,font:{size:11},boxWidth:12}}},
+              scales:isR?{}:{x:{ticks:{color:tc,font:{size:10}},grid:{color:gc}},y:{ticks:{color:tc,font:{size:10}},grid:{color:gc}}}};
+            cv._ci=new Chart(cv,{type:type,data:{labels:labels,datasets:datasets},options:dm(base,extra||{})});
+          }
+
+          if (depts.length) {
+            mkC('anaDeptChart','bar',
+              depts.map(function(d){return d.dept;}),
+              [{label:'%',data:depts.map(function(d){return d.planned>0?Math.round(d.done/d.planned*100):0;}),
+                backgroundColor:depts.map(function(d){var r=d.planned>0?d.done/d.planned*100:0;return r>=80?'rgba(47,158,68,.8)':r>=60?'rgba(245,158,11,.8)':'rgba(220,38,38,.8)';}),
+                borderRadius:5,borderSkipped:false}],
+              {indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{min:0,max:100}}});
+          }
+
+          mkC('anaStatusChart','doughnut',
+            ['Done','Pending','Overdue'],
+            [{data:[sb.done||0,sb.pending||0,sb.overdue||0],
+              backgroundColor:['rgba(47,158,68,.85)','rgba(245,158,11,.85)','rgba(220,38,38,.85)'],
+              borderWidth:0,hoverOffset:10}],
+            {cutout:'60%',plugins:{legend:{position:'bottom'}}});
+
+          mkC('anaCompChart','doughnut',
+            ['Completed','Remaining'],
+            [{data:[compPct,100-compPct],
+              backgroundColor:[crClr,'rgba(148,163,184,.2)'],
+              borderWidth:0}],
+            {cutout:'68%',plugins:{
+              legend:{display:false},
+              afterDraw:{} // we use innerHTML overlay below
+            }});
+          // Overlay text
+          setTimeout(function(){
+            var cv=document.getElementById('anaCompChart');
+            if(!cv)return;
+            var p=cv.parentElement;
+            if(!p.querySelector('.ana-comp-overlay')){
+              var ov=document.createElement('div');
+              ov.className='ana-comp-overlay';
+              ov.style.cssText='position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none';
+              ov.innerHTML='<div style="font-size:22px;font-weight:900;color:'+crClr+'">'+compPct+'%</div><div style="font-size:10px;color:var(--tx3);font-weight:700">COMPLETE</div>';
+              p.style.position='relative';
+              p.appendChild(ov);
+            }
+          }, 100);
+
+        }, 80);
+
+      }, function(e) {
+        var root2=document.getElementById('anaRoot');
+        if(root2) root2.innerHTML='<div class="te">Error: '+_esc(e.message)+'</div>';
       });
     }
 
     function _exportAnalytics() {
       var data = _D.analyticsData;
       if (!data || !data.dept_breakdown) { _toast('Load analytics first', 'warn'); return; }
-      var rows = [['Department', 'Employees', 'Planned', 'Done', 'Completion %']];
-      data.dept_breakdown.forEach(function (d) {
-        var rate = d.planned > 0 ? Math.round(d.done / d.planned * 100) : 0;
-        rows.push([d.dept, d.employees, d.planned, d.done, rate]);
-      });
-      _downloadCSV('analytics_' + _currMonth() + '.csv', rows);
-      _toast('Analytics exported!', 'ok');
+      var head = ['Department','Employees','Planned','Done','Completion %'];
+      var csv  = [head.join(',')].concat(data.dept_breakdown.map(function(d) {
+        var rate = d.planned>0?Math.round(d.done/d.planned*100):0;
+        return ['"'+d.dept+'"',d.employees||0,d.planned||0,d.done||0,rate+'%'].join(',');
+      })).join('\n');
+      var a = document.createElement('a');
+      a.href = 'data:text/csv;charset=utf-8,'+encodeURIComponent('\uFEFF'+csv);
+      a.download = 'analytics_'+_currMonth()+'.csv'; a.click();
+      _toast('Exported!', 'ok');
     }
 
     /* ══════════════════════════════════════════════════════════════════════
