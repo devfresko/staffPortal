@@ -4676,14 +4676,21 @@
       return _U && _U.role === 'OWNER';
     }
     // Clean total_hours — strips GAS Date object serialization (e.g. "Sat Dec 30 1899...")
-    function _cleanHours(v) {
-      var s = String(v || '').trim();
-      if (!s || s === '-' || s === '--') return '—';
-      // If it contains "1899" or looks like a full date string, extract HH:MM
-      if (s.indexOf('1899') >= 0 || (s.length > 10 && s.indexOf('GMT') >= 0)) {
+        function _cleanHours(v) {
+      if (!v || v === '-') return '—';
+      var s = String(v).trim();
+      if (!s || s === '-') return '—';
+      // Already formatted (e.g. "2h 30m" or "02:30")
+      if (s.indexOf('h ') >= 0 || s.indexOf('m') >= 0) return s;
+      // GAS Date object serialised: "Sat Dec 30 1899..." — extract HH:MM
+      if (s.indexOf('1899') >= 0 || s.indexOf('GMT') >= 0) {
         var m = s.match(/(\d{1,2}):(\d{2}):\d{2}/);
-        if (m) return m[1] + ':' + m[2];
-        return '—';
+        return m ? m[1] + 'h ' + m[2] + 'm' : '—';
+      }
+      // HH:MM string
+      if (/^\d{1,2}:\d{2}$/.test(s)) {
+        var p = s.split(':');
+        return parseInt(p[0]) + 'h ' + parseInt(p[1]) + 'm';
       }
       return s;
     }
@@ -4863,7 +4870,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbz3nsVb-0uLfIOBCYAhVCVMmCjqLDE5YNhqKmfTwkj_Pkvm0-k_YiI6iuXj084lqRe4oQ/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbwhZnHEld7OQSD12W0Yakyv-pKa2v4tRF8CC5-rPVbmWKiVe1XL0Ri8pMS8R2hbinjibw/exec';
     var _TOKEN  = '';
 
 function _gas(fn, args, onOk, onErr) {
@@ -6582,6 +6589,8 @@ function _loadSetupTasks() {
       return '<div class="fbar">' +
         '<label>Month:</label><input type="month" id="aregMonth" value="' + _currMonth() + '">' +
         '<button class="btn btn-sm" onclick="_loadMyRegularizations()"><i class="fas fa-search"></i> Load</button>' +
+        '<div class="fbar-spacer"></div>' +
+        '<button class="btn btn-teal btn-sm" onclick="_openRegModal()"><i class="fas fa-plus"></i> New Request</button>' +
         '</div>' +
         '<div id="aregList">' + _skel(3) + '</div>';
     }
@@ -6591,17 +6600,30 @@ function _loadSetupTasks() {
       if (!el) return;
       el.innerHTML = _skel(3);
       _gas('getRegularizationRequests', [], function(rows) {
-        if (!rows || !rows.length) { el.innerHTML = '<div class="te"><i class="fas fa-check-circle"></i>No regularization requests found</div>'; return; }
-        var h = '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Date</th><th>In</th><th>Out</th><th>Reason</th><th>Status</th></tr></thead><tbody>';
-        rows.forEach(function(r) {
-          var sc = r.status === 'Approved' ? 'var(--G)' : r.status === 'Rejected' ? 'var(--R)' : 'var(--O)';
-          h += '<tr><td>' + _esc(r.date||'') + '</td><td>' + _esc(r.req_in||'-') + '</td><td>' + _esc(r.req_out||'-') + '</td><td>' + _esc(r.reason||'') + '</td>' +
-               '<td><span style="color:' + sc + ';font-weight:600">' + _esc(r.status||'Pending') + '</span></td></tr>';
-        });
-        h += '</tbody></table></div>';
-        h += '<div style="margin-top:16px"><button class="btn btn-teal" onclick="_openRegModal()"><i class="fas fa-plus"></i> New Request</button></div>';
+        if (!rows || !rows.length) {
+          el.innerHTML = '<div class="empty-state" style="padding:40px 0"><i class="fas fa-clipboard-check" style="font-size:40px;color:var(--tx4);margin-bottom:12px"></i><h4>No Requests Yet</h4><p>Submit a regularization request to correct your attendance.</p></div>';
+          return;
+        }
+        var h = '<div class="table-card"><div class="tw"><table><thead><tr>' +
+          '<th>Date</th><th>Day</th><th>Req In</th><th>Req Out</th><th>Reason</th><th>Status</th><th>Remark</th>' +
+          '</tr></thead><tbody>' +
+          rows.map(function(r) {
+            var sc = r.status==='Approved'?'var(--G)':r.status==='Rejected'?'var(--R)':'var(--O)';
+            var d = r.date ? new Date(r.date+'T00:00:00') : null;
+            var dow = d ? ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()] : '';
+            return '<tr>' +
+              '<td style="font-weight:700;white-space:nowrap">' + _fmtDate(r.date) + '</td>' +
+              '<td style="color:var(--tx2)">' + dow + '</td>' +
+              '<td style="color:var(--G);font-weight:700">' + _esc(r.req_in||'—') + '</td>' +
+              '<td style="color:var(--R);font-weight:700">' + _esc(r.req_out||'—') + '</td>' +
+              '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + _esc(r.reason) + '">' + _esc(r.reason||'—') + '</td>' +
+              '<td><span class="bdg" style="background:' + sc + '22;color:' + sc + ';font-weight:800">' + _esc(r.status||'Pending') + '</span></td>' +
+              '<td style="color:var(--tx3);font-size:12px">' + _esc(r.remark||'—') + '</td>' +
+              '</tr>';
+          }).join('') +
+          '</tbody></table></div></div>';
         el.innerHTML = h;
-      }, function() { el.innerHTML = '<div class="te">Failed to load requests</div>'; });
+      }, function(e) { el.innerHTML = '<div class="te">Failed to load: ' + _esc(e.message) + '</div>'; });
     }
 
     function _openRegModal() {
@@ -6632,31 +6654,54 @@ function _loadSetupTasks() {
 
     // Reg. Approvals form (manager)
     function _aregaForm() {
-      return '<div class="fbar"><select id="aregaFilter" onchange="_loadRegApprovals()"><option value="Pending">Pending</option><option value="All">All</option></select></div>' +
-             '<div id="aregaList">' + _skel(3) + '</div>';
+      return '<div class="fbar">' +
+        '<label>Filter:</label>' +
+        '<select id="aregaFilter" onchange="_loadRegApprovals()"><option value="Pending">Pending</option><option value="All">All</option></select>' +
+        '<label>Month:</label>' +
+        '<input type="month" id="aregaMonth" value="' + _currMonth() + '">' +
+        '<button class="btn btn-sm" onclick="_loadRegApprovals()"><i class="fas fa-search"></i> Load</button>' +
+        '</div>' +
+        '<div id="aregaList">' + _skel(3) + '</div>';
     }
 
     function _loadRegApprovals() {
       var el = document.getElementById('aregaList');
       if (!el) return;
       el.innerHTML = _skel(3);
+      var month = (document.getElementById('aregaMonth') || {}).value || '';
       _gas('getRegularizationRequests', [], function(rows) {
         var filter = (document.getElementById('aregaFilter') || {}).value || 'Pending';
-        if (filter === 'Pending') rows = (rows || []).filter(function(r) { return r.status === 'Pending'; });
-        if (!rows || !rows.length) { el.innerHTML = '<div class="te"><i class="fas fa-check-circle"></i>No requests found</div>'; return; }
-        var h = '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Employee</th><th>Date</th><th>Req In</th><th>Req Out</th><th>Reason</th><th>Status</th><th>Action</th></tr></thead><tbody>';
-        rows.forEach(function(r) {
-          var sc = r.status === 'Approved' ? 'var(--G)' : r.status === 'Rejected' ? 'var(--R)' : 'var(--O)';
-          var btns = r.status === 'Pending'
-            ? '<button class="btn btn-xs" style="background:var(--G);color:#fff" onclick="_approveReg(\'' + r.reg_id + '\',\'Approved\')">Approve</button> ' +
-              '<button class="btn btn-xs" style="background:var(--R);color:#fff" onclick="_approveReg(\'' + r.reg_id + '\',\'Rejected\')">Reject</button>'
-            : '—';
-          h += '<tr><td>' + _esc(r.emp_name||'') + '</td><td>' + _esc(r.date||'') + '</td><td>' + _esc(r.req_in||'-') + '</td><td>' + _esc(r.req_out||'-') + '</td><td>' + _esc(r.reason||'') + '</td>' +
-               '<td><span style="color:' + sc + ';font-weight:600">' + _esc(r.status||'Pending') + '</span></td><td>' + btns + '</td></tr>';
-        });
-        h += '</tbody></table></div>';
+        rows = rows || [];
+        if (filter === 'Pending') rows = rows.filter(function(r) { return r.status === 'Pending'; });
+        if (month) rows = rows.filter(function(r) { return (r.date||'').substring(0,7) === month; });
+        if (!rows.length) {
+          el.innerHTML = '<div class="empty-state" style="padding:40px 0"><i class="fas fa-clipboard-check" style="font-size:40px;color:var(--tx4);margin-bottom:12px"></i><h4>No Requests</h4><p>No regularization requests found.</p></div>';
+          return;
+        }
+        var h = '<div class="table-card"><div class="tw"><table><thead><tr>' +
+          '<th>Employee</th><th>Dept</th><th>Date</th><th>Req In</th><th>Req Out</th><th>Reason</th><th>Status</th><th>Action</th>' +
+          '</tr></thead><tbody>' +
+          rows.map(function(r) {
+            var sc = r.status==='Approved'?'var(--G)':r.status==='Rejected'?'var(--R)':'var(--O)';
+            var btns = r.status === 'Pending'
+              ? '<div style="display:flex;gap:5px">' +
+                '<button class="btn btn-xs" style="background:var(--G);color:#fff;padding:4px 10px" onclick="_approveReg(\'' + r.reg_id + '\',\'Approved\')"><i class="fas fa-check"></i></button>' +
+                '<button class="btn btn-xs" style="background:var(--R);color:#fff;padding:4px 10px" onclick="_approveReg(\'' + r.reg_id + '\',\'Rejected\')"><i class="fas fa-times"></i></button>' +
+                '</div>'
+              : '<span style="color:' + sc + ';font-weight:700">' + _esc(r.status) + '</span>';
+            return '<tr>' +
+              '<td style="font-weight:700">' + _esc(r.emp_name||'—') + '</td>' +
+              '<td><span class="bdg" style="background:var(--Pl);color:var(--P)">' + _esc(r.dept||'—') + '</span></td>' +
+              '<td style="font-weight:700;white-space:nowrap">' + _fmtDate(r.date) + '</td>' +
+              '<td style="color:var(--G);font-weight:700">' + _esc(r.req_in||'—') + '</td>' +
+              '<td style="color:var(--R);font-weight:700">' + _esc(r.req_out||'—') + '</td>' +
+              '<td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + _esc(r.reason) + '">' + _esc(r.reason||'—') + '</td>' +
+              '<td><span class="bdg" style="background:' + sc + '22;color:' + sc + ';font-weight:800">' + _esc(r.status||'Pending') + '</span></td>' +
+              '<td>' + btns + '</td>' +
+              '</tr>';
+          }).join('') + '</tbody></table></div></div>';
         el.innerHTML = h;
-      }, function() { el.innerHTML = '<div class="te">Failed to load</div>'; });
+      }, function(e) { el.innerHTML = '<div class="te">Error: ' + _esc(e.message) + '</div>'; });
     }
 
     function _approveReg(regId, status) {
@@ -6679,38 +6724,75 @@ function _loadSetupTasks() {
       var el = document.getElementById('aanaContent');
       if (!el) return;
       el.innerHTML = _skel(4);
-      var dept  = (document.getElementById('aanaDept')  || {}).value || 'All';
+      // Populate dept dropdown from loaded doers
+      var deptSel = document.getElementById('aanaDept');
+      if (deptSel && deptSel.options.length <= 1) {
+        deptSel.innerHTML = '<option value="All">All Departments</option>' + _getDeptOptions();
+      }
+      var dept  = (deptSel || {}).value || 'All';
       var month = (document.getElementById('aanaMonth') || {}).value || _currMonth();
       _gas('getAttendanceStats', [dept, month], function(data) {
         if (!data) { el.innerHTML = '<div class="te">No analytics data</div>'; return; }
         var depts = data.dept_breakdown || [];
+        // Calculate working days in month (Mon-Sat, excluding Sundays)
+        var parts = month.split('-');
+        var yr = parseInt(parts[0]), mo = parseInt(parts[1]) - 1;
+        var daysInMonth = new Date(yr, mo + 1, 0).getDate();
+        var workingDays = 0, sundaysInMonth = 0;
+        for (var d = 1; d <= daysInMonth; d++) {
+          var dow = new Date(yr, mo, d).getDay();
+          if (dow === 0) sundaysInMonth++;
+          else workingDays++;
+        }
+        // Holidays from loaded data
+        var holidayCount = (_D.holidays || []).filter(function(h) {
+          return h.date && h.date.substring(0,7) === month;
+        }).length;
+        var netWorkingDays = workingDays - holidayCount;
+
+        var totalPresent = depts.reduce(function(s,d){return s+(d.fd||0);},0);
+        var totalHD = depts.reduce(function(s,d){return s+(d.hd||0);},0);
+        var totalAbsent = depts.reduce(function(s,d){return s+(d.absent||0);},0);
+        var totalRecs = data.total_records || 0;
         var avgPct = depts.length > 0
           ? Math.round(depts.reduce(function(s,d){return s+d.present_pct;},0)/depts.length)
           : 0;
-        var totalRecs = data.total_records || 0;
+
         var h = '<div class="krow" style="margin-bottom:18px">' +
           [
-            {lbl:'Avg Presence', val:avgPct+'%', c:avgPct>=80?'var(--G)':avgPct>=60?'var(--O)':'var(--R)', ico:'fa-chart-pie'},
-            {lbl:'Departments',  val:depts.length, c:'var(--P)', ico:'fa-building'},
-            {lbl:'Records',      val:totalRecs,    c:'var(--I)', ico:'fa-database'}
+            {lbl:'Avg Presence',   val:avgPct+'%',       c:avgPct>=80?'var(--G)':avgPct>=60?'var(--O)':'var(--R)', ico:'fa-chart-pie'},
+            {lbl:'Working Days',   val:netWorkingDays,   c:'var(--P)',  ico:'fa-calendar-days'},
+            {lbl:'Sundays',        val:sundaysInMonth,   c:'var(--tx2)',ico:'fa-moon'},
+            {lbl:'Holidays',       val:holidayCount,     c:'#4338ca',   ico:'fa-umbrella-beach'},
+            {lbl:'Departments',    val:depts.length,     c:'var(--I)',  ico:'fa-building'},
+            {lbl:'Total Records',  val:totalRecs,        c:'var(--T)',  ico:'fa-database'}
           ].map(function(k){
             return '<div class="kpi" style="--kc:'+k.c+'"><div class="kpi-ico"><i class="fas '+k.ico+'"></i></div><div class="kpi-val">'+k.val+'</div><div class="kpi-lbl">'+k.lbl+'</div></div>';
           }).join('') + '</div>';
+
         if (depts.length) {
-          h += '<div class="card card-nohover card-sm"><div class="sec-title" style="margin-bottom:14px"><i class="fas fa-building" style="color:var(--P)"></i> Department Breakdown</div>' +
-            '<div class="tw"><table><thead><tr><th>Department</th><th style="text-align:center">Present</th><th style="text-align:center">Half Day</th><th style="text-align:center">Absent</th><th style="text-align:center">Presence %</th><th>Progress</th></tr></thead><tbody>' +
+          h += '<div class="card card-nohover card-sm"><div class="sec-title" style="margin-bottom:14px">' +
+            '<i class="fas fa-building" style="color:var(--P)"></i> Department Breakdown' +
+            '<span style="font-size:11px;font-weight:600;color:var(--tx3);margin-left:10px">Working days in month: ' + netWorkingDays + ' (excl. ' + sundaysInMonth + ' Sundays + ' + holidayCount + ' holidays)</span>' +
+            '</div>' +
+            '<div class="tw"><table><thead><tr>' +
+            '<th>Department</th><th style="text-align:center">Present</th><th style="text-align:center">Half Day</th>' +
+            '<th style="text-align:center">Absent</th><th style="text-align:center">Presence %</th><th>Progress</th>' +
+            '</tr></thead><tbody>' +
             depts.map(function(d){
+              // Absent = working days - present - half day (per employee tracked)
               var clr = d.present_pct>=80?'var(--G)':d.present_pct>=60?'var(--O)':'var(--R)';
-              return '<tr><td style="font-weight:700">'+_esc(d.dept)+'</td>' +
+              return '<tr>' +
+                '<td style="font-weight:800">'+_esc(d.dept)+'</td>' +
                 '<td style="text-align:center;color:var(--G);font-weight:800">'+d.fd+'</td>' +
                 '<td style="text-align:center;color:var(--O);font-weight:800">'+d.hd+'</td>' +
                 '<td style="text-align:center;color:var(--R);font-weight:800">'+d.absent+'</td>' +
                 '<td style="text-align:center;font-weight:900;color:'+clr+'">'+d.present_pct+'%</td>' +
-                '<td style="min-width:100px"><div class="pbar-wrap"><div class="pbar" style="width:'+d.present_pct+'%;background:'+clr+'"></div></div></td>' +
+                '<td style="min-width:120px"><div class="pbar-wrap"><div class="pbar" style="width:'+d.present_pct+'%;background:'+clr+'"></div></div></td>' +
                 '</tr>';
             }).join('') + '</tbody></table></div></div>';
         } else {
-          h += '<div class="te"><i class="fas fa-calendar-times"></i> No attendance data for '+month+'</div>';
+          h += '<div class="te"><i class="fas fa-calendar-times"></i> No attendance data for ' + month + '</div>';
         }
         el.innerHTML = h;
       }, function(e) { el.innerHTML = '<div class="te">Error: '+_esc(e.message)+'</div>'; });
@@ -6894,7 +6976,14 @@ function _loadSetupTasks() {
       }, function (e) { el.innerHTML = '<div class="te">Error: ' + _esc(e.message) + '</div>'; });
     }
     function _alaForm() {
-      return '<div class="fbar"><label>Filter:</label><select id="alaFilter" onchange="_loadLeaveApprovals()"><option value="Pending">Pending Only</option><option value="All">All Requests</option></select></div><div id="alaList">' + _skel(3) + '</div>';
+      return '<div class="fbar">' +
+        '<label>Filter:</label>' +
+        '<select id="laprvStatus" onchange="_loadLeaveApprovals()">' +
+        '<option value="Pending">Pending Only</option>' +
+        '<option value="All">All Requests</option>' +
+        '</select>' +
+        '</div>' +
+        '<div id="laprvList">' + _skel(4) + '</div>';
     }
     function _updateLeave(btn, status) {
       var rid = btn.getAttribute('data-rid');
@@ -6908,20 +6997,25 @@ function _loadSetupTasks() {
     function _amustForm() {
       return '<div class="fbar" style="flex-wrap:wrap;gap:10px">' +
         '<label>Dept:</label>' +
-        '<select id="mustDept"><option value="All">All Departments</option><option>Admin</option><option>Accounts</option><option>Finance</option><option>Management</option><option>Marketing</option><option>Operations</option><option>MDO</option><option>Labour</option><option>Office Boy</option></select>' +
+        '<select id="mustDept" style="min-width:140px">' +
+        '<option value="All">All Departments</option>' +
+        _getDeptOptions() +
+        '</select>' +
         '<label>Month:</label><input type="month" id="mustMonth" value="' + _currMonth() + '">' +
-        '<button class="btn btn-sm" onclick="_loadMuster()"><i class="fas fa-search"></i> Load</button>' +
+        '<button class="btn btn-sm" onclick="_loadMustTab()"><i class="fas fa-search"></i> Load</button>' +
         '<div class="fbar-spacer"></div>' +
-        '<input type="text" id="mustSearch" placeholder="Search employee..." oninput="_filterMuster(this.value)" style="width:180px">' +
+        '<input type="text" id="mustSearch" placeholder="Search employee..." oninput="_filterMuster(this.value)" ' +
+        'style="padding:7px 12px;border:1.5px solid var(--bdr);border-radius:8px;font-size:12px;background:var(--bg);color:var(--tx);outline:none;width:180px">' +
         '<button class="btn btn-outline btn-sm" onclick="_exportMuster()"><i class="fas fa-download"></i> Export</button>' +
         '</div>' +
-        '<div style="display:flex;gap:16px;font-size:12px;font-weight:600;color:var(--tx2);margin-bottom:12px;flex-wrap:wrap">' +
-        '<span style="color:var(--G)">● P Present</span>' +
-        '<span style="color:var(--O)">● HD Half Day</span>' +
-        '<span style="color:var(--R)">● A Absent</span>' +
-        '<span style="color:#4338ca">● H Holiday</span>' +
-        '<span style="color:var(--tx3)">● WO Week Off</span>' +
+        '<div style="display:flex;gap:16px;font-size:12px;font-weight:600;color:var(--tx2);margin-bottom:12px;flex-wrap:wrap;padding:10px 14px;background:var(--sur2);border-radius:8px;border:1px solid var(--bdr)">' +
+        '<span style="color:var(--G)"><i class="fas fa-circle" style="font-size:8px"></i> Present</span>' +
+        '<span style="color:var(--O)"><i class="fas fa-circle" style="font-size:8px"></i> Half Day</span>' +
+        '<span style="color:var(--R)"><i class="fas fa-circle" style="font-size:8px"></i> Absent</span>' +
+        '<span style="color:#4338ca"><i class="fas fa-circle" style="font-size:8px"></i> Holiday</span>' +
+        '<span style="color:var(--tx3)"><i class="fas fa-circle" style="font-size:8px"></i> Week Off</span>' +
         '</div>' +
+        '<div id="mustKrow" class="krow" style="margin-bottom:14px"></div>' +
         '<div id="mustTable">' + _skel(2) + '</div>';
     }
 
@@ -6931,12 +7025,30 @@ function _loadSetupTasks() {
       var month = (document.getElementById('mustMonth') || {}).value || _currMonth();
       var dept  = (document.getElementById('mustDept')  || {}).value || 'All';
       var el = document.getElementById('mustTable');
-      if (!el) return; // pane not rendered yet
+      var kEl = document.getElementById('mustKrow');
+      if (!el) return;
       el.innerHTML = _skel(4);
+      if (kEl) kEl.innerHTML = [1,2,3,4].map(function(){return '<div class="sk sk-h6" style="border-radius:14px"></div>';}).join('');
       _gas('getMusterReport', [dept, month], function(rows) {
-        _renderMuster(rows || [], month);
+        rows = rows || [];
+        // KPIs
+        if (kEl) {
+          var totFD=0,totHD=0,totAbs=0,totWO=0;
+          rows.forEach(function(r){totFD+=r.full_days||0;totHD+=r.half_days||0;totAbs+=r.absent||0;totWO+=r.week_off||0;});
+          var wkg=totFD+totHD+totAbs;
+          var avgPct=wkg>0?Math.round((totFD+totHD*0.5)/wkg*100):0;
+          kEl.innerHTML=[
+            {lbl:'Employees',val:rows.length,c:'var(--P)',ico:'fa-users'},
+            {lbl:'Present Days',val:totFD,c:'var(--G)',ico:'fa-calendar-check'},
+            {lbl:'Absent Days',val:totAbs,c:'var(--R)',ico:'fa-calendar-times'},
+            {lbl:'Avg Presence',val:avgPct+'%',c:avgPct>=80?'var(--G)':avgPct>=60?'var(--O)':'var(--R)',ico:'fa-chart-pie'}
+          ].map(function(k){
+            return '<div class="kpi" style="--kc:'+k.c+'"><div class="kpi-ico"><i class="fas '+k.ico+'"></i></div><div class="kpi-val">'+k.val+'</div><div class="kpi-lbl">'+k.lbl+'</div></div>';
+          }).join('');
+        }
+        _renderMuster(rows, month);
       }, function(e) {
-        el.innerHTML = '<div class="te"><i class="fas fa-exclamation-triangle"></i> Error: ' + _esc(e.message) + '</div>';
+        if (el) el.innerHTML = '<div class="te"><i class="fas fa-exclamation-triangle"></i> Error: ' + _esc(e.message) + '</div>';
       });
     }
     function _renderMuster(rows, month) {
