@@ -4893,7 +4893,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycby4MJF8SKgtNid2HNPi72brqmPbNHxWGp2E5MA_-M_mmc8VOopqGYVirL8E4oYdE0R-qg/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbx2d6tnGIPGbZ3bcZhTY6TZTMzriIZFL_5GDpmIlJ90G5ZdrslB6VWJ9qQbijUqeUZEeA/exec';
     var _TOKEN  = '';
 
 function _gas(fn, args, onOk, onErr) {
@@ -6759,7 +6759,7 @@ function _loadSetupTasks() {
     function _aanaForm() {
       return '<div class="fbar">' +
         '<label>Dept:</label>' +
-        '<select id="aanaDept" style="min-width:140px" onchange="_loadAttAnalytics()">' +
+        '<select id="aanaDept" style="min-width:140px">' +
         '<option value="All">All Departments</option>' +
         '</select>' +
         '<label>Month:</label><input type="month" id="aanaMonth" value="' + _currMonth() + '" onchange="_loadAttAnalytics()">' +
@@ -6785,10 +6785,16 @@ function _loadSetupTasks() {
       el.innerHTML = _skel(4);
       // Populate dept dropdown
       var deptSel = document.getElementById('aanaDept');
-      if (deptSel && deptSel.options.length <= 1) {
+      var prevADept = deptSel ? deptSel.value : 'All';
+      if (deptSel) {
         deptSel.innerHTML = '<option value="All">All Departments</option>' + _getDeptOptions();
+        if (prevADept && prevADept !== 'All') {
+          for (var i=0;i<deptSel.options.length;i++) {
+            if (deptSel.options[i].value === prevADept) { deptSel.value = prevADept; break; }
+          }
+        }
       }
-      var dept  = (deptSel || {}).value || 'All';
+      var dept = deptSel ? deptSel.value : 'All';
       var month = (document.getElementById('aanaMonth') || {}).value || _currMonth();
 
       // Working days calculation (frontend)
@@ -7116,7 +7122,7 @@ function _loadSetupTasks() {
     function _amustForm() {
       return '<div class="fbar" style="flex-wrap:wrap;gap:10px">' +
         '<label>Dept:</label>' +
-        '<select id="mustDept" style="min-width:140px" onchange="_loadMustTab()">' +
+        '<select id="mustDept" style="min-width:140px">' +
         '<option value="All">All Departments</option>' +
         '</select>' +
         '<label>Month:</label><input type="month" id="mustMonth" value="' + _currMonth() + '" onchange="_loadMustTab()">' +
@@ -7140,13 +7146,20 @@ function _loadSetupTasks() {
 
     function _loadMustTab() {
       if (!_isManager()) return;
-      // Populate dept dropdown dynamically now that _D.empDir is loaded
+      // Populate dept dropdown — always refresh from latest _D.empDir
       var dSel = document.getElementById('mustDept');
-      if (dSel && dSel.options.length <= 1) {
+      var prevDept = dSel ? dSel.value : 'All';
+      if (dSel) {
         dSel.innerHTML = '<option value="All">All Departments</option>' + _getDeptOptions();
+        // Restore previous selection if it still exists
+        if (prevDept && prevDept !== 'All') {
+          for (var i=0;i<dSel.options.length;i++) {
+            if (dSel.options[i].value === prevDept) { dSel.value = prevDept; break; }
+          }
+        }
       }
       var month = (document.getElementById('mustMonth') || {}).value || _currMonth();
-      var dept  = (dSel || {}).value || 'All';
+      var dept  = dSel ? dSel.value : 'All';
       var el    = document.getElementById('mustTable');
       var kEl   = document.getElementById('mustKrow');
       if (!el) return;
@@ -9009,7 +9022,6 @@ function _loadSetupTasks() {
       { id: 'lreq',  lbl: '<i class="fas fa-paper-plane"></i> My Requests' },
       { id: 'lbal',  lbl: '<i class="fas fa-piggy-bank"></i> Leave Balance' },
       { id: 'lcal',  lbl: '<i class="fas fa-calendar-days"></i> Calendar' },
-      { id: 'lsumm', lbl: '<i class="fas fa-chart-pie"></i> Summary' },
       { id: 'lapprv',lbl: '<i class="fas fa-stamp"></i> Approvals', mgr: true }
     ];
 
@@ -9030,14 +9042,12 @@ function _loadSetupTasks() {
           '<div id="lreqPane">'  + _lreqForm()  + '</div>',
           '<div id="lbalPane">'  + _lbalForm()  + '</div>',
           '<div id="lcalPane">'  + _lcalForm()  + '</div>',
-          '<div id="lsummPane">' + _lsummForm() + '</div>',
           (_isManager() ? '<div id="laprvPane">' + _laprvForm() + '</div>' : '')
         ]);
 
       if (at === 'lreq')  _loadMyLeaves();
       else if (at === 'lbal')  _loadLeaveBalance();
       else if (at === 'lcal')  _loadLeaveCalView();
-      else if (at === 'lsumm') _loadLeaveSummTab();
       else if (at === 'lapprv' && _isManager()) _loadLeaveApprovals();
       if (_ST) setTimeout(function () { _switchTab(_ST); }, 30);
     }
@@ -9189,7 +9199,7 @@ function _loadSetupTasks() {
       if (!el) return;
       el.innerHTML = _skel(2);
 
-      _gas('getLeaveSummary', [_U.emp_code, month], function (data) {
+      _gas('getLeaveSummary', [_U.emp_code, null], function (data) {  // null = all months (balance is cumulative)
         var s = (data && data[0]) || {};
         el.innerHTML =
           '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px">' +
@@ -10715,11 +10725,10 @@ function _loadSetupTasks() {
       _gas('getHolidayList', [year], function (holidays) {
         _D.holidays = holidays || [];
         _D.holidayYear = year;
-        _renderHolidayData(_D.holidays, year, kEl, lEl, uEl);
-
-        _renderHolidayData(_D.holidays, year, kEl, lEl, uEl);
+        _renderHolidayData(_D.holidays, year, kEl, lEl, uEl);  // single render
       }, function (e) {
-        if (lEl) lEl.innerHTML = '<div class="te">Error: ' + _esc(e.message) + '</div>';
+        if (kEl) kEl.innerHTML = '';
+        if (lEl) lEl.innerHTML = '<div class="te"><i class="fas fa-exclamation-triangle"></i> Error loading holidays: ' + _esc(e.message) + '</div>';
       });
     }
 
