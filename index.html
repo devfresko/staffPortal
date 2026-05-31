@@ -4678,12 +4678,12 @@
     // Clean total_hours — strips GAS Date object serialization (e.g. "Sat Dec 30 1899...")
     function _cleanHours(v) {
       var s = String(v || '').trim();
-      if (!s || s === '-') return '—';
-      // GAS Date object becomes "Sat Dec 30 1899 HH:MM:SS GMT..." — contains 4-digit year
-      if (/\d{4}/.test(s) && s.length > 10) {
-        // Try extracting HH:MM from it
-        var m = s.match(/(\d{1,2}:\d{2})/);
-        return m ? m[1] : '—';
+      if (!s || s === '-' || s === '--') return '—';
+      // If it contains "1899" or looks like a full date string, extract HH:MM
+      if (s.indexOf('1899') >= 0 || (s.length > 10 && s.indexOf('GMT') >= 0)) {
+        var m = s.match(/(\d{1,2}):(\d{2}):\d{2}/);
+        if (m) return m[1] + ':' + m[2];
+        return '—';
       }
       return s;
     }
@@ -4863,7 +4863,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbzvJkVn4vNaO11V_D_Mx7pthRZ3heKFfozGtNF2HiXdoqS4mxOvAXox0OohEM4EMErtkw/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbz3nsVb-0uLfIOBCYAhVCVMmCjqLDE5YNhqKmfTwkj_Pkvm0-k_YiI6iuXj084lqRe4oQ/exec';
     var _TOKEN  = '';
 
 function _gas(fn, args, onOk, onErr) {
@@ -6568,7 +6568,7 @@ function _loadSetupTasks() {
 
       if (at === 'amy')  _loadMyAtt();
       else if (at === 'alv')  _loadLeave();
-      else if (at === 'alr')  setTimeout(_loadMyLeaveReqs, 50);
+      else if (at === 'alr')  _loadMyLeaveReqs();
       else if (at === 'areg') _loadMyRegularizations();
       else if (at === 'ala'   && _isManager()) _loadLeaveApprovals();
       else if (at === 'arega' && _isManager()) _loadRegApprovals();
@@ -6927,15 +6927,16 @@ function _loadSetupTasks() {
 
 
     function _loadMustTab() {
+      if (!_isManager()) return;
       var month = (document.getElementById('mustMonth') || {}).value || _currMonth();
       var dept  = (document.getElementById('mustDept')  || {}).value || 'All';
       var el = document.getElementById('mustTable');
-      if (el) el.innerHTML = _skel(4);
+      if (!el) return; // pane not rendered yet
+      el.innerHTML = _skel(4);
       _gas('getMusterReport', [dept, month], function(rows) {
         _renderMuster(rows || [], month);
       }, function(e) {
-        var el2 = document.getElementById('mustTable');
-        if (el2) el2.innerHTML = '<div class="te">Error: ' + _esc(e.message) + '</div>';
+        el.innerHTML = '<div class="te"><i class="fas fa-exclamation-triangle"></i> Error: ' + _esc(e.message) + '</div>';
       });
     }
     function _renderMuster(rows, month) {
@@ -9612,8 +9613,12 @@ function _loadSetupTasks() {
         ctoday: _loadToday, cweek: _loadWeek, chist: _loadHist, csetup: _loadSetupTasks,
         // Delegation
         dmine: _loadDelMine, dout: _loadDelOut, dall: _loadDelAll, dcr: _loadDelCreate,
-        // Attendance
-        amyatt: _loadMyAtt, alr: _loadLeaveReq, alv: _loadLeaveSumm, amstr: _loadMusterTab,
+        // Attendance — all tab IDs mapped to correct loader functions
+        amy: _loadMyAtt, alv: _loadLeave, alr: _loadMyLeaveReqs,
+        areg: _loadMyRegularizations, ala: _loadLeaveApprovals,
+        arega: _loadRegApprovals, amust: _loadMustTab, aana: _loadAttAnalytics,
+        // legacy aliases kept for safety
+        amyatt: _loadMyAtt, amstr: _loadMustTab,
         // Performance
         ptop: _loadTopPerformers, pind: _loadIndivPerf, pteam: _loadTeamPerf,
         // Leave management
@@ -9625,10 +9630,10 @@ function _loadSetupTasks() {
       }
     }
 
-    /* Muster tab within attendance (alias for attendance module) */
+    /* Muster tab within attendance — reads mustDept/mustMonth elements */
     function _loadMusterTab() {
       if (!_isManager()) return;
-      _loadMuster();
+      _loadMustTab();
     }
 
     /* ══════════════════════════════════════════════════════════════════════
@@ -9841,10 +9846,9 @@ function _loadSetupTasks() {
     function _loadDelOut()    { if(typeof _loadDOut ==='function') _loadDOut();  }
     function _loadDelAll()    { if(typeof _loadDAll ==='function') _loadDAll();  }
     function _loadDelCreate() { /* dcr form is static */ }
-    function _loadLeaveReq() { _loadMyLeaveReqs(); }
+    // Attendance tab aliases — kept for backward compat (switchTab uses them)
+    function _loadLeaveReq()  { _loadMyLeaveReqs(); }
     function _loadLeaveSumm() { _loadLeave(); }
-    function _loadLeaveReq() { _loadMyLeaves(); }
-    function _loadLeaveSumm() { _loadLeaveBalance(); }
     function _loadTeamPerf() { /* Handled in pteam pane */ }
 
     /* ══════════════════════════════════════════════════════════════════════
