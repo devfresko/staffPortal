@@ -546,6 +546,64 @@
     .mst-day { text-align: center; min-width: 28px; padding: 4px 2px; font-size: 11px; }
     .mst-cell { text-align: center; font-weight: 800; font-size: 11px; padding: 6px 2px; }
 
+    /* ── Attendance Analytics ─────────────────────────────────────────────── */
+    .ana-toolbar {
+      background: var(--sur2); border: 1.5px solid var(--bdr); border-radius: 14px;
+      padding: 14px 18px; margin-bottom: 4px;
+    }
+    .ana-filter-grp { display: flex; flex-direction: column; gap: 4px; }
+    .ana-lbl { font-size: 10px; font-weight: 800; color: var(--tx3); text-transform: uppercase; letter-spacing: .5px; }
+    .ana-sel {
+      padding: 6px 10px; border: 1.5px solid var(--bdr); border-radius: 8px;
+      font-size: 12px; background: var(--bg); color: var(--tx); outline: none;
+      transition: border-color .15s;
+    }
+    .ana-sel:focus { border-color: var(--P); }
+    .ana-kpi-row {
+      display: grid; grid-template-columns: repeat(8,1fr); gap: 10px; margin-bottom: 14px;
+    }
+    @media (max-width: 1100px) { .ana-kpi-row { grid-template-columns: repeat(4,1fr); } }
+    @media (max-width: 700px)  { .ana-kpi-row { grid-template-columns: repeat(2,1fr); } }
+    .ana-kpi {
+      background: var(--sur2); border: 1.5px solid var(--bdr); border-radius: 12px;
+      padding: 12px; display: flex; flex-direction: column; gap: 3px;
+      transition: transform .15s, box-shadow .15s;
+    }
+    .ana-kpi:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,.08); }
+    .ana-kpi-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+    .ana-kpi-ico {
+      width: 28px; height: 28px; border-radius: 8px;
+      background: color-mix(in srgb, var(--kc,var(--P)) 15%, transparent);
+      color: var(--kc,var(--P)); display: flex; align-items: center; justify-content: center; font-size: 13px;
+    }
+    .ana-kpi-val { font-size: 20px; font-weight: 900; line-height: 1; }
+    .ana-kpi-lbl { font-size: 10px; font-weight: 800; color: var(--tx2); text-transform: uppercase; letter-spacing: .4px; }
+    .ana-kpi-sub { font-size: 10px; color: var(--tx3); }
+    .ana-ctx-bar {
+      padding: 9px 14px; background: var(--sur2); border: 1px solid var(--bdr); border-radius: 9px;
+      font-size: 12px; color: var(--tx2); margin-bottom: 16px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+    }
+    .ana-charts-grid {
+      display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin-bottom: 16px;
+    }
+    .ana-chart-wide { grid-column: span 3; }
+    @media (max-width: 1000px) {
+      .ana-charts-grid { grid-template-columns: repeat(2,1fr); }
+      .ana-chart-wide { grid-column: span 2; }
+    }
+    @media (max-width: 650px) {
+      .ana-charts-grid { grid-template-columns: 1fr; }
+      .ana-chart-wide { grid-column: span 1; }
+    }
+    .ana-chart-card {
+      background: var(--sur2); border: 1.5px solid var(--bdr); border-radius: 12px;
+      padding: 14px; overflow: hidden;
+    }
+    .ana-chart-title {
+      font-size: 12px; font-weight: 800; color: var(--tx2); margin-bottom: 10px;
+      display: flex; align-items: center; gap: 6px;
+    }
+
     @media (min-width: 768px) {
       .sb-toggle {
         display: inline-flex;
@@ -6790,169 +6848,289 @@ function _loadSetupTasks() {
       );
     }
 
-    // Analytics form (manager)
+    // ════════════════════════════════════════════════════════════════════════
+    // ATTENDANCE ANALYTICS — Rich dashboard with charts, filters & insights
+    // ════════════════════════════════════════════════════════════════════════
+
     function _aanaForm() {
-      return '<div class="fbar">' +
-        '<label>Dept:</label>' +
-        '<select id="aanaDept" style="min-width:140px">' +
-        '<option value="All">All Departments</option>' +
-        '</select>' +
-        '<label>Month:</label><input type="month" id="aanaMonth" value="' + _currMonth() + '" onchange="_loadAttAnalytics()">' +
-        '<button class="btn btn-sm" onclick="_loadAttAnalytics()"><i class="fas fa-search"></i> Load</button>' +
-        '<div class="fbar-spacer"></div>' +
-        '<input type="text" id="aanaEmpSearch" placeholder="Search employee..." ' +
-        'oninput="_filterAnaEmps(this.value)" ' +
-        'style="padding:7px 12px;border:1.5px solid var(--bdr);border-radius:8px;font-size:12px;background:var(--bg);color:var(--tx);outline:none;width:170px">' +
-        '</div><div id="aanaContent">' + _skel(4) + '</div>';
+      return [
+        '<div class="ana-toolbar">',
+        '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">',
+        '  <div class="ana-filter-grp"><label class="ana-lbl"><i class="fas fa-building"></i> Dept</label><select id="aanaDept" class="ana-sel"><option value="All">All Departments</option></select></div>',
+        '  <div class="ana-filter-grp"><label class="ana-lbl"><i class="fas fa-calendar"></i> Month</label><input type="month" id="aanaMonth" class="ana-sel" value="' + _currMonth() + '"></div>',
+        '  <div class="ana-filter-grp"><label class="ana-lbl"><i class="fas fa-eye"></i> View</label><select id="aanaView" class="ana-sel"><option value="overview">Overview</option><option value="dept">By Department</option><option value="employee">By Employee</option><option value="trend">Trend & Insights</option></select></div>',
+        '  <div class="ana-filter-grp"><label class="ana-lbl"><i class="fas fa-filter"></i> Filter</label><select id="aanaStatus" class="ana-sel"><option value="all">All Employees</option><option value="perfect">Perfect (100%)</option><option value="good">Good (≥80%)</option><option value="avg">Average (60-79%)</option><option value="low">Low (<60%)</option><option value="absent_heavy">High Absent (>3)</option></select></div>',
+        '  <div class="ana-filter-grp"><label class="ana-lbl"><i class="fas fa-sort"></i> Sort</label><select id="aanaSort" class="ana-sel"><option value="pct_desc">Presence % ↓</option><option value="pct_asc">Presence % ↑</option><option value="absent_desc">Absent ↓</option><option value="name_asc">Name A-Z</option><option value="dept_asc">Department</option></select></div>',
+        '</div>',
+        '<div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap">',
+        '  <input type="text" id="aanaEmpSearch" class="ana-sel" placeholder="🔍 Search employee..." oninput="_filterAnaTable()" style="width:200px">',
+        '  <button class="btn btn-sm" onclick="_loadAttAnalytics()"><i class="fas fa-chart-bar"></i> Analyze</button>',
+        '  <button class="btn btn-sm btn-outline" onclick="_exportAnaCSV()"><i class="fas fa-download"></i> Export CSV</button>',
+        '  <span id="aanaLastLoad" style="font-size:11px;color:var(--tx3)"></span>',
+        '</div>',
+        '</div>',
+        '<div id="aanaContent" style="margin-top:16px">' + _skel(4) + '</div>'
+      ].join('');
     }
 
-    function _filterAnaEmps(q) {
-      q = (q || '').toLowerCase().trim();
-      var rows = document.querySelectorAll('#anaEmpTable tbody tr');
-      rows.forEach(function(r) {
-        var txt = (r.cells[0] ? r.cells[0].textContent : '').toLowerCase();
-        r.style.display = (!q || txt.indexOf(q) >= 0) ? '' : 'none';
+    function _filterAnaTable() {
+      var q = ((document.getElementById('aanaEmpSearch') || {}).value || '').toLowerCase().trim();
+      document.querySelectorAll('#anaEmpTable tbody tr').forEach(function(r) {
+        r.style.display = (!q || r.textContent.toLowerCase().indexOf(q) >= 0) ? '' : 'none';
       });
     }
+
+    function _exportAnaCSV() {
+      if (!_D.anaData || !_D.anaData.rows) { _toast('Load analytics first', 'err'); return; }
+      var head = ['Employee','Department','Present Days','Half Days','Absent Days','Week Off','Working Days','Presence %'];
+      var csv  = [head.join(',')].concat((_D.anaData.rows||[]).map(function(r) {
+        return ['"'+r.emp_name+'"','"'+r.dept+'"',r.days_present||0,r.days_hd||0,r.days_absent||0,r.days_wo||0,r.working_days||0,(r.pct||0)+'%'].join(',');
+      })).join('\n');
+      var a = document.createElement('a');
+      a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent('\uFEFF' + csv);
+      a.download = 'attendance_' + (_D.anaData.month || '') + '.csv';
+      a.click();
+    }
+
+    function _anaChart(canvasId, type, labels, datasets, opts) {
+      var canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+      if (canvas._ci) { try { canvas._ci.destroy(); } catch(e) {} }
+      var isDark = document.body.classList.contains('dark');
+      var gc = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
+      var tc = isDark ? '#94a3b8' : '#64748b';
+      var base = { responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{ labels:{ color:tc, font:{size:11}, boxWidth:12 } } },
+        scales: (type==='pie'||type==='doughnut') ? {} : {
+          x:{ ticks:{color:tc,font:{size:10}}, grid:{color:gc} },
+          y:{ ticks:{color:tc,font:{size:10}}, grid:{color:gc} }
+        }
+      };
+      function deepMerge(a,b){ var r=Object.assign({},a); Object.keys(b||{}).forEach(function(k){ r[k]=(b[k]&&typeof b[k]==='object'&&!Array.isArray(b[k]))?deepMerge(a[k]||{},b[k]):b[k]; }); return r; }
+      canvas._ci = new Chart(canvas, { type:type, data:{labels:labels,datasets:datasets}, options:deepMerge(base,opts||{}) });
+    }
+
     function _loadAttAnalytics() {
       var el = document.getElementById('aanaContent');
       if (!el) return;
       el.innerHTML = _skel(4);
       _populateDeptSel('aanaDept', function() {
-      var deptSel = document.getElementById('aanaDept');
-      var dept = deptSel ? deptSel.value : 'All';
-      var month = (document.getElementById('aanaMonth') || {}).value || _currMonth();
-
-      // Working days calculation (frontend)
-      var parts = month.split('-');
-      var yr = parseInt(parts[0]), mo = parseInt(parts[1]) - 1;
-      var daysInMonth = new Date(yr, mo + 1, 0).getDate();
-      var totalDays = daysInMonth;
-      var sundays = 0;
-      for (var d = 1; d <= daysInMonth; d++) {
-        if (new Date(yr, mo, d).getDay() === 0) sundays++;
-      }
-      var workingDaysNoHol = totalDays - sundays; // Mon-Sat
-      var holidayList = (_D.holidays || []).filter(function(h) {
-        return h.date && h.date.substring(0,7) === month;
-      });
-      var holidayCount = holidayList.length;
-      var netWorkingDays = workingDaysNoHol - holidayCount;
-
-      // Use getMusterGrid to get per-employee accurate data
-      _gas('getMusterGrid', [dept, month], function(res) {
-        res = res || {};
-        var rows  = res.rows || [];
-        var empCount = rows.length;
-
-        // Aggregate across employees
-        var deptAgg = {};
-        rows.forEach(function(r) {
-          var d = r.dept || 'Other';
-          if (!deptAgg[d]) deptAgg[d] = { dept: d, emps: 0, present: 0, hd: 0, absent: 0 };
-          deptAgg[d].emps++;
-          deptAgg[d].present += r.days_present || 0;
-          deptAgg[d].hd      += r.days_hd      || 0;
-          deptAgg[d].absent  += r.days_absent   || 0;
-        });
-
-        var totalPresent = rows.reduce(function(s,r){return s+(r.days_present||0);},0);
-        var totalAbsent  = rows.reduce(function(s,r){return s+(r.days_absent||0);},0);
-        var totalHD      = rows.reduce(function(s,r){return s+(r.days_hd||0);},0);
-        // Avg presence = mean of per-employee pct
-        var avgPct = empCount > 0
-          ? Math.round(rows.reduce(function(s,r){return s+(r.pct||0);},0) / empCount)
-          : 0;
-
-        var deptList = Object.keys(deptAgg).sort().map(function(k) {
-          var d = deptAgg[k];
-          var wkg = d.present + d.hd + d.absent;
-          var pct = wkg > 0 ? Math.round((d.present + d.hd*0.5)/wkg*100) : 0;
-          return { dept:d.dept, emps:d.emps, present:d.present, hd:d.hd, absent:d.absent, pct:pct };
-        });
-
-        var h = '<div class="krow" style="margin-bottom:18px">' +
-          [
-            {lbl:'Employees',     val:empCount,         c:'var(--P)',  ico:'fa-users'},
-            {lbl:'Working Days',  val:netWorkingDays,   c:'var(--I)',  ico:'fa-calendar-days'},
-            {lbl:'Sundays Off',   val:sundays,          c:'var(--tx2)',ico:'fa-moon'},
-            {lbl:'Holidays',      val:holidayCount,     c:'#4338ca',   ico:'fa-umbrella-beach'},
-            {lbl:'Avg Presence',  val:avgPct+'%',       c:avgPct>=80?'var(--G)':avgPct>=60?'var(--O)':'var(--R)', ico:'fa-chart-pie'},
-            {lbl:'Total Absent',  val:totalAbsent,      c:'var(--R)',  ico:'fa-calendar-times'}
-          ].map(function(k){
-            return '<div class="kpi" style="--kc:'+k.c+'">'+
-              '<div class="kpi-ico"><i class="fas '+k.ico+'"></i></div>'+
-              '<div class="kpi-val">'+k.val+'</div>'+
-              '<div class="kpi-lbl">'+k.lbl+'</div></div>';
-          }).join('') + '</div>';
+        var dept   = (document.getElementById('aanaDept')   || {}).value || 'All';
+        var month  = (document.getElementById('aanaMonth')  || {}).value || _currMonth();
+        var view   = (document.getElementById('aanaView')   || {}).value || 'overview';
+        var sort   = (document.getElementById('aanaSort')   || {}).value || 'pct_desc';
+        var stFlt  = (document.getElementById('aanaStatus') || {}).value || 'all';
 
         // Calendar context
-        h += '<div style="padding:10px 14px;background:var(--sur2);border-radius:8px;border:1px solid var(--bdr);margin-bottom:16px;font-size:12px;color:var(--tx2)">' +
-          '<i class="fas fa-info-circle" style="color:var(--P)"></i> ' +
-          '<b>' + month + '</b>: ' + totalDays + ' total days — ' + sundays + ' Sundays — ' + holidayCount + ' holidays = ' +
-          '<b style="color:var(--P)">' + netWorkingDays + ' net working days</b>' +
-          (holidayList.length ? ' &nbsp;|&nbsp; Holidays: ' + holidayList.map(function(h){return _esc(h.name||'');}).join(', ') : '') +
-          '</div>';
+        var parts = month.split('-'); var yr=parseInt(parts[0]), mo=parseInt(parts[1])-1;
+        var dim = new Date(yr,mo+1,0).getDate(), suns=0;
+        for (var d=1;d<=dim;d++) if (new Date(yr,mo,d).getDay()===0) suns++;
+        var holList = (_D.holidays||[]).filter(function(h){return h.date&&h.date.substring(0,7)===month;});
+        var netWD   = dim - suns - holList.length;
 
-        if (deptList.length) {
-          h += '<div class="card card-nohover card-sm"><div class="sec-title" style="margin-bottom:14px">' +
-            '<i class="fas fa-building" style="color:var(--P)"></i> Department-wise Attendance</div>' +
-            '<div class="tw"><table><thead><tr>' +
-            '<th>Department</th>' +
-            '<th style="text-align:center">Employees</th>' +
-            '<th style="text-align:center;color:var(--G)">Present Days</th>' +
-            '<th style="text-align:center;color:var(--O)">Half Days</th>' +
-            '<th style="text-align:center;color:var(--R)">Absent Days</th>' +
-            '<th style="text-align:center">Presence %</th>' +
-            '<th style="min-width:120px">Progress</th>' +
-            '</tr></thead><tbody>' +
-            deptList.map(function(d){
-              var clr = d.pct>=80?'var(--G)':d.pct>=60?'var(--O)':'var(--R)';
-              return '<tr>' +
-                '<td style="font-weight:800">' + _esc(d.dept) + '</td>' +
-                '<td style="text-align:center;font-weight:700">' + d.emps + '</td>' +
-                '<td style="text-align:center;color:var(--G);font-weight:800">' + d.present + '</td>' +
-                '<td style="text-align:center;color:var(--O);font-weight:800">' + d.hd + '</td>' +
-                '<td style="text-align:center;color:var(--R);font-weight:800">' + d.absent + '</td>' +
-                '<td style="text-align:center;font-weight:900;color:'+clr+'">' + d.pct + '%</td>' +
-                '<td><div class="pbar-wrap"><div class="pbar" style="width:'+d.pct+'%;background:'+clr+'"></div></div></td>' +
-                '</tr>';
-            }).join('') + '</tbody></table></div></div>';
+        _gas('getMusterGrid', [dept, month], function(res) {
+          res = res || {};
+          var allRows = res.rows || [], dates = res.dates || [];
 
-          // Per-employee detail table
-          if (rows.length) {
-            h += '<div class="card card-nohover card-sm" style="margin-top:16px"><div class="sec-title" style="margin-bottom:14px">' +
-              '<i class="fas fa-users" style="color:var(--P)"></i> Employee-wise Summary</div>' +
-              '<div class="tw"><table id="anaEmpTable"><thead><tr>' +
-              '<th>Employee</th><th>Dept</th>' +
-              '<th style="text-align:center;color:var(--G)">Present</th>' +
-              '<th style="text-align:center;color:var(--O)">Half Day</th>' +
-              '<th style="text-align:center;color:var(--R)">Absent</th>' +
-              '<th style="text-align:center">Working Days</th>' +
-              '<th style="text-align:center">Presence %</th>' +
-              '<th>Progress</th>' +
-              '</tr></thead><tbody>' +
-              rows.map(function(r){
-                var pct = r.pct || 0;
-                var clr = pct>=80?'var(--G)':pct>=60?'var(--O)':'var(--R)';
-                return '<tr>' +
-                  '<td style="font-weight:700">' + _esc(r.emp_name||'') + '</td>' +
-                  '<td><span class="bdg" style="background:var(--Pl);color:var(--P)">' + _esc(r.dept||'') + '</span></td>' +
-                  '<td style="text-align:center;color:var(--G);font-weight:800">' + (r.days_present||0) + '</td>' +
-                  '<td style="text-align:center;color:var(--O);font-weight:800">' + (r.days_hd||0) + '</td>' +
-                  '<td style="text-align:center;color:var(--R);font-weight:800">' + (r.days_absent||0) + '</td>' +
-                  '<td style="text-align:center;font-weight:700">' + (r.working_days||0) + '</td>' +
-                  '<td style="text-align:center;font-weight:900;color:'+clr+'">' + pct + '%</td>' +
-                  '<td style="min-width:100px"><div class="pbar-wrap"><div class="pbar" style="width:'+pct+'%;background:'+clr+'"></div></div></td>' +
-                  '</tr>';
-              }).join('') + '</tbody></table></div></div>';
+          // Filter
+          var rows = allRows.filter(function(r) {
+            if (stFlt==='perfect')      return r.pct===100;
+            if (stFlt==='good')         return r.pct>=80;
+            if (stFlt==='avg')          return r.pct>=60&&r.pct<80;
+            if (stFlt==='low')          return r.pct<60;
+            if (stFlt==='absent_heavy') return (r.days_absent||0)>3;
+            return true;
+          });
+          // Sort
+          rows.sort(function(a,b){
+            if (sort==='pct_asc')     return (a.pct||0)-(b.pct||0);
+            if (sort==='absent_desc') return (b.days_absent||0)-(a.days_absent||0);
+            if (sort==='name_asc')    return (a.emp_name||'').localeCompare(b.emp_name||'');
+            if (sort==='dept_asc')    return (a.dept||'').localeCompare(b.dept||'');
+            return (b.pct||0)-(a.pct||0);
+          });
+
+          _D.anaData = { rows:allRows, month:month };
+
+          // Aggregates
+          var empCount=allRows.length,
+              totalP=allRows.reduce(function(s,r){return s+(r.days_present||0);},0),
+              totalA=allRows.reduce(function(s,r){return s+(r.days_absent||0);},0),
+              totalHD=allRows.reduce(function(s,r){return s+(r.days_hd||0);},0),
+              totalWO=allRows.reduce(function(s,r){return s+(r.days_wo||0);},0),
+              avgPct=empCount>0?Math.round(allRows.reduce(function(s,r){return s+(r.pct||0);},0)/empCount):0,
+              perfectCnt=allRows.filter(function(r){return r.pct===100;}).length,
+              lowCnt=allRows.filter(function(r){return r.pct<60;}).length,
+              highAbsCnt=allRows.filter(function(r){return (r.days_absent||0)>3;}).length;
+
+          // Dept agg
+          var dMap={};
+          allRows.forEach(function(r){
+            var k=r.dept||'Other';
+            if(!dMap[k])dMap[k]={dept:k,emps:0,present:0,hd:0,absent:0,pts:[]};
+            dMap[k].emps++; dMap[k].present+=r.days_present||0; dMap[k].hd+=r.days_hd||0;
+            dMap[k].absent+=r.days_absent||0; dMap[k].pts.push(r.pct||0);
+          });
+          var dList=Object.keys(dMap).sort().map(function(k){
+            var d=dMap[k], avg=d.pts.length?Math.round(d.pts.reduce(function(a,b){return a+b;},0)/d.pts.length):0;
+            return Object.assign(d,{avg_pct:avg});
+          });
+
+          // Daily trend
+          var trend=dates.map(function(dt){
+            var dow=new Date(dt+'T00:00:00').getDay();
+            if(dow===0)return null;
+            var tot=0,pres=0;
+            allRows.forEach(function(r){var v=r[dt]||''; if(v!=='WO'&&v!=='H'){tot++;if(v==='P'||v==='HD')pres++;}});
+            return {date:dt,pct:tot>0?Math.round(pres/tot*100):0};
+          }).filter(Boolean);
+
+          var kc=avgPct>=80?'var(--G)':avgPct>=60?'var(--O)':'var(--R)';
+          var h='';
+
+          // ── KPI Strip ────────────────────────────────────────────────────
+          h+='<div class="ana-kpi-row">'+[
+            {lbl:'Employees',    val:empCount,   c:'var(--P)',  ico:'fa-users',             sub:dept==='All'?'Total tracked':dept},
+            {lbl:'Avg Presence', val:avgPct+'%', c:kc,          ico:'fa-chart-pie',          sub:avgPct>=80?'Excellent':avgPct>=60?'Average':'Needs attention'},
+            {lbl:'Perfect Att.', val:perfectCnt, c:'var(--G)',  ico:'fa-star',               sub:'100% this month'},
+            {lbl:'Needs Attn',   val:lowCnt,     c:'var(--R)',  ico:'fa-triangle-exclamation',sub:'Below 60%'},
+            {lbl:'Working Days', val:netWD,       c:'var(--I)',  ico:'fa-calendar-days',      sub:month},
+            {lbl:'Total Present',val:totalP,      c:'var(--G)', ico:'fa-calendar-check',     sub:'day-instances'},
+            {lbl:'Total Absent', val:totalA,      c:'var(--R)', ico:'fa-calendar-xmark',     sub:'day-instances'},
+            {lbl:'High Absent',  val:highAbsCnt,  c:highAbsCnt>0?'var(--O)':'var(--G)', ico:'fa-user-slash', sub:'>3 absent days'}
+          ].map(function(k){
+            return '<div class="ana-kpi">'+
+              '<div class="ana-kpi-top"><div class="ana-kpi-ico" style="--kc:'+k.c+'"><i class="fas '+k.ico+'"></i></div>'+
+              '<div class="ana-kpi-val" style="color:'+k.c+'">'+k.val+'</div></div>'+
+              '<div class="ana-kpi-lbl">'+k.lbl+'</div>'+
+              '<div class="ana-kpi-sub">'+k.sub+'</div></div>';
+          }).join('')+'</div>';
+
+          // Context bar
+          h+='<div class="ana-ctx-bar">'+
+            '<i class="fas fa-circle-info" style="color:var(--P)"></i> <b>'+month+'</b>: '+dim+' days — '+suns+' Sundays — '+holList.length+' holidays = <b style="color:var(--P)">'+netWD+' working days</b>'+
+            (holList.length?' | '+holList.map(function(h){return '<span class="bdg" style="background:#e0e7ff;color:#4338ca">'+_esc(h.name||'')+'</span>';}).join(' '):'') +
+            (stFlt!=='all'?' &nbsp;·&nbsp; Filter: <b style="color:var(--O)">'+stFlt+'</b> — '+rows.length+'/'+empCount+' employees':'') +
+            '</div>';
+
+          if (!allRows.length) {
+            el.innerHTML = h+'<div class="te" style="margin-top:16px"><i class="fas fa-calendar-times"></i> No attendance data for '+month+'</div>';
+            return;
           }
-        } else {
-          h += '<div class="te"><i class="fas fa-calendar-times"></i> No attendance data for ' + month + '</div>';
-        }
-        el.innerHTML = h;
-      }, function(e) { el.innerHTML = '<div class="te">Error: '+_esc(e.message)+'</div>'; });
-      }); // end _populateDeptSel callback
+
+          // ── CHARTS ───────────────────────────────────────────────────────
+          if (view==='overview'||view==='dept') {
+            h+='<div class="ana-charts-grid">';
+            h+='<div class="ana-chart-card"><div class="ana-chart-title"><i class="fas fa-building"></i> Dept Presence %</div><div style="height:190px"><canvas id="anaChDept"></canvas></div></div>';
+            h+='<div class="ana-chart-card"><div class="ana-chart-title"><i class="fas fa-chart-pie"></i> Attendance Breakdown</div><div style="height:190px"><canvas id="anaChBreak"></canvas></div></div>';
+            h+='<div class="ana-chart-card"><div class="ana-chart-title"><i class="fas fa-chart-bar"></i> Presence Distribution</div><div style="height:190px"><canvas id="anaChDist"></canvas></div></div>';
+            if (trend.length) h+='<div class="ana-chart-card ana-chart-wide"><div class="ana-chart-title"><i class="fas fa-chart-line"></i> Daily Presence Trend</div><div style="height:170px"><canvas id="anaChTrend"></canvas></div></div>';
+            h+='</div>';
+
+            if (dList.length) {
+              h+='<div class="card card-nohover card-sm" style="margin-top:16px"><div class="sec-title" style="margin-bottom:12px"><i class="fas fa-building" style="color:var(--P)"></i> Department Breakdown</div><div class="tw"><table><thead><tr><th>Department</th><th style="text-align:center">Emps</th><th style="text-align:center;color:var(--G)">Present</th><th style="text-align:center;color:var(--O)">HD</th><th style="text-align:center;color:var(--R)">Absent</th><th style="text-align:center">Avg %</th><th>Progress</th></tr></thead><tbody>'+
+                dList.map(function(d){var c2=d.avg_pct>=80?'var(--G)':d.avg_pct>=60?'var(--O)':'var(--R)';return '<tr><td style="font-weight:800">'+_esc(d.dept)+'</td><td style="text-align:center;font-weight:700">'+d.emps+'</td><td style="text-align:center;color:var(--G);font-weight:800">'+d.present+'</td><td style="text-align:center;color:var(--O);font-weight:800">'+d.hd+'</td><td style="text-align:center;color:var(--R);font-weight:800">'+d.absent+'</td><td style="text-align:center;font-weight:900;color:'+c2+'">'+d.avg_pct+'%</td><td><div class="pbar-wrap"><div class="pbar" style="width:'+d.avg_pct+'%;background:'+c2+'"></div></div></td></tr>';}).join('')+
+                '</tbody></table></div></div>';
+            }
+          }
+
+          if (view==='overview'||view==='employee') {
+            h+='<div class="card card-nohover card-sm" style="margin-top:16px"><div class="sec-title" style="margin-bottom:12px"><i class="fas fa-users" style="color:var(--P)"></i> Employee Detail ('+rows.length+')</div>'+
+              '<div class="tw"><table id="anaEmpTable"><thead><tr>'+
+              '<th>Employee</th><th>Dept</th>'+
+              '<th style="text-align:center" title="Present"><i class="fas fa-calendar-check" style="color:var(--G)"></i></th>'+
+              '<th style="text-align:center" title="Half Day"><i class="fas fa-circle-half-stroke" style="color:var(--O)"></i></th>'+
+              '<th style="text-align:center" title="Absent"><i class="fas fa-calendar-xmark" style="color:var(--R)"></i></th>'+
+              '<th style="text-align:center">WD</th><th style="text-align:center">%</th>'+
+              '<th style="min-width:80px">Bar</th><th>Status</th>'+
+              '</tr></thead><tbody>'+
+              rows.map(function(r){
+                var p=r.pct||0, c2=p>=80?'var(--G)':p>=60?'var(--O)':'var(--R)';
+                var badge=p===100?'<span class="bdg" style="background:#d1fae5;color:#059669;font-size:10px"><i class="fas fa-star"></i> Perfect</span>':
+                  p>=80?'<span class="bdg" style="background:var(--Gl);color:var(--G);font-size:10px">Good</span>':
+                  p>=60?'<span class="bdg" style="background:var(--Ol);color:var(--O);font-size:10px">Average</span>':
+                  '<span class="bdg" style="background:var(--Rl);color:var(--R);font-size:10px"><i class="fas fa-triangle-exclamation"></i> Low</span>';
+                return '<tr><td style="font-weight:700;min-width:130px">'+_esc(r.emp_name||'')+'</td>'+
+                  '<td><span class="bdg" style="background:var(--Pl);color:var(--P);font-size:10px">'+_esc(r.dept||'')+'</span></td>'+
+                  '<td style="text-align:center;color:var(--G);font-weight:800">'+(r.days_present||0)+'</td>'+
+                  '<td style="text-align:center;color:var(--O);font-weight:800">'+(r.days_hd||0)+'</td>'+
+                  '<td style="text-align:center;color:var(--R);font-weight:800">'+(r.days_absent||0)+'</td>'+
+                  '<td style="text-align:center;font-weight:700;color:var(--tx2)">'+(r.working_days||0)+'</td>'+
+                  '<td style="text-align:center;font-weight:900;color:'+c2+'">'+p+'%</td>'+
+                  '<td><div class="pbar-wrap" style="width:75px"><div class="pbar" style="width:'+p+'%;background:'+c2+'"></div></div></td>'+
+                  '<td>'+badge+'</td></tr>';
+              }).join('')+
+              '</tbody></table></div></div>';
+          }
+
+          if (view==='trend') {
+            h+='<div class="ana-charts-grid">';
+            if (trend.length) h+='<div class="ana-chart-card ana-chart-wide"><div class="ana-chart-title"><i class="fas fa-chart-line"></i> Daily Presence % — '+month+'</div><div style="height:220px"><canvas id="anaChTrendBig"></canvas></div></div>';
+            h+='<div class="ana-chart-card"><div class="ana-chart-title"><i class="fas fa-ranking-star"></i> Top 10 Attendees</div><div style="height:240px"><canvas id="anaChTop"></canvas></div></div>';
+            h+='<div class="ana-chart-card"><div class="ana-chart-title"><i class="fas fa-arrow-down-wide-short"></i> Highest Absentees</div><div style="height:240px"><canvas id="anaChBot"></canvas></div></div>';
+            h+='</div>';
+            var topE=allRows.slice().sort(function(a,b){return (b.pct||0)-(a.pct||0);}).slice(0,3);
+            var lowE=allRows.slice().sort(function(a,b){return (a.pct||0)-(b.pct||0);}).slice(0,3);
+            h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">'+
+              '<div class="card card-nohover card-sm"><div class="sec-title" style="margin-bottom:12px;color:var(--G)"><i class="fas fa-trophy"></i> Top Performers</div>'+
+              topE.map(function(r,i){var m=i===0?'🥇':i===1?'🥈':'🥉';return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bdr)"><span style="font-size:18px">'+m+'</span><div style="flex:1"><div style="font-weight:700;font-size:13px">'+_esc(r.emp_name)+'</div><div style="font-size:11px;color:var(--tx3)">'+_esc(r.dept)+'</div></div><div style="font-weight:900;color:var(--G);font-size:16px">'+r.pct+'%</div></div>';}).join('')+
+              '</div>'+
+              '<div class="card card-nohover card-sm"><div class="sec-title" style="margin-bottom:12px;color:var(--R)"><i class="fas fa-triangle-exclamation"></i> Needs Attention</div>'+
+              lowE.map(function(r){return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bdr)"><div style="width:32px;height:32px;border-radius:50%;background:var(--Rl);color:var(--R);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;flex-shrink:0">'+_esc(r.emp_name.charAt(0))+'</div><div style="flex:1"><div style="font-weight:700;font-size:13px">'+_esc(r.emp_name)+'</div><div style="font-size:11px;color:var(--tx3)">'+_esc(r.dept)+' · '+r.days_absent+' absent</div></div><div style="font-weight:900;color:var(--R);font-size:16px">'+r.pct+'%</div></div>';}).join('')+
+              '</div></div>';
+          }
+
+          el.innerHTML = h;
+          var lEl=document.getElementById('aanaLastLoad');
+          if (lEl) lEl.textContent='Updated '+new Date().toLocaleTimeString();
+
+          // Draw charts
+          setTimeout(function(){
+            if (!window.Chart) return;
+            if (document.getElementById('anaChDept') && dList.length) {
+              _anaChart('anaChDept','bar',dList.map(function(d){return d.dept;}),
+                [{label:'Avg %',data:dList.map(function(d){return d.avg_pct;}),
+                  backgroundColor:dList.map(function(d){return d.avg_pct>=80?'rgba(47,158,68,.75)':d.avg_pct>=60?'rgba(245,158,11,.75)':'rgba(220,38,38,.75)';}),
+                  borderRadius:6,borderSkipped:false}],
+                {plugins:{legend:{display:false}},scales:{y:{min:0,max:100}}});
+            }
+            if (document.getElementById('anaChBreak')) {
+              _anaChart('anaChBreak','doughnut',['Present','Half Day','Absent','Week Off'],
+                [{data:[totalP,totalHD,totalA,totalWO],
+                  backgroundColor:['rgba(47,158,68,.85)','rgba(245,158,11,.85)','rgba(220,38,38,.85)','rgba(148,163,184,.5)'],borderWidth:2}],
+                {plugins:{legend:{position:'bottom'}},cutout:'58%'});
+            }
+            if (document.getElementById('anaChDist')) {
+              var b=[0,0,0,0];
+              allRows.forEach(function(r){var p=r.pct||0;if(p===100)b[3]++;else if(p>=80)b[2]++;else if(p>=60)b[1]++;else b[0]++;});
+              _anaChart('anaChDist','bar',['<60%','60-79%','80-99%','100%'],
+                [{label:'Employees',data:b,backgroundColor:['rgba(220,38,38,.75)','rgba(245,158,11,.75)','rgba(59,130,246,.75)','rgba(47,158,68,.75)'],borderRadius:6,borderSkipped:false}],
+                {plugins:{legend:{display:false}}});
+            }
+            var trEl=document.getElementById('anaChTrend')||document.getElementById('anaChTrendBig');
+            if (trEl && trend.length) {
+              var tl=trend.map(function(d){var p=d.date.split('-');return p[2]+'/'+p[1];});
+              _anaChart(trEl.id,'line',tl,
+                [{label:'Presence %',data:trend.map(function(d){return d.pct;}),
+                  borderColor:'rgba(14,165,233,.9)',backgroundColor:'rgba(14,165,233,.1)',fill:true,tension:0.4,pointRadius:2}],
+                {scales:{y:{min:0,max:100}},plugins:{legend:{display:false}}});
+            }
+            if (document.getElementById('anaChTop')) {
+              var t10=allRows.slice().sort(function(a,b){return (b.pct||0)-(a.pct||0);}).slice(0,10).reverse();
+              _anaChart('anaChTop','bar',t10.map(function(r){return r.emp_name.split(' ')[0];}),
+                [{label:'%',data:t10.map(function(r){return r.pct||0;}),backgroundColor:'rgba(47,158,68,.75)',borderRadius:4,borderSkipped:false}],
+                {indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{min:0,max:100}}});
+            }
+            if (document.getElementById('anaChBot')) {
+              var b10=allRows.slice().sort(function(a,b){return (b.days_absent||0)-(a.days_absent||0);}).slice(0,10).reverse();
+              _anaChart('anaChBot','bar',b10.map(function(r){return r.emp_name.split(' ')[0];}),
+                [{label:'Days',data:b10.map(function(r){return r.days_absent||0;}),backgroundColor:'rgba(220,38,38,.75)',borderRadius:4,borderSkipped:false}],
+                {indexAxis:'y',plugins:{legend:{display:false}}});
+            }
+          }, 80);
+
+        }, function(e){ el.innerHTML='<div class="te">Error: '+_esc(e.message)+'</div>'; });
+      }); // end _populateDeptSel
     }
 
     function _amyForm() {
