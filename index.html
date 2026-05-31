@@ -4675,9 +4675,24 @@
     function _isOwner() {
       return _U && _U.role === 'OWNER';
     }
+    // Returns <option> tags for all unique departments from loaded doer/emp list
+    function _getDeptOptions() {
+      var depts = [];
+      var seen = {};
+      // Use empDir (manager) or doers (staff) — whichever is populated
+      var src = (_D.empDir && _D.empDir.length) ? _D.empDir
+              : (_D.doers && _D.doers.length)   ? _D.doers
+              : [];
+      src.forEach(function(d) {
+        var dep = String(d.dept || d.department || '').trim();
+        if (dep && !seen[dep]) { seen[dep] = true; depts.push(dep); }
+      });
+      depts.sort();
+      return depts.map(function(d) { return '<option value="' + _esc(d) + '">' + _esc(d) + '</option>'; }).join('');
+    }
     function _req(v, label) {
       var s = String(v || '').trim();
-      if (!s) { _toast('Required: ' + label, 'err'); return false; }
+      if (\!s) { _toast('Required: ' + label, 'err'); return false; }
       return true;
     }
     function _esc(s) {
@@ -4836,7 +4851,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbx3cRx9XQOlWuZYgiyHbTITsSJa_o2xg8qc7Y05Jv7yXa4f9ZGda0LoNc5deJpcsxFgqA/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbxXoOzPOnRXK-WFK1KIY2wujRKBH7mDUNuxK4okIn66ZrhisaHJZ7sowdlKl-Kp8qR5JA/exec';
     var _TOKEN  = '';
 
 function _gas(fn, args, onOk, onErr) {
@@ -5835,7 +5850,7 @@ function _gasX(fn, args, timeout, onOk, onErr) {
         }, function () { });
       }
 
-      _gas('getWeeklyTasks', [empId, wk], function (days) {
+      _gas('getWeeklyTasks', [empId, wk, yr], function (days) {
         if (!days || !days.length) { grid.innerHTML = '<div class="te"><i class="fas fa-calendar-xmark"></i>No data for week ' + wk + '</div>'; return; }
         var todayStr = _today();
         grid.innerHTML = '<div class="wkgrid">' +
@@ -8585,8 +8600,7 @@ function _loadSetupTasks() {
         '<label style="font-size:12px;font-weight:700;color:var(--tx2)">Department:</label>' +
         '<select id="mstrDept" style="padding:6px 10px;border:1.5px solid var(--bdr);border-radius:8px;font-size:12px;background:var(--bg);color:var(--tx);outline:none">' +
         '<option value="All">All Departments</option>' +
-        '<option>Admin</option><option>Accounts</option><option>Finance</option>' +
-        '<option>Marketing</option><option>Operations</option>' +
+        _getDeptOptions() +
         '</select>' +
         '<button class="btn btn-sm" onclick="_loadMuster()"><i class="fas fa-search"></i> Load</button>' +
         '<button class="btn btn-outline btn-sm" onclick="_exportMuster()"><i class="fas fa-download"></i> Export CSV</button>' +
@@ -9208,7 +9222,7 @@ function _loadSetupTasks() {
         '<label style="font-size:12px;font-weight:700;color:var(--tx2)">Dept:</label>' +
         '<select id="attAnaDept" style="padding:6px 10px;border:1.5px solid var(--bdr);border-radius:8px;font-size:12px;background:var(--bg);color:var(--tx);outline:none">' +
         '<option value="All">All</option>' +
-        '<option>Admin</option><option>Accounts</option><option>Finance</option><option>Marketing</option>' +
+        _getDeptOptions() +
         '</select>' +
         '<button class="btn btn-sm" onclick="_loadAttAna()"><i class="fas fa-chart-bar"></i> Refresh</button>' +
         '<button class="btn btn-outline btn-sm" onclick="_exportAttAna()"><i class="fas fa-download"></i> Export</button>' +
@@ -10029,7 +10043,7 @@ function _loadSetupTasks() {
       if (kEl) kEl.innerHTML = [1, 2, 3, 4].map(function () { return '<div class="sk sk-h6" style="border-radius:14px"></div>'; }).join('');
       if (tblEl) tblEl.innerHTML = _skel(3);
 
-      _gas('getPerformanceReport', [empId || null, from, to], function (data) {
+      _gas('getPerformanceReport', [empId || _U.emp_code, from, to], function (data) {
         _D.indivPerfData = data;
         if (kEl) kEl.innerHTML = [
           { lbl: 'Tasks Done', val: data.total_done || 0, c: 'var(--G)', ico: 'fa-check-circle' },
