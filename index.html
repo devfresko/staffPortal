@@ -4440,6 +4440,10 @@
         <div class="nv" id="nv-profile" onclick="_loadV('profile')">
           <i class="fas fa-circle-user"></i> My Profile
         </div>
+        <div class="nv" onclick="_setCacheToggle(!_cacheOk)" title="Toggle data cache" style="font-size:11px">
+          <i class="fas fa-database"></i>
+          <span id="cacheLbl">Cache: <span id="cacheState">auto</span></span>
+        </div>
         <div class="nv nv-danger" onclick="_soShow()">
           <i class="fas fa-right-from-bracket"></i> Sign Out
         </div>
@@ -4585,6 +4589,22 @@
     var _V = null;   // Current view name
     var _ST = null;   // Current sub-tab
     var _D = {};     // Cached data store (empDir, todayTasks, etc.)
+    // Cache control: auto-disabled on desktop (>1024px), user can override
+    var _cacheOk = (function() {
+      try {
+        var pref = localStorage.getItem('fk_cache_pref');
+        if (pref === '1') return true;
+        if (pref === '0') return false;
+        return window.innerWidth <= 1024; // mobile/tablet default: cache ON; desktop: OFF
+      } catch(e) { return window.innerWidth <= 1024; }
+    })();
+    function _setCacheToggle(val) {
+      _cacheOk = val;
+      try { localStorage.setItem('fk_cache_pref', val ? '1' : '0'); } catch(e) {}
+      var stEl = document.getElementById('cacheState');
+      if (stEl) stEl.textContent = val ? 'ON' : 'OFF';
+      _toast('Cache ' + (val ? 'enabled' : 'disabled'), 'ok');
+    }
     var _dark = false;  // Dark mode state
     var _charts = {};     // Active Chart.js instances (key → instance)
     var _ntfs = [];     // Notification list
@@ -4873,7 +4893,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbzX1cAn7Af__t65rRlDYvQkT0nveFRqM0LgZMZ2rpCT2qyRgrpmf9dK0ZG02XtlLjaLSQ/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycby4MJF8SKgtNid2HNPi72brqmPbNHxWGp2E5MA_-M_mmc8VOopqGYVirL8E4oYdE0R-qg/exec';
     var _TOKEN  = '';
 
 function _gas(fn, args, onOk, onErr) {
@@ -5210,6 +5230,9 @@ function _gasX(fn, args, timeout, onOk, onErr) {
         if (d.empDir)        _D.empDir        = d.empDir;
         if (d.myAttendance)  _D.myAttendance  = d.myAttendance;
         _D.lastFetch = Date.now();
+        // Update cache toggle display
+        var stEl = document.getElementById('cacheState');
+        if (stEl) stEl.textContent = _cacheOk ? 'ON' : 'OFF';
 
         // Update announcement badge
         var badge = document.getElementById('annBadge');
@@ -6738,7 +6761,6 @@ function _loadSetupTasks() {
         '<label>Dept:</label>' +
         '<select id="aanaDept" style="min-width:140px" onchange="_loadAttAnalytics()">' +
         '<option value="All">All Departments</option>' +
-        _getDeptOptions() +
         '</select>' +
         '<label>Month:</label><input type="month" id="aanaMonth" value="' + _currMonth() + '" onchange="_loadAttAnalytics()">' +
         '<button class="btn btn-sm" onclick="_loadAttAnalytics()"><i class="fas fa-search"></i> Load</button>' +
@@ -7096,7 +7118,6 @@ function _loadSetupTasks() {
         '<label>Dept:</label>' +
         '<select id="mustDept" style="min-width:140px" onchange="_loadMustTab()">' +
         '<option value="All">All Departments</option>' +
-        _getDeptOptions() +
         '</select>' +
         '<label>Month:</label><input type="month" id="mustMonth" value="' + _currMonth() + '" onchange="_loadMustTab()">' +
         '<button class="btn btn-sm" onclick="_loadMustTab()"><i class="fas fa-search"></i> Load</button>' +
@@ -7119,8 +7140,13 @@ function _loadSetupTasks() {
 
     function _loadMustTab() {
       if (!_isManager()) return;
+      // Populate dept dropdown dynamically now that _D.empDir is loaded
+      var dSel = document.getElementById('mustDept');
+      if (dSel && dSel.options.length <= 1) {
+        dSel.innerHTML = '<option value="All">All Departments</option>' + _getDeptOptions();
+      }
       var month = (document.getElementById('mustMonth') || {}).value || _currMonth();
-      var dept  = (document.getElementById('mustDept')  || {}).value || 'All';
+      var dept  = (dSel || {}).value || 'All';
       var el    = document.getElementById('mustTable');
       var kEl   = document.getElementById('mustKrow');
       if (!el) return;
@@ -9074,8 +9100,6 @@ function _loadSetupTasks() {
         '<label>Month:</label>' +
         '<input type="month" id="lreqMonth" value="' + _currMonth() + '">' +
         '<button class="btn btn-sm" onclick="_loadMyLeaves()"><i class="fas fa-search"></i> Load</button>' +
-        '<div class="fbar-spacer"></div>' +
-        '<button class="btn btn-outline btn-sm" onclick="_exportLeaves()"><i class="fas fa-download"></i> Export</button>' +
         '</div><div id="lreqList">' + _skel(4) + '</div>';
     }
 
@@ -9092,43 +9116,63 @@ function _loadSetupTasks() {
         });
 
         if (!filtered.length) {
-          el.innerHTML = '<div class="empty-state"><i class="fas fa-umbrella-beach"></i><h4>No Leave Requests</h4><p>You have not submitted any leave requests for ' + month + '.</p>' +
+          el.innerHTML = '<div class="empty-state"><i class="fas fa-umbrella-beach"></i><h4>No Leave Requests</h4>' +
+            '<p>No leave requests for ' + month + '.</p>' +
             '<button class="btn btn-sm" onclick="_openLeaveReq()"><i class="fas fa-plus"></i> Submit Request</button>' +
             '</div>';
           return;
         }
 
-        el.innerHTML =
-          '<div class="ann-list">' +
-          filtered.map(function (r) {
-            var statusClr = r.status === 'Approved' ? 'var(--G)' : r.status === 'Rejected' ? 'var(--R)' : 'var(--O)';
-            var bdrClr = r.status === 'Approved' ? 'var(--G)' : r.status === 'Rejected' ? 'var(--R)' : 'var(--O)';
-            return '<div class="ann-card" style="border-left-color:' + bdrClr + '">' +
-              '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px">' +
-              '<div style="flex:1;min-width:0">' +
-              '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">' +
-              '<span style="font-size:13px;font-weight:800">' + _esc(r.leave_type || '—') + '</span>' +
-              _statusBadge(r.status) +
-              '</div>' +
-              '<div style="font-size:13px;color:var(--tx2);margin-bottom:4px">' +
-              '<i class="fas fa-calendar-range"></i> ' + _fmtDate(r.from_date) + ' – ' + _fmtDate(r.to_date) +
-              '<span style="font-size:11px;font-weight:800;color:var(--P);margin-left:8px">(' + (r.num_days || 1) + ' day' + (r.num_days !== 1 ? 's' : '') + ')</span>' +
-              '</div>' +
-              (r.reason ? '<div style="font-size:12px;color:var(--tx3);margin-bottom:4px"><i class="fas fa-comment"></i> ' + _esc(r.reason) + '</div>' : '') +
-              (r.remark ? '<div style="font-size:12px;color:var(--I);margin-bottom:4px"><i class="fas fa-message-lines"></i> Remark: <em>' + _esc(r.remark) + '</em></div>' : '') +
-              '<div style="font-size:11px;color:var(--tx3)">' +
-              '<i class="fas fa-clock"></i> Applied: ' + _fmtDateTime(r.requested_at) +
-              (r.approved_by ? ' &nbsp;·&nbsp; <i class="fas fa-user-check"></i> ' + _esc(r.approved_by) : '') +
-              '</div>' +
-              '</div>' +
-              '<div style="font-size:11px;font-weight:800;white-space:nowrap;background:var(--bg);padding:3px 10px;border-radius:999px;border:1px solid var(--bdr)">' +
-              _esc(r.request_id || '') +
-              '</div>' +
-              '</div>' +
-              '</div>';
-          }).join('') +
-          '</div>';
+        var groups = [
+          { key: 'Pending',   clr: 'var(--O)', ico: 'fa-clock' },
+          { key: 'Approved',  clr: 'var(--G)', ico: 'fa-check-circle' },
+          { key: 'Rejected',  clr: 'var(--R)', ico: 'fa-times-circle' },
+          { key: 'Cancelled', clr: 'var(--tx2)', ico: 'fa-ban' }
+        ];
+        var html = '';
+        groups.forEach(function(g) {
+          var grpRecs = filtered.filter(function(r) { return (r.status||'Pending') === g.key; });
+          if (!grpRecs.length) return;
+          var gid = 'lreq_g_' + g.key;
+          html += '<div style="margin-bottom:12px">' +
+            '<div onclick="_toggleGrp(\'' + gid + '\')" style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--sur2);border-radius:10px;cursor:pointer;border:1px solid var(--bdr);margin-bottom:8px">' +
+            '<i class="fas ' + g.ico + '" style="color:' + g.clr + '"></i>' +
+            '<span style="font-weight:800;font-size:13px;color:' + g.clr + '">' + g.key + '</span>' +
+            '<span style="background:' + g.clr + '22;color:' + g.clr + ';padding:2px 8px;border-radius:999px;font-size:11px;font-weight:800">' + grpRecs.length + '</span>' +
+            '<i class="fas fa-chevron-down" style="margin-left:auto;font-size:11px;color:var(--tx3)"></i>' +
+            '</div>' +
+            '<div id="' + gid + '">' +
+            grpRecs.map(function(r) {
+              return '<div class="ann-card" style="border-left-color:' + g.clr + ';margin-bottom:8px">' +
+                '<div style="display:flex;align-items:flex-start;gap:14px">' +
+                '<div style="flex:1;min-width:0">' +
+                '<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">' +
+                '<span style="font-size:13px;font-weight:800">' + _esc(r.leave_type||'—') + '</span>' +
+                '<span style="background:var(--Pl);color:var(--P);padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700">' + (r.num_days||1) + ' day' + (r.num_days!==1?'s':'') + '</span>' +
+                '</div>' +
+                '<div style="font-size:13px;color:var(--tx2);margin-bottom:4px"><i class="fas fa-calendar-range"></i> ' + _fmtDate(r.from_date) + ' — ' + _fmtDate(r.to_date) + '</div>' +
+                (r.reason ? '<div style="font-size:12px;color:var(--tx3);margin-bottom:3px"><i class="fas fa-comment"></i> ' + _esc(r.reason) + '</div>' : '') +
+                (r.remark ? '<div style="font-size:12px;color:var(--I);margin-bottom:3px"><i class="fas fa-reply"></i> <em>' + _esc(r.remark) + '</em></div>' : '') +
+                '<div style="font-size:11px;color:var(--tx4);margin-top:4px"><i class="fas fa-clock"></i> ' + _fmtDateTime(r.requested_at) +
+                (r.approved_by ? ' &nbsp;·&nbsp; <i class="fas fa-user-check"></i> ' + _esc(r.approved_by) : '') + '</div>' +
+                '</div></div></div>';
+            }).join('') +
+            '</div></div>';
+        });
+        el.innerHTML = html;
       }, function (e) { el.innerHTML = '<div class="te">Error: ' + _esc(e.message) + '</div>'; });
+    }
+
+    function _toggleGrp(id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      var open = el.style.display !== 'none';
+      el.style.display = open ? 'none' : '';
+      var hdr = el.previousElementSibling;
+      if (hdr) {
+        var chev = hdr.querySelector('.fa-chevron-down,.fa-chevron-up');
+        if (chev) { chev.className = chev.className.replace(open ? 'fa-chevron-down' : 'fa-chevron-up', open ? 'fa-chevron-up' : 'fa-chevron-down'); }
+      }
     }
 
     function _lbalForm() {
@@ -9145,7 +9189,7 @@ function _loadSetupTasks() {
       if (!el) return;
       el.innerHTML = _skel(2);
 
-      _gas('getLeaveSummary', [null, month], function (data) {
+      _gas('getLeaveSummary', [_U.emp_code, month], function (data) {
         var s = (data && data[0]) || {};
         el.innerHTML =
           '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px">' +
@@ -9257,36 +9301,56 @@ function _loadSetupTasks() {
           return;
         }
 
-        el.innerHTML =
-          '<div class="export-bar"><i class="fas fa-stamp"></i><span>' + flt.length + ' request' + (flt.length !== 1 ? 's' : '') + '</span></div>' +
-          '<div class="ann-list">' +
-          flt.map(function (r) {
-            return '<div class="ann-card">' +
-              '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px">' +
-              '<div style="flex:1;min-width:0">' +
-              '<div style="font-size:14px;font-weight:800;margin-bottom:5px">' + _esc(r.emp_name || '—') + '</div>' +
-              '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px">' +
-              _statusBadge(r.status) +
-              '<span class="bdg" style="background:var(--Il);color:var(--I)">' + _esc(r.leave_type || '—') + '</span>' +
-              '<span class="bdg" style="background:var(--Pl);color:var(--P)">' + _esc(r.dept || '—') + '</span>' +
-              '</div>' +
-              '<div style="font-size:12.5px;color:var(--tx2);margin-bottom:4px">' +
-              '<i class="fas fa-calendar"></i> ' + _fmtDate(r.from_date) + ' – ' + _fmtDate(r.to_date) +
-              ' <strong>(' + (r.num_days || 1) + ' day' + (r.num_days !== 1 ? 's' : '') + ')</strong>' +
-              '</div>' +
-              (r.reason ? '<div style="font-size:12px;color:var(--tx3)"><i class="fas fa-comment"></i> ' + _esc(r.reason) + '</div>' : '') +
-              '</div>' +
-              (r.status === 'Pending' ?
-                '<div style="display:flex;flex-direction:column;gap:7px;flex-shrink:0">' +
-                '<button class="btn btn-sm" style="background:var(--G)" onclick="_approveLeave(\'' + _esc(r.request_id) + '\',\'Approved\')"><i class="fas fa-check"></i> Approve</button>' +
-                '<button class="btn btn-sm btn-red" onclick="_approveLeave(\'' + _esc(r.request_id) + '\',\'Rejected\')"><i class="fas fa-times"></i> Reject</button>' +
-                '</div>' :
-                '<span style="font-size:11px;color:var(--tx3);font-weight:700">' + (r.approved_by ? 'by ' + _esc(r.approved_by) : '') + '</span>'
-              ) +
-              '</div>' +
-              '</div>';
-          }).join('') +
-          '</div>';
+        // Group by employee
+        var empMap = {}, empOrder = [];
+        flt.forEach(function(r) {
+          var nm = r.emp_name || 'Unknown';
+          if (!empMap[nm]) { empMap[nm] = []; empOrder.push(nm); }
+          empMap[nm].push(r);
+        });
+
+        var html = '<div style="margin-bottom:10px;font-size:12px;color:var(--tx2)"><i class="fas fa-stamp"></i> ' +
+          flt.length + ' request' + (flt.length!==1?'s':'') + ' · ' + empOrder.length + ' employee' + (empOrder.length!==1?'s':'') + '</div>';
+
+        empOrder.forEach(function(nm) {
+          var recs = empMap[nm];
+          var gid = 'la_' + nm.replace(/[^a-zA-Z0-9]/g,'_');
+          var hasPending = recs.some(function(r){ return r.status==='Pending'; });
+          html += '<div style="margin-bottom:12px">' +
+            '<div onclick="_toggleGrp(\'' + gid + '\')" style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--sur2);border-radius:10px;cursor:pointer;border:1px solid var(--bdr);margin-bottom:8px">' +
+            '<div style="width:32px;height:32px;border-radius:50%;background:var(--Pl);color:var(--P);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;flex-shrink:0">' + _esc(nm.charAt(0).toUpperCase()) + '</div>' +
+            '<div style="flex:1;min-width:0"><div style="font-weight:800;font-size:13px">' + _esc(nm) + '</div>' +
+            '<div style="font-size:11px;color:var(--tx3)">' + _esc((recs[0]||{}).dept||'') + ' &nbsp;·&nbsp; ' + recs.length + ' request' + (recs.length!==1?'s':'') + '</div></div>' +
+            (hasPending ? '<span style="background:var(--Ol);color:var(--O);padding:2px 9px;border-radius:999px;font-size:11px;font-weight:800">Pending</span>' : '') +
+            '<i class="fas fa-chevron-down" style="font-size:11px;color:var(--tx3)"></i>' +
+            '</div>' +
+            '<div id="' + gid + '">' +
+            recs.map(function(r) {
+              var sc = r.status==='Approved'?'var(--G)':r.status==='Rejected'?'var(--R)':'var(--O)';
+              return '<div class="ann-card" style="border-left-color:'+sc+';margin-bottom:8px">' +
+                '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px">' +
+                '<div style="flex:1;min-width:0">' +
+                '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px">' +
+                '<span class="bdg" style="background:var(--Il);color:var(--I)">' + _esc(r.leave_type||'—') + '</span>' +
+                _statusBadge(r.status) + '</div>' +
+                '<div style="font-size:13px;color:var(--tx2);margin-bottom:4px"><i class="fas fa-calendar"></i> ' +
+                _fmtDate(r.from_date) + ' — ' + _fmtDate(r.to_date) +
+                ' <strong style="color:var(--P)">(' + (r.num_days||1) + ' day' + (r.num_days!==1?'s':'') + ')</strong></div>' +
+                (r.reason ? '<div style="font-size:12px;color:var(--tx3);margin-bottom:3px"><i class="fas fa-comment"></i> ' + _esc(r.reason) + '</div>' : '') +
+                (r.remark ? '<div style="font-size:12px;color:var(--I)"><i class="fas fa-reply"></i> <em>' + _esc(r.remark) + '</em></div>' : '') +
+                '</div>' +
+                (r.status === 'Pending' ?
+                  '<div style="display:flex;flex-direction:column;gap:7px;flex-shrink:0">' +
+                  '<button class="btn btn-sm" style="background:var(--G)" onclick="_approveLeave(\'' + _esc(r.request_id) + '\',\'Approved\')"><i class="fas fa-check"></i> Approve</button>' +
+                  '<button class="btn btn-sm btn-red" onclick="_approveLeave(\'' + _esc(r.request_id) + '\',\'Rejected\')"><i class="fas fa-times"></i> Reject</button>' +
+                  '</div>' :
+                  '<span style="font-size:11px;color:var(--tx3);font-weight:700">' + _esc(r.approved_by||'') + '</span>'
+                ) +
+                '</div></div>';
+            }).join('') +
+            '</div></div>';
+        });
+        el.innerHTML = html;
       }, function (e) { el.innerHTML = '<div class="te">Error: ' + _esc(e.message) + '</div>'; });
     }
 
@@ -10641,7 +10705,7 @@ function _loadSetupTasks() {
       var lEl = document.getElementById('holList');
       var uEl = document.getElementById('holUpcoming');
 
-      // Invalidate old cache so user always gets fresh data from sheet
+      // Always force fresh from sheet (never use login-time cache)
       _D.holidays = null; _D.holidayYear = null;
 
       if (kEl) kEl.innerHTML = [1, 2, 3].map(function () { return '<div class="sk sk-h6" style="border-radius:14px"></div>'; }).join('');
