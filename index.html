@@ -4893,7 +4893,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbx2d6tnGIPGbZ3bcZhTY6TZTMzriIZFL_5GDpmIlJ90G5ZdrslB6VWJ9qQbijUqeUZEeA/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbyiSj_rQCXQcDTRYpJRSgFnfKVGjvlPESUs5jxlLRsHOx30fFoL49Iw-JlQS9lBA7yIig/exec';
     var _TOKEN  = '';
 
 function _gas(fn, args, onOk, onErr) {
@@ -6252,27 +6252,30 @@ function _loadSetupTasks() {
     ];
 
     function _vDeleg() {
-      var showAll = _isManager();
+      var isManager = _isManager();
       var at = _ST || 'dmine';
-      var tabs = showAll ? TABS_DELEG : TABS_DELEG.filter(function (t) { return t.id !== 'dall'; });
+      // Staff sees only "Assigned to Me"; Managers see all tabs
+      var tabs = isManager
+        ? TABS_DELEG
+        : [{ id: 'dmine', lbl: '<i class="fas fa-inbox"></i> Assigned to Me' }];
 
       document.getElementById('content').innerHTML =
         '<div class="mod-head">' +
         '<div><div class="mod-title">Delegation</div><div class="mod-sub">Task assignments, follow-ups & escalations</div></div>' +
-        '<button class="btn btn-sm" onclick="_goDCr()"><i class="fas fa-plus"></i> Delegate Task</button>' +
+        (isManager ? '<button class="btn btn-sm" onclick="_goDCr()"><i class="fas fa-plus"></i> Delegate Task</button>' : '') +
         '</div>' +
         _mkTabs(tabs, at) +
         _mkPanes(tabs, at, [
           '<div id="dminePane">' + _skel(3, 'sk-h5') + '</div>',
-          '<div id="doutPane">' + _skel(3, 'sk-h5') + '</div>',
-          '<div id="dcrPane">' + _dcrForm() + '</div>',
-          '<div id="dallPane">' + (showAll ? _skel(3) : '') + '</div>'
+          (isManager ? '<div id="doutPane">' + _skel(3, 'sk-h5') + '</div>' : ''),
+          (isManager ? '<div id="dcrPane">' + _dcrForm() + '</div>' : ''),
+          (isManager ? '<div id="dallPane">' + _skel(3) + '</div>' : '')
         ]);
 
-      _loadDelegDoers();
+      if (isManager) _loadDelegDoers();
       if (at === 'dmine') _loadDMine();
-      else if (at === 'dout') _loadDOut();
-      else if (at === 'dall' && showAll) _loadDAll();
+      else if (at === 'dout' && isManager) _loadDOut();
+      else if (at === 'dall' && isManager) _loadDAll();
       if (_ST) setTimeout(function () { _switchTab(_ST); }, 30);
     }
 
@@ -6783,17 +6786,8 @@ function _loadSetupTasks() {
       var el = document.getElementById('aanaContent');
       if (!el) return;
       el.innerHTML = _skel(4);
-      // Populate dept dropdown
+      _populateDeptSel('aanaDept', function() {
       var deptSel = document.getElementById('aanaDept');
-      var prevADept = deptSel ? deptSel.value : 'All';
-      if (deptSel) {
-        deptSel.innerHTML = '<option value="All">All Departments</option>' + _getDeptOptions();
-        if (prevADept && prevADept !== 'All') {
-          for (var i=0;i<deptSel.options.length;i++) {
-            if (deptSel.options[i].value === prevADept) { deptSel.value = prevADept; break; }
-          }
-        }
-      }
       var dept = deptSel ? deptSel.value : 'All';
       var month = (document.getElementById('aanaMonth') || {}).value || _currMonth();
 
@@ -6926,6 +6920,7 @@ function _loadSetupTasks() {
         }
         el.innerHTML = h;
       }, function(e) { el.innerHTML = '<div class="te">Error: '+_esc(e.message)+'</div>'; });
+      }); // end _populateDeptSel callback
     }
 
     function _amyForm() {
@@ -7144,21 +7139,40 @@ function _loadSetupTasks() {
     }
 
 
+    function _populateDeptSel(selId, afterFn) {
+      var sel = document.getElementById(selId);
+      if (!sel) { if (afterFn) afterFn(); return; }
+      var prev = sel.value || 'All';
+      var opts = _getDeptOptions();
+      if (opts) {
+        sel.innerHTML = '<option value="All">All Departments</option>' + opts;
+        // Restore previous selection
+        for (var j = 0; j < sel.options.length; j++) {
+          if (sel.options[j].value === prev) { sel.value = prev; break; }
+        }
+        if (afterFn) afterFn();
+      } else {
+        // _D.empDir empty — fetch doers first
+        _gas('getDoerList', [], function(doers) {
+          _D.doers = doers || [];
+          var newOpts = _getDeptOptions();
+          sel.innerHTML = '<option value="All">All Departments</option>' + newOpts;
+          for (var j = 0; j < sel.options.length; j++) {
+            if (sel.options[j].value === prev) { sel.value = prev; break; }
+          }
+          if (afterFn) afterFn();
+        }, function() { if (afterFn) afterFn(); });
+      }
+    }
+
     function _loadMustTab() {
       if (!_isManager()) return;
-      // Populate dept dropdown — always refresh from latest _D.empDir
-      var dSel = document.getElementById('mustDept');
-      var prevDept = dSel ? dSel.value : 'All';
-      if (dSel) {
-        dSel.innerHTML = '<option value="All">All Departments</option>' + _getDeptOptions();
-        // Restore previous selection if it still exists
-        if (prevDept && prevDept !== 'All') {
-          for (var i=0;i<dSel.options.length;i++) {
-            if (dSel.options[i].value === prevDept) { dSel.value = prevDept; break; }
-          }
-        }
-      }
+      var el = document.getElementById('mustTable');
+      var kEl = document.getElementById('mustKrow');
+      if (!el) return;
+      _populateDeptSel('mustDept', function() {
       var month = (document.getElementById('mustMonth') || {}).value || _currMonth();
+      var dSel = document.getElementById('mustDept');
       var dept  = dSel ? dSel.value : 'All';
       var el    = document.getElementById('mustTable');
       var kEl   = document.getElementById('mustKrow');
@@ -7195,6 +7209,7 @@ function _loadSetupTasks() {
       }, function(e) {
         if (el) el.innerHTML = '<div class="te"><i class="fas fa-exclamation-triangle"></i> Error: ' + _esc(e.message) + '</div>';
       });
+      }); // end _populateDeptSel callback
     }
 
     function _renderMuster(rows, dates, hols, month) {
@@ -9187,9 +9202,9 @@ function _loadSetupTasks() {
 
     function _lbalForm() {
       return '<div class="fbar">' +
-        '<label>Month:</label>' +
-        '<input type="month" id="lbalMonth" value="' + _currMonth() + '">' +
-        '<button class="btn btn-sm" onclick="_loadLeaveBalance()"><i class="fas fa-search"></i> Load</button>' +
+        '<span style="font-size:12px;color:var(--tx2)"><i class="fas fa-info-circle"></i> Cumulative leave balance (all approved leaves)</span>' +
+        '<div class="fbar-spacer"></div>' +
+        '<button class="btn btn-sm btn-outline" onclick="_loadLeaveBalance()"><i class="fas fa-rotate-right"></i> Refresh</button>' +
         '</div><div id="lbalContent">' + _skel(2) + '</div>';
     }
 
@@ -10751,7 +10766,11 @@ function _loadSetupTasks() {
 
       if (lEl) {
         if (!holidays || !holidays.length) {
-          lEl.innerHTML = '<div class="empty-state"><i class="fas fa-calendar-xmark"></i><h4>No Holidays Found</h4><p>Add holidays to the Holiday List sheet.</p></div>';
+          lEl.innerHTML = '<div class="empty-state"><i class="fas fa-calendar-xmark"></i>' +
+            '<h4>No Holidays Found</h4>' +
+            '<p>Add holidays to the <b>Holiday List</b> sheet in the Master spreadsheet.</p>' +
+            '<p style="font-size:11px;color:var(--tx3);margin-top:8px">Required columns: <code>Date</code> &nbsp; <code>Holiday</code> &nbsp; <code>Type</code></p>' +
+            '</div>';
         } else {
           var byMonth = {};
           holidays.forEach(function(h) {
