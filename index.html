@@ -6668,7 +6668,6 @@ function _loadSetupTasks() {
       if (_isManager()) {
         tabs.push({ id: 'arega', lbl: '<i class="fas fa-clipboard-check"></i> Reg. Approvals' });
         tabs.push({ id: 'amust', lbl: '<i class="fas fa-users"></i> Muster' });
-        tabs.push({ id: 'aana',  lbl: '<i class="fas fa-chart-bar"></i> Analytics' });
       }
       var at = _ST || 'amy';
 
@@ -6682,14 +6681,13 @@ function _loadSetupTasks() {
           '<div id="aregPane">' + _aregForm() + '</div>',
           (_isManager() ? '<div id="aregaPane">'  + _aregaForm() + '</div>' : ''),
           (_isManager() ? '<div id="amustPane">' + _amustForm() + '</div>' : ''),
-          (_isManager() ? '<div id="aanaPane">'  + _aanaForm()  + '</div>' : '')
+
         ]);
 
       if (at === 'amy')  _loadMyAtt();
       else if (at === 'areg') _loadMyRegularizations();
       else if (at === 'arega' && _isManager()) _loadRegApprovals();
       else if (at === 'amust' && _isManager()) _loadMustTab();
-      else if (at === 'aana'  && _isManager()) _loadAttAnalytics();
       if (_ST) setTimeout(function () { _switchTab(_ST); }, 30);
     }
 
@@ -9821,166 +9819,371 @@ function _loadSetupTasks() {
        Manager-only. Attendance presence % by dept + daily trend + muster
        summary chart. Extends the basic _vAttAna.
     ══════════════════════════════════════════════════════════════════════ */
+    // ════════════════════════════════════════════════════════════════════════
+    // ATTENDANCE ANALYTICS — Standalone Manager Module
+    // Full dashboard: filters, 5 charts, KPIs, employee detail
+    // ════════════════════════════════════════════════════════════════════════
     function _vAttAna() {
       if (!_isManager()) {
         document.getElementById('content').innerHTML =
           '<div class="empty-state"><i class="fas fa-lock"></i><h4>Access Restricted</h4><p>Manager access required.</p></div>';
         return;
       }
-
       document.getElementById('content').innerHTML =
         '<div class="mod-head">' +
-        '<div><div class="mod-title">Attendance Analytics</div><div class="mod-sub">Department presence rates, trends and muster overview</div></div>' +
-        '<div class="mod-head-right">' +
-        '<label style="font-size:12px;font-weight:700;color:var(--tx2)">Month:</label>' +
-        '<input type="month" id="attAnaMonth" value="' + _currMonth() + '" ' +
-        'style="padding:6px 10px;border:1.5px solid var(--bdr);border-radius:8px;font-size:12px;background:var(--bg);color:var(--tx);outline:none">' +
-        '<label style="font-size:12px;font-weight:700;color:var(--tx2)">Dept:</label>' +
-        '<select id="attAnaDept" style="padding:6px 10px;border:1.5px solid var(--bdr);border-radius:8px;font-size:12px;background:var(--bg);color:var(--tx);outline:none">' +
-        '<option value="All">All</option>' +
-        _getDeptOptions() +
-        '</select>' +
-        '<button class="btn btn-sm" onclick="_loadAttAna()"><i class="fas fa-chart-bar"></i> Refresh</button>' +
-        '<button class="btn btn-outline btn-sm" onclick="_exportAttAna()"><i class="fas fa-download"></i> Export</button>' +
+        '<div><div class="mod-title">Attendance Analytics</div>' +
+        '<div class="mod-sub">Department presence rates, trends, charts & insights</div></div>' +
         '</div>' +
+        '<div id="attAnaRoot">' +
+        // ── Toolbar ──────────────────────────────────────────────────────────
+        '<div class="ana-toolbar">' +
+        '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
+        '<div class="ana-filter-grp"><label class="ana-lbl"><i class="fas fa-building"></i> Dept</label>' +
+        '<select id="aaaDept" class="ana-sel"><option value="All">All Departments</option></select></div>' +
+        '<div class="ana-filter-grp"><label class="ana-lbl"><i class="fas fa-calendar"></i> Month</label>' +
+        '<input type="month" id="aaaMonth" class="ana-sel" value="' + _currMonth() + '"></div>' +
+        '<div class="ana-filter-grp"><label class="ana-lbl"><i class="fas fa-eye"></i> View</label>' +
+        '<select id="aaaView" class="ana-sel">' +
+        '<option value="overview">Overview</option>' +
+        '<option value="dept">By Department</option>' +
+        '<option value="employee">By Employee</option>' +
+        '<option value="trend">Trend & Insights</option>' +
+        '</select></div>' +
+        '<div class="ana-filter-grp"><label class="ana-lbl"><i class="fas fa-filter"></i> Filter</label>' +
+        '<select id="aaaStatus" class="ana-sel">' +
+        '<option value="all">All Employees</option>' +
+        '<option value="perfect">Perfect (100%)</option>' +
+        '<option value="good">Good (≥80%)</option>' +
+        '<option value="avg">Average (60-79%)</option>' +
+        '<option value="low">Low (<60%)</option>' +
+        '<option value="absent_heavy">High Absent (>3)</option>' +
+        '</select></div>' +
+        '<div class="ana-filter-grp"><label class="ana-lbl"><i class="fas fa-sort"></i> Sort</label>' +
+        '<select id="aaaSort" class="ana-sel">' +
+        '<option value="pct_desc">Presence % ↓</option>' +
+        '<option value="pct_asc">Presence % ↑</option>' +
+        '<option value="absent_desc">Absent ↓</option>' +
+        '<option value="name_asc">Name A-Z</option>' +
+        '<option value="dept_asc">Department</option>' +
+        '</select></div>' +
         '</div>' +
-        '<div class="krow" id="attAnaKrow">' +
-        [1, 2, 3].map(function () { return '<div class="sk sk-h6" style="border-radius:14px"></div>'; }).join('') +
-        '</div>' +
-        '<div class="chart-wrap" style="margin-bottom:18px">' +
-        '<div class="chart-head"><div class="chart-title">Daily Presence Trend</div><div class="chart-sub">Team presence % over last 30 days</div></div>' +
-        '<div class="chart-inner-lg"><canvas id="attAnaTrend"></canvas></div>' +
-        '</div>' +
-        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">' +
-        '<div class="chart-wrap">' +
-        '<div class="chart-head"><div class="chart-title">Dept Presence Rate</div><div class="chart-sub">Bar chart — higher is better</div></div>' +
-        '<div class="chart-inner-md"><canvas id="attAnaDeptChart"></canvas></div>' +
-        '</div>' +
-        '<div class="card card-nohover card-sm">' +
-        '<div class="sec-title" style="margin-bottom:12px"><i class="fas fa-building" style="color:var(--P)"></i> Department Breakdown</div>' +
-        '<div id="attAnaDeptList">' + _skel(3, 'sk-h3') + '</div>' +
-        '</div>' +
+        '<div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap">' +
+        '<input type="text" id="aaaEmpSearch" class="ana-sel" placeholder="🔍 Search employee..." oninput="_filterAaaTable()" style="width:200px">' +
+        '<button class="btn btn-sm" onclick="_loadAaa()"><i class="fas fa-chart-bar"></i> Analyze</button>' +
+        '<button class="btn btn-sm btn-outline" onclick="_exportAaa()"><i class="fas fa-download"></i> Export CSV</button>' +
+        '<span id="aaaLastLoad" style="font-size:11px;color:var(--tx3)"></span>' +
+        '</div></div>' +
+        '<div id="aaaContent" style="margin-top:16px">' + _skel(4) + '</div>' +
         '</div>';
 
-      _loadAttAna();
+      _populateDeptSel('aaaDept', function() { _loadAaa(); });
     }
 
-    function _loadAttAna() {
-      var month = document.getElementById('attAnaMonth') ? document.getElementById('attAnaMonth').value : _currMonth();
-      var dept = document.getElementById('attAnaDept') ? document.getElementById('attAnaDept').value : 'All';
-      var kEl = document.getElementById('attAnaKrow');
-      if (kEl) kEl.innerHTML = [1, 2, 3].map(function () { return '<div class="sk sk-h6" style="border-radius:14px"></div>'; }).join('');
-
-      _gas('getAttendanceStats', [dept, month], function (attData) {
-        _D.attAnaData = attData;
-
-        var depts = attData.dept_breakdown || [];
-        var daily = attData.daily_trend || [];
-        var avgPct = depts.length > 0
-          ? Math.round(depts.reduce(function (s, d) { return s + d.present_pct; }, 0) / depts.length)
-          : 0;
-
-        // KPIs
-        if (kEl) kEl.innerHTML = [
-          { lbl: 'Avg Presence', val: avgPct + '%', c: avgPct >= 80 ? 'var(--G)' : avgPct >= 60 ? 'var(--O)' : 'var(--R)', ico: 'fa-chart-pie' },
-          { lbl: 'Departments', val: depts.length, c: 'var(--P)', ico: 'fa-building' },
-          { lbl: 'Records', val: attData.total_records || 0, c: 'var(--I)', ico: 'fa-database' }
-        ].map(function (k) {
-          return '<div class="kpi" style="--kc:' + k.c + '">' +
-            '<div class="kpi-ico"><i class="fas ' + k.ico + '"></i></div>' +
-            '<div class="kpi-val">' + k.val + '</div>' +
-            '<div class="kpi-lbl">' + k.lbl + '</div>' +
-            '</div>';
-        }).join('');
-
-        // Dept list
-        var dEl = document.getElementById('attAnaDeptList');
-        if (dEl && depts.length) {
-          dEl.innerHTML = depts.map(function (d) {
-            var barClr = d.present_pct >= 80 ? 'var(--G)' : d.present_pct >= 60 ? 'var(--O)' : 'var(--R)';
-            return '<div class="dept-bar">' +
-              '<div class="dept-bar-hd">' +
-              '<span class="dept-bar-name">' + _esc(d.dept) + '</span>' +
-              '<span class="dept-bar-pct" style="color:' + barClr + '">' + d.present_pct + '%</span>' +
-              '</div>' +
-              '<div class="pbar-wrap"><div class="pbar" style="width:' + d.present_pct + '%;background:' + barClr + '"></div></div>' +
-              '<div style="font-size:11px;color:var(--tx3);margin-top:3px">' +
-              'FD: ' + d.fd + ' &nbsp;·&nbsp; HD: ' + d.hd + ' &nbsp;·&nbsp; Abs: ' + d.absent +
-              '</div>' +
-              '</div>';
-          }).join('');
-        }
-
-        // Charts
-        setTimeout(function () {
-          // Daily trend
-          var aEl = document.getElementById('attAnaTrend');
-          if (aEl && daily.length) {
-            if (_charts['atttrend']) _charts['atttrend'].destroy();
-            _charts['atttrend'] = new Chart(aEl.getContext('2d'), {
-              type: 'line',
-              data: {
-                labels: daily.map(function (d) { return d.date.slice(5); }),
-                datasets: [{
-                  label: 'Presence %', data: daily.map(function (d) { return d.pct; }),
-                  fill: true, tension: .4,
-                  borderColor: 'rgba(13,148,136,1)', backgroundColor: 'rgba(13,148,136,.07)',
-                  pointRadius: 3, pointHoverRadius: 6, borderWidth: 2
-                }]
-              },
-              options: {
-                responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                  y: { beginAtZero: true, max: 100, ticks: { callback: function (v) { return v + '%'; }, color: '#94a3b8', font: { size: 11 } }, grid: { color: 'rgba(0,0,0,.05)' } },
-                  x: { ticks: { color: '#94a3b8', font: { size: 11 }, maxTicksLimit: 12 }, grid: { display: false } }
-                }
-              }
-            });
-          }
-
-          // Dept bar chart
-          var dbEl = document.getElementById('attAnaDeptChart');
-          if (dbEl && depts.length) {
-            if (_charts['attdept']) _charts['attdept'].destroy();
-            _charts['attdept'] = new Chart(dbEl.getContext('2d'), {
-              type: 'bar',
-              data: {
-                labels: depts.map(function (d) { return d.dept; }),
-                datasets: [{
-                  label: 'Presence %',
-                  data: depts.map(function (d) { return d.present_pct; }),
-                  backgroundColor: depts.map(function (d) {
-                    return d.present_pct >= 80 ? 'rgba(47,158,68,.85)' : d.present_pct >= 60 ? 'rgba(217,119,6,.85)' : 'rgba(224,49,49,.85)';
-                  }),
-                  borderRadius: 6, borderSkipped: false
-                }]
-              },
-              options: {
-                responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                  y: { beginAtZero: true, max: 100, ticks: { callback: function (v) { return v + '%'; }, color: '#94a3b8', font: { size: 11 } }, grid: { color: 'rgba(0,0,0,.05)' } },
-                  x: { ticks: { color: '#94a3b8', font: { size: 11 } }, grid: { display: false } }
-                }
-              }
-            });
-          }
-        }, 120);
-      }, function (e) {
-        if (kEl) kEl.innerHTML = '<div class="te" style="grid-column:1/-1">Error: ' + _esc(e.message) + '</div>';
+    function _filterAaaTable() {
+      var q = ((document.getElementById('aaaEmpSearch') || {}).value || '').toLowerCase().trim();
+      document.querySelectorAll('#aaaEmpTable tbody tr').forEach(function(r) {
+        r.style.display = (!q || r.textContent.toLowerCase().indexOf(q) >= 0) ? '' : 'none';
       });
     }
 
-    function _exportAttAna() {
-      var data = _D.attAnaData;
-      if (!data || !data.dept_breakdown) { _toast('No data to export', 'err'); return; }
-      var rows = [['Department', 'Full Day', 'Half Day', 'Absent', 'Presence %']];
-      data.dept_breakdown.forEach(function (d) { rows.push([d.dept, d.fd, d.hd, d.absent, d.present_pct]); });
-      _downloadCSV('attendance_analytics_' + _currMonth() + '.csv', rows);
-      _toast('Attendance analytics exported!', 'ok');
+    function _exportAaa() {
+      if (!_D.aaaData || !_D.aaaData.rows) { _toast('Load analytics first', 'err'); return; }
+      var head = ['Employee','Department','Present Days','Half Days','Absent Days','Week Off','Working Days','Presence %'];
+      var csv  = [head.join(',')].concat((_D.aaaData.rows||[]).map(function(r) {
+        return ['"'+(r.emp_name||'').replace(/"/g,"'")+'"','"'+(r.dept||'')+'"',
+                r.days_present||0,r.days_hd||0,r.days_absent||0,r.days_wo||0,r.working_days||0,(r.pct||0)+'%'].join(',');
+      })).join('\n');
+      var a = document.createElement('a');
+      a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent('\uFEFF' + csv);
+      a.download = 'attendance_' + (_D.aaaData.month||_currMonth()) + '.csv';
+      a.click();
+      _toast('Exported!', 'ok');
     }
 
+    function _loadAaa() {
+      var el = document.getElementById('aaaContent');
+      if (!el) return;
+      el.innerHTML = _skel(4);
+
+      var dept   = (document.getElementById('aaaDept')   || {}).value || 'All';
+      var month  = (document.getElementById('aaaMonth')  || {}).value || _currMonth();
+      var view   = (document.getElementById('aaaView')   || {}).value || 'overview';
+      var sort   = (document.getElementById('aaaSort')   || {}).value || 'pct_desc';
+      var stFlt  = (document.getElementById('aaaStatus') || {}).value || 'all';
+
+      // Calendar context (frontend calc)
+      var pts = month.split('-'), yr=parseInt(pts[0]), mo=parseInt(pts[1])-1;
+      var dim=new Date(yr,mo+1,0).getDate(), suns=0;
+      for (var d=1;d<=dim;d++) if (new Date(yr,mo,d).getDay()===0) suns++;
+      var holList = (_D.holidays||[]).filter(function(h){return h.date&&h.date.substring(0,7)===month;});
+      var netWD   = dim - suns - holList.length;
+
+      _gas('getMusterGrid', [dept, month], function(res) {
+        res = res||{}; var allRows=res.rows||[], dates=res.dates||[];
+
+        // ── Apply filter ──────────────────────────────────────────────────
+        var rows = allRows.filter(function(r){
+          if (stFlt==='perfect')      return r.pct===100;
+          if (stFlt==='good')         return r.pct>=80;
+          if (stFlt==='avg')          return r.pct>=60&&r.pct<80;
+          if (stFlt==='low')          return r.pct<60;
+          if (stFlt==='absent_heavy') return (r.days_absent||0)>3;
+          return true;
+        });
+
+        // ── Apply sort ────────────────────────────────────────────────────
+        rows.sort(function(a,b){
+          if (sort==='pct_asc')     return (a.pct||0)-(b.pct||0);
+          if (sort==='absent_desc') return (b.days_absent||0)-(a.days_absent||0);
+          if (sort==='name_asc')    return (a.emp_name||'').localeCompare(b.emp_name||'');
+          if (sort==='dept_asc')    return (a.dept||'').localeCompare(b.dept||'');
+          return (b.pct||0)-(a.pct||0);
+        });
+
+        // ── Cache ─────────────────────────────────────────────────────────
+        _D.aaaData = {rows:allRows, month:month};
+
+        // ── Aggregates ────────────────────────────────────────────────────
+        var ec=allRows.length,
+            totP=allRows.reduce(function(s,r){return s+(r.days_present||0);},0),
+            totA=allRows.reduce(function(s,r){return s+(r.days_absent||0);},0),
+            totHD=allRows.reduce(function(s,r){return s+(r.days_hd||0);},0),
+            totWO=allRows.reduce(function(s,r){return s+(r.days_wo||0);},0),
+            avgP=ec>0?Math.round(allRows.reduce(function(s,r){return s+(r.pct||0);},0)/ec):0,
+            perfCnt=allRows.filter(function(r){return r.pct===100;}).length,
+            lowCnt=allRows.filter(function(r){return r.pct<60;}).length,
+            hiAbsCnt=allRows.filter(function(r){return (r.days_absent||0)>3;}).length;
+
+        // Dept aggregation
+        var dMap={};
+        allRows.forEach(function(r){
+          var k=r.dept||'Other';
+          if(!dMap[k])dMap[k]={dept:k,emps:0,present:0,hd:0,absent:0,pts:[]};
+          dMap[k].emps++; dMap[k].present+=r.days_present||0; dMap[k].hd+=r.days_hd||0;
+          dMap[k].absent+=r.days_absent||0; dMap[k].pts.push(r.pct||0);
+        });
+        var dList=Object.keys(dMap).sort().map(function(k){
+          var d=dMap[k], avg=d.pts.length?Math.round(d.pts.reduce(function(a,b){return a+b;},0)/d.pts.length):0;
+          return Object.assign(d,{avg_pct:avg});
+        });
+
+        // Daily trend from per-day data in each row
+        var trendMap={};
+        dates.forEach(function(dt){
+          var dow=new Date(dt+'T00:00:00').getDay();
+          if(dow===0)return;
+          var tot=0,pres=0;
+          allRows.forEach(function(r){var v=r[dt]||'';if(v!=='WO'&&v!=='H'){tot++;if(v==='P'||v==='HD')pres++;}});
+          trendMap[dt]={date:dt,pct:tot>0?Math.round(pres/tot*100):0,present:pres,total:tot};
+        });
+        var trend=Object.keys(trendMap).sort().map(function(k){return trendMap[k];});
+
+        var kc=avgP>=80?'var(--G)':avgP>=60?'var(--O)':'var(--R)';
+        var h='';
+
+        // ── KPI Strip ─────────────────────────────────────────────────────
+        h+='<div class="ana-kpi-row">'+[
+          {lbl:'Employees',   val:ec,        c:'var(--P)', ico:'fa-users',              sub:dept==='All'?'All depts':dept},
+          {lbl:'Avg Presence',val:avgP+'%',  c:kc,         ico:'fa-chart-pie',           sub:avgP>=80?'Excellent':avgP>=60?'Average':'Needs attention'},
+          {lbl:'Perfect',     val:perfCnt,   c:'var(--G)', ico:'fa-star',                sub:'100% attendance'},
+          {lbl:'Needs Attn',  val:lowCnt,    c:'var(--R)', ico:'fa-triangle-exclamation',sub:'Below 60%'},
+          {lbl:'Working Days',val:netWD,     c:'var(--I)', ico:'fa-calendar-days',       sub:month},
+          {lbl:'Total Present',val:totP,     c:'var(--G)', ico:'fa-calendar-check',      sub:'day-instances'},
+          {lbl:'Total Absent', val:totA,     c:'var(--R)', ico:'fa-calendar-xmark',      sub:'day-instances'},
+          {lbl:'High Absent',  val:hiAbsCnt, c:hiAbsCnt>0?'var(--O)':'var(--G)', ico:'fa-user-slash', sub:'>3 absent days'}
+        ].map(function(k){
+          return '<div class="ana-kpi">'+
+            '<div class="ana-kpi-top"><div class="ana-kpi-ico" style="--kc:'+k.c+'"><i class="fas '+k.ico+'"></i></div>'+
+            '<div class="ana-kpi-val" style="color:'+k.c+'">'+k.val+'</div></div>'+
+            '<div class="ana-kpi-lbl">'+k.lbl+'</div>'+
+            '<div class="ana-kpi-sub">'+k.sub+'</div></div>';
+        }).join('')+'</div>';
+
+        // Context bar
+        h+='<div class="ana-ctx-bar">'+
+          '<i class="fas fa-circle-info" style="color:var(--P)"></i> <b>'+month+'</b>: '+dim+' days — '+suns+' Sundays — '+holList.length+' holidays = <b style="color:var(--P)">'+netWD+' working days</b>'+
+          (holList.length?' &nbsp;| '+holList.map(function(hl){return '<span class="bdg" style="background:#e0e7ff;color:#4338ca">'+_esc(hl.name||'')+'</span>';}).join(' '):'') +
+          (stFlt!=='all'?' &nbsp;·&nbsp; Filter: <b style="color:var(--O)">'+stFlt+'</b> ('+rows.length+'/'+ec+')':'')+
+          '</div>';
+
+        if (!allRows.length) {
+          el.innerHTML = h+'<div class="te" style="margin-top:16px"><i class="fas fa-calendar-times"></i> No attendance data for '+month+'</div>';
+          return;
+        }
+
+        // ── CHARTS (Overview & Dept views) ────────────────────────────────
+        if (view==='overview'||view==='dept') {
+          h+='<div class="ana-charts-grid">';
+          h+='<div class="ana-chart-card"><div class="ana-chart-title"><i class="fas fa-building"></i> Dept Presence %</div><div style="height:190px"><canvas id="aaaChDept"></canvas></div></div>';
+          h+='<div class="ana-chart-card"><div class="ana-chart-title"><i class="fas fa-chart-pie"></i> Attendance Breakdown</div><div style="height:190px"><canvas id="aaaChBreak"></canvas></div></div>';
+          h+='<div class="ana-chart-card"><div class="ana-chart-title"><i class="fas fa-chart-bar"></i> Presence Distribution</div><div style="height:190px"><canvas id="aaaChDist"></canvas></div></div>';
+          if (trend.length) {
+            h+='<div class="ana-chart-card ana-chart-wide"><div class="ana-chart-title"><i class="fas fa-chart-line"></i> Daily Presence Trend — '+month+'</div><div style="height:170px"><canvas id="aaaChTrend"></canvas></div></div>';
+          }
+          h+='</div>';
+
+          // Dept table
+          if (dList.length) {
+            h+='<div class="card card-nohover card-sm" style="margin-top:16px"><div class="sec-title" style="margin-bottom:12px"><i class="fas fa-building" style="color:var(--P)"></i> Department Breakdown</div>'+
+              '<div class="tw"><table><thead><tr><th>Department</th><th style="text-align:center">Employees</th>'+
+              '<th style="text-align:center;color:var(--G)">Present</th><th style="text-align:center;color:var(--O)">Half Day</th>'+
+              '<th style="text-align:center;color:var(--R)">Absent</th><th style="text-align:center">Avg %</th><th>Progress</th>'+
+              '</tr></thead><tbody>'+
+              dList.map(function(d){
+                var c2=d.avg_pct>=80?'var(--G)':d.avg_pct>=60?'var(--O)':'var(--R)';
+                return '<tr><td style="font-weight:800">'+_esc(d.dept)+'</td>'+
+                  '<td style="text-align:center;font-weight:700">'+d.emps+'</td>'+
+                  '<td style="text-align:center;color:var(--G);font-weight:800">'+d.present+'</td>'+
+                  '<td style="text-align:center;color:var(--O);font-weight:800">'+d.hd+'</td>'+
+                  '<td style="text-align:center;color:var(--R);font-weight:800">'+d.absent+'</td>'+
+                  '<td style="text-align:center;font-weight:900;color:'+c2+'">'+d.avg_pct+'%</td>'+
+                  '<td><div class="pbar-wrap"><div class="pbar" style="width:'+d.avg_pct+'%;background:'+c2+'"></div></div></td></tr>';
+              }).join('')+'</tbody></table></div></div>';
+          }
+        }
+
+        // ── EMPLOYEE TABLE (Overview & Employee views) ────────────────────
+        if (view==='overview'||view==='employee') {
+          h+='<div class="card card-nohover card-sm" style="margin-top:16px">'+
+            '<div class="sec-title" style="margin-bottom:12px"><i class="fas fa-users" style="color:var(--P)"></i> Employee Detail ('+rows.length+')</div>'+
+            '<div class="tw"><table id="aaaEmpTable"><thead><tr>'+
+            '<th>Employee</th><th>Dept</th>'+
+            '<th style="text-align:center" title="Present"><i class="fas fa-calendar-check" style="color:var(--G)"></i></th>'+
+            '<th style="text-align:center" title="Half Day"><i class="fas fa-circle-half-stroke" style="color:var(--O)"></i></th>'+
+            '<th style="text-align:center" title="Absent"><i class="fas fa-calendar-xmark" style="color:var(--R)"></i></th>'+
+            '<th style="text-align:center">WD</th><th style="text-align:center">%</th>'+
+            '<th style="min-width:80px">Bar</th><th>Status</th>'+
+            '</tr></thead><tbody>'+
+            rows.map(function(r){
+              var p=r.pct||0, c2=p>=80?'var(--G)':p>=60?'var(--O)':'var(--R)';
+              var badge=p===100
+                ?'<span class="bdg" style="background:#d1fae5;color:#059669;font-size:10px"><i class="fas fa-star"></i> Perfect</span>'
+                :p>=80?'<span class="bdg" style="background:var(--Gl);color:var(--G);font-size:10px">Good</span>'
+                :p>=60?'<span class="bdg" style="background:var(--Ol);color:var(--O);font-size:10px">Average</span>'
+                :'<span class="bdg" style="background:var(--Rl);color:var(--R);font-size:10px"><i class="fas fa-triangle-exclamation"></i> Low</span>';
+              return '<tr>'+
+                '<td style="font-weight:700;min-width:130px">'+_esc(r.emp_name||'')+'</td>'+
+                '<td><span class="bdg" style="background:var(--Pl);color:var(--P);font-size:10px">'+_esc(r.dept||'')+'</span></td>'+
+                '<td style="text-align:center;color:var(--G);font-weight:800">'+(r.days_present||0)+'</td>'+
+                '<td style="text-align:center;color:var(--O);font-weight:800">'+(r.days_hd||0)+'</td>'+
+                '<td style="text-align:center;color:var(--R);font-weight:800">'+(r.days_absent||0)+'</td>'+
+                '<td style="text-align:center;font-weight:700;color:var(--tx2)">'+(r.working_days||0)+'</td>'+
+                '<td style="text-align:center;font-weight:900;color:'+c2+'">'+p+'%</td>'+
+                '<td><div class="pbar-wrap" style="width:75px"><div class="pbar" style="width:'+p+'%;background:'+c2+'"></div></div></td>'+
+                '<td>'+badge+'</td></tr>';
+            }).join('')+'</tbody></table></div></div>';
+        }
+
+        // ── TREND & INSIGHTS view ─────────────────────────────────────────
+        if (view==='trend') {
+          h+='<div class="ana-charts-grid">';
+          if (trend.length) {
+            h+='<div class="ana-chart-card ana-chart-wide"><div class="ana-chart-title"><i class="fas fa-chart-line"></i> Daily Presence % — '+month+'</div><div style="height:220px"><canvas id="aaaChTrendBig"></canvas></div></div>';
+          }
+          h+='<div class="ana-chart-card"><div class="ana-chart-title"><i class="fas fa-ranking-star"></i> Top 10 Attendees</div><div style="height:240px"><canvas id="aaaChTop"></canvas></div></div>';
+          h+='<div class="ana-chart-card"><div class="ana-chart-title"><i class="fas fa-arrow-down-wide-short"></i> Highest Absentees</div><div style="height:240px"><canvas id="aaaChBot"></canvas></div></div>';
+          h+='</div>';
+
+          var topE=allRows.slice().sort(function(a,b){return (b.pct||0)-(a.pct||0);}).slice(0,3);
+          var lowE=allRows.slice().sort(function(a,b){return (a.pct||0)-(b.pct||0);}).slice(0,3);
+          h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">'+
+            '<div class="card card-nohover card-sm">'+
+            '<div class="sec-title" style="margin-bottom:12px;color:var(--G)"><i class="fas fa-trophy"></i> Top Performers</div>'+
+            topE.map(function(r,i){var m=i===0?'🥇':i===1?'🥈':'🥉';
+              return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bdr)">'+
+                '<span style="font-size:18px">'+m+'</span>'+
+                '<div style="flex:1"><div style="font-weight:700;font-size:13px">'+_esc(r.emp_name)+'</div>'+
+                '<div style="font-size:11px;color:var(--tx3)">'+_esc(r.dept)+'</div></div>'+
+                '<div style="font-weight:900;color:var(--G);font-size:16px">'+r.pct+'%</div></div>';
+            }).join('')+'</div>'+
+            '<div class="card card-nohover card-sm">'+
+            '<div class="sec-title" style="margin-bottom:12px;color:var(--R)"><i class="fas fa-triangle-exclamation"></i> Needs Attention</div>'+
+            lowE.map(function(r){
+              return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bdr)">'+
+                '<div style="width:32px;height:32px;border-radius:50%;background:var(--Rl);color:var(--R);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;flex-shrink:0">'+_esc((r.emp_name||'?').charAt(0))+'</div>'+
+                '<div style="flex:1"><div style="font-weight:700;font-size:13px">'+_esc(r.emp_name)+'</div>'+
+                '<div style="font-size:11px;color:var(--tx3)">'+_esc(r.dept)+' · '+r.days_absent+' absent</div></div>'+
+                '<div style="font-weight:900;color:var(--R);font-size:16px">'+r.pct+'%</div></div>';
+            }).join('')+'</div></div>';
+        }
+
+        el.innerHTML = h;
+        var lEl=document.getElementById('aaaLastLoad');
+        if (lEl) lEl.textContent='Updated '+new Date().toLocaleTimeString();
+
+        // ── Draw Charts ───────────────────────────────────────────────────
+        setTimeout(function(){
+          if (!window.Chart) return;
+          var isDk=document.body.classList.contains('dark');
+          var gc=isDk?'rgba(255,255,255,0.05)':'rgba(0,0,0,0.05)', tc=isDk?'#94a3b8':'#64748b';
+          var baseOpts={responsive:true,maintainAspectRatio:false,
+            plugins:{legend:{labels:{color:tc,font:{size:11},boxWidth:12}}},
+            scales:{x:{ticks:{color:tc,font:{size:10}},grid:{color:gc}},y:{ticks:{color:tc,font:{size:10}},grid:{color:gc}}}};
+          function mkChart(id,type,labels,datasets,extra){
+            var cv=document.getElementById(id); if(!cv)return;
+            if(cv._ci){try{cv._ci.destroy();}catch(e){}}
+            function dm(a,b){var r=Object.assign({},a);Object.keys(b||{}).forEach(function(k){r[k]=(b[k]&&typeof b[k]==='object'&&!Array.isArray(b[k]))?dm(a[k]||{},b[k]):b[k];});return r;}
+            var opts=(type==='pie'||type==='doughnut')
+              ?{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:tc,font:{size:11},boxWidth:12}}}}
+              :dm(baseOpts,extra||{});
+            cv._ci=new Chart(cv,{type:type,data:{labels:labels,datasets:datasets},options:opts});
+          }
+
+          // 1. Dept bar
+          if (dList.length) mkChart('aaaChDept','bar',
+            dList.map(function(d){return d.dept;}),
+            [{label:'Avg %',data:dList.map(function(d){return d.avg_pct;}),
+              backgroundColor:dList.map(function(d){return d.avg_pct>=80?'rgba(47,158,68,.8)':d.avg_pct>=60?'rgba(245,158,11,.8)':'rgba(220,38,38,.8)';}),
+              borderRadius:6,borderSkipped:false}],
+            {plugins:{legend:{display:false}},scales:{y:{min:0,max:100}}});
+
+          // 2. Breakdown donut
+          mkChart('aaaChBreak','doughnut',
+            ['Present','Half Day','Absent','Week Off'],
+            [{data:[totP,totHD,totA,totWO],
+              backgroundColor:['rgba(47,158,68,.85)','rgba(245,158,11,.85)','rgba(220,38,38,.85)','rgba(148,163,184,.5)'],
+              borderWidth:2}],
+            {cutout:'58%'});
+
+          // 3. Distribution histogram
+          var b=[0,0,0,0];
+          allRows.forEach(function(r){var p=r.pct||0;if(p===100)b[3]++;else if(p>=80)b[2]++;else if(p>=60)b[1]++;else b[0]++;});
+          mkChart('aaaChDist','bar',['<60%','60-79%','80-99%','100%'],
+            [{label:'Employees',data:b,
+              backgroundColor:['rgba(220,38,38,.8)','rgba(245,158,11,.8)','rgba(59,130,246,.8)','rgba(47,158,68,.8)'],
+              borderRadius:6,borderSkipped:false}],
+            {plugins:{legend:{display:false}}});
+
+          // 4. Daily trend line
+          var trId=document.getElementById('aaaChTrend')?'aaaChTrend':document.getElementById('aaaChTrendBig')?'aaaChTrendBig':null;
+          if (trId && trend.length) {
+            mkChart(trId,'line',
+              trend.map(function(d){var p=d.date.split('-');return p[2]+'/'+p[1];}),
+              [{label:'Presence %',data:trend.map(function(d){return d.pct;}),
+                borderColor:'rgba(14,165,233,.9)',backgroundColor:'rgba(14,165,233,.1)',
+                fill:true,tension:0.4,pointRadius:2}],
+              {scales:{y:{min:0,max:100}},plugins:{legend:{display:false}}});
+          }
+
+          // 5. Top 10 horizontal
+          if (allRows.length && document.getElementById('aaaChTop')) {
+            var t10=allRows.slice().sort(function(a,b){return (b.pct||0)-(a.pct||0);}).slice(0,10).reverse();
+            mkChart('aaaChTop','bar',t10.map(function(r){return r.emp_name.split(' ')[0];}),
+              [{label:'%',data:t10.map(function(r){return r.pct||0;}),backgroundColor:'rgba(47,158,68,.8)',borderRadius:4,borderSkipped:false}],
+              {indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{min:0,max:100}}});
+          }
+
+          // 6. Bottom 10 absent
+          if (allRows.length && document.getElementById('aaaChBot')) {
+            var b10=allRows.slice().sort(function(a,b){return (b.days_absent||0)-(a.days_absent||0);}).slice(0,10).reverse();
+            mkChart('aaaChBot','bar',b10.map(function(r){return r.emp_name.split(' ')[0];}),
+              [{label:'Days',data:b10.map(function(r){return r.days_absent||0;}),backgroundColor:'rgba(220,38,38,.8)',borderRadius:4,borderSkipped:false}],
+              {indexAxis:'y',plugins:{legend:{display:false}}});
+          }
+        }, 80);
+
+      }, function(e){ el.innerHTML='<div class="te"><i class="fas fa-exclamation-triangle"></i> Error: '+_esc(e.message)+'</div>'; });
+    }
     /* ══════════════════════════════════════════════════════════════════════
        BOOT SEQUENCE — Called after successful login
        Loads user data, populates UI, starts polls.
