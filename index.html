@@ -4851,7 +4851,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbxXoOzPOnRXK-WFK1KIY2wujRKBH7mDUNuxK4okIn66ZrhisaHJZ7sowdlKl-Kp8qR5JA/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbzoA3NkBwxc1rvCrYJo1L4UHEqSJu-_FERc7FOAV1TeACT5KwwmlhaMEsbpjkLx3KP5SA/exec';
     var _TOKEN  = '';
 
 function _gas(fn, args, onOk, onErr) {
@@ -6927,71 +6927,9 @@ function _loadSetupTasks() {
     }
 
 
-    function _aimpForm() {
-      return '<div style="display:grid;grid-template-columns:420px 1fr;gap:20px">' +
-        '<div class="card card-nohover card-sm">' +
-        '<div class="sec-title" style="margin-bottom:14px"><i class="fas fa-upload" style="color:var(--P)"></i> Import Attendance Record</div>' +
-        '<div class="fgrp"><label>Employee <span class="req">★</span></label><select id="aimpEmp"><option value="">Loading...</option></select></div>' +
-        '<div class="fgrp"><label>Date <span class="req">★</span></label><input type="date" id="aimpDate" value="' + _today() + '"></div>' +
-        '<div class="fgrp"><label>Attendance Status <span class="req">★</span></label>' +
-        '<select id="aimpStatus">' +
-        '<option value="FD">FD — Full Day Present</option>' +
-        '<option value="HD">HD — Half Day Present</option>' +
-        '<option value="A">A — Absent</option>' +
-        '<option value="H">H — Holiday</option>' +
-        '<option value="WO">WO — Week Off</option>' +
-        '<option value="WFH">WFH — Work From Home</option>' +
-        '</select>' +
-        '</div>' +
-        '<div class="frow">' +
-        '<div class="fgrp"><label>Punch In</label><input type="time" id="aimpIn"></div>' +
-        '<div class="fgrp"><label>Punch Out</label><input type="time" id="aimpOut"></div>' +
-        '</div>' +
-        '<div class="fgrp"><label>Shift</label><input type="text" id="aimpShift" placeholder="e.g. General, Night Shift..."></div>' +
-        '<button class="btn btn-wide" id="btnAimp" onclick="_importAtt()"><i class="fas fa-upload"></i> Import Record</button>' +
-        '</div>' +
-        '<div class="card card-nohover card-sm">' +
-        '<div class="sec-title" style="margin-bottom:12px"><i class="fas fa-info-circle" style="color:var(--I)"></i> Import Guide</div>' +
-        '<div style="font-size:13px;color:var(--tx2);line-height:1.8">' +
-        '<p style="margin-bottom:10px">Use this form to manually add or correct attendance records for any employee.</p>' +
-        '<div style="display:flex;flex-direction:column;gap:8px">' +
-        '<div style="display:flex;gap:10px"><div class="bdg bfd">FD</div><span>Full Day — employee was present all day</span></div>' +
-        '<div style="display:flex;gap:10px"><div class="bdg bhd">HD</div><span>Half Day — employee was present for half the day</span></div>' +
-        '<div style="display:flex;gap:10px"><div class="bdg babs">A</div><span>Absent — employee did not attend</span></div>' +
-        '<div style="display:flex;gap:10px"><div class="bdg bhol">H</div><span>Holiday — company holiday for that day</span></div>' +
-        '<div style="display:flex;gap:10px"><div class="bdg bwo">WO</div><span>Week Off — scheduled weekly off</span></div>' +
-        '</div>' +
-        '</div>' +
-        '</div>' +
-        '</div>';
-    }
-    function _importAtt() {
-      if (!_startSub('btnAimp')) return;
-      var emp = document.getElementById('aimpEmp') ? document.getElementById('aimpEmp').value : '';
-      var date = document.getElementById('aimpDate') ? document.getElementById('aimpDate').value : '';
-      var status = document.getElementById('aimpStatus') ? document.getElementById('aimpStatus').value : 'FD';
-      var pIn = document.getElementById('aimpIn') ? document.getElementById('aimpIn').value : '';
-      var pOut = document.getElementById('aimpOut') ? document.getElementById('aimpOut').value : '';
-      var shift = document.getElementById('aimpShift') ? document.getElementById('aimpShift').value.trim() : '';
-      if (!_req(emp, 'Employee') || !_req(date, 'Date')) { _endSub('btnAimp'); return; }
-      _gas('importAttendanceData', [{ emp_id: emp, date: date, status: status, punch_in: pIn, punch_out: pOut, shift: shift }], function () {
-        _endSub('btnAimp');
-        _toast('Attendance record imported!', 'ok');
-        _addNtf('Attendance imported for ' + date, 'fa-calendar-check', 'var(--Tl)', 'var(--T)');
-      }, function (e) { _endSub('btnAimp'); _toast('Error: ' + e.message, 'err'); });
-    }
-    // Load employee selector for attendance import when tab is visited
-    function _initAimpEmps() {
-      var sel = document.getElementById('aimpEmp');
-      if (!sel || sel.options.length > 1) return;
-      _gas('getDoerList', [], function (doers) {
-        if (!sel) return;
-        sel.innerHTML = '<option value="">-- Select Employee --</option>' +
-          doers.map(function (d) {
-            return '<option value="' + _esc(d.emp_id) + '">' + _esc(d.name) + ' (' + _esc(d.department) + ')</option>';
-          }).join('');
-      }, function () { });
-    }
+
+
+
     function _goALR() { _loadV('leave', 'lreq'); }
 
     /* ══════════════════════════════════════════════════════════
