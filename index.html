@@ -4870,7 +4870,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbwhZnHEld7OQSD12W0Yakyv-pKa2v4tRF8CC5-rPVbmWKiVe1XL0Ri8pMS8R2hbinjibw/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbxuZDr4AefEJtlmW7vmJyf3ZElAwxZmQWT1J9oVInWumM7T0_jCc8bKyj2wEKUldSeteA/exec';
     var _TOKEN  = '';
 
 function _gas(fn, args, onOk, onErr) {
@@ -6628,14 +6628,23 @@ function _loadSetupTasks() {
 
     function _openRegModal() {
       var today = new Date().toISOString().slice(0,10);
-      _modal('Regularization Request',
-        '<div class="form-g">' +
-        '<label>Date</label><input type="date" id="regDate" value="' + today + '" max="' + today + '">' +
-        '<label>Correct In Time</label><input type="time" id="regIn">' +
-        '<label>Correct Out Time</label><input type="time" id="regOut">' +
-        '<label>Reason</label><textarea id="regReason" rows="3" placeholder="Explain reason..."></textarea>' +
+      _openModal(
+        '<i class="fas fa-pen-to-square" style="color:var(--T)"></i> Regularization Request',
+        '<div class="form-g" style="display:flex;flex-direction:column;gap:14px">' +
+        '<div><label style="font-size:11px;font-weight:800;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px">Date</label>' +
+        '<input type="date" id="regDate" value="' + today + '" max="' + today + '" style="width:100%;padding:9px 12px;border:1.5px solid var(--bdr);border-radius:8px;font-size:13px;background:var(--bg);color:var(--tx);outline:none"></div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
+        '<div><label style="font-size:11px;font-weight:800;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px">Check In Time</label>' +
+        '<input type="time" id="regIn" style="width:100%;padding:9px 12px;border:1.5px solid var(--bdr);border-radius:8px;font-size:13px;background:var(--bg);color:var(--tx);outline:none"></div>' +
+        '<div><label style="font-size:11px;font-weight:800;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px">Check Out Time</label>' +
+        '<input type="time" id="regOut" style="width:100%;padding:9px 12px;border:1.5px solid var(--bdr);border-radius:8px;font-size:13px;background:var(--bg);color:var(--tx);outline:none"></div>' +
+        '</div>' +
+        '<div><label style="font-size:11px;font-weight:800;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px">Reason <span style="color:var(--R)">*</span></label>' +
+        '<textarea id="regReason" rows="3" placeholder="Explain reason for regularization..." ' +
+        'style="width:100%;padding:9px 12px;border:1.5px solid var(--bdr);border-radius:8px;font-size:13px;background:var(--bg);color:var(--tx);outline:none;resize:vertical;font-family:inherit"></textarea></div>' +
         '</div>',
-        [{ lbl: 'Submit Request', cls: 'btn-teal', fn: '_submitReg()' }]
+        function() { _submitReg(); },
+        '<i class="fas fa-paper-plane"></i> Submit Request'
       );
     }
 
@@ -6705,10 +6714,23 @@ function _loadSetupTasks() {
     }
 
     function _approveReg(regId, status) {
-      _gas('approveRegularization', [regId, status, ''], function() {
-        _toast(status + ' successfully', 'ok');
-        _loadRegApprovals();
-      }, function(e) { _toast('Failed: ' + e.message, 'err'); });
+      var label = status === 'Approved' ? 'Approve' : 'Reject';
+      var ico   = status === 'Approved' ? 'fa-check-circle' : 'fa-times-circle';
+      var clr   = status === 'Approved' ? 'var(--G)' : 'var(--R)';
+      _openModal(
+        '<i class="fas ' + ico + '" style="color:' + clr + '"></i> ' + label + ' Regularization',
+        '<div><label style="font-size:11px;font-weight:800;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:8px">Remark by Management (optional)</label>' +
+        '<textarea id="regApprRemark" rows="3" placeholder="Enter remark..." style="width:100%;padding:9px 12px;border:1.5px solid var(--bdr);border-radius:8px;font-size:13px;background:var(--bg);color:var(--tx);outline:none;resize:vertical;font-family:inherit"></textarea></div>',
+        function() {
+          var remark = (document.getElementById('regApprRemark') || {}).value || '';
+          _closeModal();
+          _gas('approveRegularization', [regId, status, remark], function() {
+            _toast(status + ' successfully', 'ok');
+            _loadRegApprovals();
+          }, function(e) { _toast('Failed: ' + e.message, 'err'); });
+        },
+        '<i class="fas ' + ico + '"></i> Confirm ' + label
+      );
     }
 
     // Analytics form (manager)
@@ -6724,73 +6746,138 @@ function _loadSetupTasks() {
       var el = document.getElementById('aanaContent');
       if (!el) return;
       el.innerHTML = _skel(4);
-      // Populate dept dropdown from loaded doers
+      // Populate dept dropdown
       var deptSel = document.getElementById('aanaDept');
       if (deptSel && deptSel.options.length <= 1) {
         deptSel.innerHTML = '<option value="All">All Departments</option>' + _getDeptOptions();
       }
       var dept  = (deptSel || {}).value || 'All';
       var month = (document.getElementById('aanaMonth') || {}).value || _currMonth();
-      _gas('getAttendanceStats', [dept, month], function(data) {
-        if (!data) { el.innerHTML = '<div class="te">No analytics data</div>'; return; }
-        var depts = data.dept_breakdown || [];
-        // Calculate working days in month (Mon-Sat, excluding Sundays)
-        var parts = month.split('-');
-        var yr = parseInt(parts[0]), mo = parseInt(parts[1]) - 1;
-        var daysInMonth = new Date(yr, mo + 1, 0).getDate();
-        var workingDays = 0, sundaysInMonth = 0;
-        for (var d = 1; d <= daysInMonth; d++) {
-          var dow = new Date(yr, mo, d).getDay();
-          if (dow === 0) sundaysInMonth++;
-          else workingDays++;
-        }
-        // Holidays from loaded data
-        var holidayCount = (_D.holidays || []).filter(function(h) {
-          return h.date && h.date.substring(0,7) === month;
-        }).length;
-        var netWorkingDays = workingDays - holidayCount;
 
-        var totalPresent = depts.reduce(function(s,d){return s+(d.fd||0);},0);
-        var totalHD = depts.reduce(function(s,d){return s+(d.hd||0);},0);
-        var totalAbsent = depts.reduce(function(s,d){return s+(d.absent||0);},0);
-        var totalRecs = data.total_records || 0;
-        var avgPct = depts.length > 0
-          ? Math.round(depts.reduce(function(s,d){return s+d.present_pct;},0)/depts.length)
+      // Working days calculation (frontend)
+      var parts = month.split('-');
+      var yr = parseInt(parts[0]), mo = parseInt(parts[1]) - 1;
+      var daysInMonth = new Date(yr, mo + 1, 0).getDate();
+      var totalDays = daysInMonth;
+      var sundays = 0;
+      for (var d = 1; d <= daysInMonth; d++) {
+        if (new Date(yr, mo, d).getDay() === 0) sundays++;
+      }
+      var workingDaysNoHol = totalDays - sundays; // Mon-Sat
+      var holidayList = (_D.holidays || []).filter(function(h) {
+        return h.date && h.date.substring(0,7) === month;
+      });
+      var holidayCount = holidayList.length;
+      var netWorkingDays = workingDaysNoHol - holidayCount;
+
+      // Use getMusterGrid to get per-employee accurate data
+      _gas('getMusterGrid', [dept, month], function(res) {
+        res = res || {};
+        var rows  = res.rows || [];
+        var empCount = rows.length;
+
+        // Aggregate across employees
+        var deptAgg = {};
+        rows.forEach(function(r) {
+          var d = r.dept || 'Other';
+          if (!deptAgg[d]) deptAgg[d] = { dept: d, emps: 0, present: 0, hd: 0, absent: 0 };
+          deptAgg[d].emps++;
+          deptAgg[d].present += r.days_present || 0;
+          deptAgg[d].hd      += r.days_hd      || 0;
+          deptAgg[d].absent  += r.days_absent   || 0;
+        });
+
+        var totalPresent = rows.reduce(function(s,r){return s+(r.days_present||0);},0);
+        var totalAbsent  = rows.reduce(function(s,r){return s+(r.days_absent||0);},0);
+        var totalHD      = rows.reduce(function(s,r){return s+(r.days_hd||0);},0);
+        // Avg presence = mean of per-employee pct
+        var avgPct = empCount > 0
+          ? Math.round(rows.reduce(function(s,r){return s+(r.pct||0);},0) / empCount)
           : 0;
+
+        var deptList = Object.keys(deptAgg).sort().map(function(k) {
+          var d = deptAgg[k];
+          var wkg = d.present + d.hd + d.absent;
+          var pct = wkg > 0 ? Math.round((d.present + d.hd*0.5)/wkg*100) : 0;
+          return { dept:d.dept, emps:d.emps, present:d.present, hd:d.hd, absent:d.absent, pct:pct };
+        });
 
         var h = '<div class="krow" style="margin-bottom:18px">' +
           [
-            {lbl:'Avg Presence',   val:avgPct+'%',       c:avgPct>=80?'var(--G)':avgPct>=60?'var(--O)':'var(--R)', ico:'fa-chart-pie'},
-            {lbl:'Working Days',   val:netWorkingDays,   c:'var(--P)',  ico:'fa-calendar-days'},
-            {lbl:'Sundays',        val:sundaysInMonth,   c:'var(--tx2)',ico:'fa-moon'},
-            {lbl:'Holidays',       val:holidayCount,     c:'#4338ca',   ico:'fa-umbrella-beach'},
-            {lbl:'Departments',    val:depts.length,     c:'var(--I)',  ico:'fa-building'},
-            {lbl:'Total Records',  val:totalRecs,        c:'var(--T)',  ico:'fa-database'}
+            {lbl:'Employees',     val:empCount,         c:'var(--P)',  ico:'fa-users'},
+            {lbl:'Working Days',  val:netWorkingDays,   c:'var(--I)',  ico:'fa-calendar-days'},
+            {lbl:'Sundays Off',   val:sundays,          c:'var(--tx2)',ico:'fa-moon'},
+            {lbl:'Holidays',      val:holidayCount,     c:'#4338ca',   ico:'fa-umbrella-beach'},
+            {lbl:'Avg Presence',  val:avgPct+'%',       c:avgPct>=80?'var(--G)':avgPct>=60?'var(--O)':'var(--R)', ico:'fa-chart-pie'},
+            {lbl:'Total Absent',  val:totalAbsent,      c:'var(--R)',  ico:'fa-calendar-times'}
           ].map(function(k){
-            return '<div class="kpi" style="--kc:'+k.c+'"><div class="kpi-ico"><i class="fas '+k.ico+'"></i></div><div class="kpi-val">'+k.val+'</div><div class="kpi-lbl">'+k.lbl+'</div></div>';
+            return '<div class="kpi" style="--kc:'+k.c+'">'+
+              '<div class="kpi-ico"><i class="fas '+k.ico+'"></i></div>'+
+              '<div class="kpi-val">'+k.val+'</div>'+
+              '<div class="kpi-lbl">'+k.lbl+'</div></div>';
           }).join('') + '</div>';
 
-        if (depts.length) {
+        // Calendar context
+        h += '<div style="padding:10px 14px;background:var(--sur2);border-radius:8px;border:1px solid var(--bdr);margin-bottom:16px;font-size:12px;color:var(--tx2)">' +
+          '<i class="fas fa-info-circle" style="color:var(--P)"></i> ' +
+          '<b>' + month + '</b>: ' + totalDays + ' total days — ' + sundays + ' Sundays — ' + holidayCount + ' holidays = ' +
+          '<b style="color:var(--P)">' + netWorkingDays + ' net working days</b>' +
+          (holidayList.length ? ' &nbsp;|&nbsp; Holidays: ' + holidayList.map(function(h){return _esc(h.name||'');}).join(', ') : '') +
+          '</div>';
+
+        if (deptList.length) {
           h += '<div class="card card-nohover card-sm"><div class="sec-title" style="margin-bottom:14px">' +
-            '<i class="fas fa-building" style="color:var(--P)"></i> Department Breakdown' +
-            '<span style="font-size:11px;font-weight:600;color:var(--tx3);margin-left:10px">Working days in month: ' + netWorkingDays + ' (excl. ' + sundaysInMonth + ' Sundays + ' + holidayCount + ' holidays)</span>' +
-            '</div>' +
+            '<i class="fas fa-building" style="color:var(--P)"></i> Department-wise Attendance</div>' +
             '<div class="tw"><table><thead><tr>' +
-            '<th>Department</th><th style="text-align:center">Present</th><th style="text-align:center">Half Day</th>' +
-            '<th style="text-align:center">Absent</th><th style="text-align:center">Presence %</th><th>Progress</th>' +
+            '<th>Department</th>' +
+            '<th style="text-align:center">Employees</th>' +
+            '<th style="text-align:center;color:var(--G)">Present Days</th>' +
+            '<th style="text-align:center;color:var(--O)">Half Days</th>' +
+            '<th style="text-align:center;color:var(--R)">Absent Days</th>' +
+            '<th style="text-align:center">Presence %</th>' +
+            '<th style="min-width:120px">Progress</th>' +
             '</tr></thead><tbody>' +
-            depts.map(function(d){
-              // Absent = working days - present - half day (per employee tracked)
-              var clr = d.present_pct>=80?'var(--G)':d.present_pct>=60?'var(--O)':'var(--R)';
+            deptList.map(function(d){
+              var clr = d.pct>=80?'var(--G)':d.pct>=60?'var(--O)':'var(--R)';
               return '<tr>' +
-                '<td style="font-weight:800">'+_esc(d.dept)+'</td>' +
-                '<td style="text-align:center;color:var(--G);font-weight:800">'+d.fd+'</td>' +
-                '<td style="text-align:center;color:var(--O);font-weight:800">'+d.hd+'</td>' +
-                '<td style="text-align:center;color:var(--R);font-weight:800">'+d.absent+'</td>' +
-                '<td style="text-align:center;font-weight:900;color:'+clr+'">'+d.present_pct+'%</td>' +
-                '<td style="min-width:120px"><div class="pbar-wrap"><div class="pbar" style="width:'+d.present_pct+'%;background:'+clr+'"></div></div></td>' +
+                '<td style="font-weight:800">' + _esc(d.dept) + '</td>' +
+                '<td style="text-align:center;font-weight:700">' + d.emps + '</td>' +
+                '<td style="text-align:center;color:var(--G);font-weight:800">' + d.present + '</td>' +
+                '<td style="text-align:center;color:var(--O);font-weight:800">' + d.hd + '</td>' +
+                '<td style="text-align:center;color:var(--R);font-weight:800">' + d.absent + '</td>' +
+                '<td style="text-align:center;font-weight:900;color:'+clr+'">' + d.pct + '%</td>' +
+                '<td><div class="pbar-wrap"><div class="pbar" style="width:'+d.pct+'%;background:'+clr+'"></div></div></td>' +
                 '</tr>';
             }).join('') + '</tbody></table></div></div>';
+
+          // Per-employee detail table
+          if (rows.length) {
+            h += '<div class="card card-nohover card-sm" style="margin-top:16px"><div class="sec-title" style="margin-bottom:14px">' +
+              '<i class="fas fa-users" style="color:var(--P)"></i> Employee-wise Summary</div>' +
+              '<div class="tw"><table><thead><tr>' +
+              '<th>Employee</th><th>Dept</th>' +
+              '<th style="text-align:center;color:var(--G)">Present</th>' +
+              '<th style="text-align:center;color:var(--O)">Half Day</th>' +
+              '<th style="text-align:center;color:var(--R)">Absent</th>' +
+              '<th style="text-align:center">Working Days</th>' +
+              '<th style="text-align:center">Presence %</th>' +
+              '<th>Progress</th>' +
+              '</tr></thead><tbody>' +
+              rows.map(function(r){
+                var pct = r.pct || 0;
+                var clr = pct>=80?'var(--G)':pct>=60?'var(--O)':'var(--R)';
+                return '<tr>' +
+                  '<td style="font-weight:700">' + _esc(r.emp_name||'') + '</td>' +
+                  '<td><span class="bdg" style="background:var(--Pl);color:var(--P)">' + _esc(r.dept||'') + '</span></td>' +
+                  '<td style="text-align:center;color:var(--G);font-weight:800">' + (r.days_present||0) + '</td>' +
+                  '<td style="text-align:center;color:var(--O);font-weight:800">' + (r.days_hd||0) + '</td>' +
+                  '<td style="text-align:center;color:var(--R);font-weight:800">' + (r.days_absent||0) + '</td>' +
+                  '<td style="text-align:center;font-weight:700">' + (r.working_days||0) + '</td>' +
+                  '<td style="text-align:center;font-weight:900;color:'+clr+'">' + pct + '%</td>' +
+                  '<td style="min-width:100px"><div class="pbar-wrap"><div class="pbar" style="width:'+pct+'%;background:'+clr+'"></div></div></td>' +
+                  '</tr>';
+              }).join('') + '</tbody></table></div></div>';
+          }
         } else {
           h += '<div class="te"><i class="fas fa-calendar-times"></i> No attendance data for ' + month + '</div>';
         }
@@ -6803,7 +6890,8 @@ function _loadSetupTasks() {
         '<label>Month:</label><input type="month" id="amyMonth" value="' + _currMonth() + '">' +
         '<button class="btn btn-sm" onclick="_loadMyAtt()"><i class="fas fa-search"></i> Load</button>' +
         '<div class="fbar-spacer"></div>' +
-        '<button class="btn btn-outline btn-sm" onclick="_exportAtt()"><i class="fas fa-download"></i> Export CSV</button>' +
+        '<button class="btn btn-outline btn-sm" onclick="_D.myAttendance=null;_loadMyAtt()" title="Refresh attendance data">' +
+        '<i class="fas fa-rotate-right"></i> Refresh</button>' +
         '</div><div id="amySum"></div><div id="amyTable"></div>';
     }
     function _loadMyAtt() {
@@ -7024,74 +7112,117 @@ function _loadSetupTasks() {
       if (!_isManager()) return;
       var month = (document.getElementById('mustMonth') || {}).value || _currMonth();
       var dept  = (document.getElementById('mustDept')  || {}).value || 'All';
-      var el = document.getElementById('mustTable');
-      var kEl = document.getElementById('mustKrow');
+      var el    = document.getElementById('mustTable');
+      var kEl   = document.getElementById('mustKrow');
       if (!el) return;
-      el.innerHTML = _skel(4);
+      el.innerHTML  = _skel(4);
       if (kEl) kEl.innerHTML = [1,2,3,4].map(function(){return '<div class="sk sk-h6" style="border-radius:14px"></div>';}).join('');
-      _gas('getMusterReport', [dept, month], function(rows) {
-        rows = rows || [];
-        // KPIs
+
+      _gas('getMusterGrid', [dept, month], function(res) {
+        res   = res || {};
+        var rows  = res.rows  || [];
+        var dates = res.dates || [];
+        var hols  = res.holidays || [];
+
+        // ── KPIs ──────────────────────────────────────────────────────────
         if (kEl) {
-          var totFD=0,totHD=0,totAbs=0,totWO=0;
-          rows.forEach(function(r){totFD+=r.full_days||0;totHD+=r.half_days||0;totAbs+=r.absent||0;totWO+=r.week_off||0;});
-          var wkg=totFD+totHD+totAbs;
-          var avgPct=wkg>0?Math.round((totFD+totHD*0.5)/wkg*100):0;
-          kEl.innerHTML=[
-            {lbl:'Employees',val:rows.length,c:'var(--P)',ico:'fa-users'},
-            {lbl:'Present Days',val:totFD,c:'var(--G)',ico:'fa-calendar-check'},
-            {lbl:'Absent Days',val:totAbs,c:'var(--R)',ico:'fa-calendar-times'},
-            {lbl:'Avg Presence',val:avgPct+'%',c:avgPct>=80?'var(--G)':avgPct>=60?'var(--O)':'var(--R)',ico:'fa-chart-pie'}
+          var totP=0, totA=0, totHD=0, empCount=rows.length;
+          rows.forEach(function(r){ totP+=r.days_present||0; totA+=r.days_absent||0; totHD+=r.days_hd||0; });
+          var wkg = totP + totA + totHD;
+          var avgPct = wkg > 0 ? Math.round((totP + totHD*0.5)/wkg*100) : 0;
+          kEl.innerHTML = [
+            {lbl:'Employees',    val:empCount, c:'var(--P)', ico:'fa-users'},
+            {lbl:'Present Days', val:totP,     c:'var(--G)', ico:'fa-calendar-check'},
+            {lbl:'Absent Days',  val:totA,     c:'var(--R)', ico:'fa-calendar-times'},
+            {lbl:'Avg Presence', val:avgPct+'%', c:avgPct>=80?'var(--G)':avgPct>=60?'var(--O)':'var(--R)', ico:'fa-chart-pie'}
           ].map(function(k){
-            return '<div class="kpi" style="--kc:'+k.c+'"><div class="kpi-ico"><i class="fas '+k.ico+'"></i></div><div class="kpi-val">'+k.val+'</div><div class="kpi-lbl">'+k.lbl+'</div></div>';
+            return '<div class="kpi" style="--kc:'+k.c+'">'+
+              '<div class="kpi-ico"><i class="fas '+k.ico+'"></i></div>'+
+              '<div class="kpi-val">'+k.val+'</div>'+
+              '<div class="kpi-lbl">'+k.lbl+'</div></div>';
           }).join('');
         }
-        _renderMuster(rows, month);
+
+        _renderMuster(rows, dates, hols, month);
       }, function(e) {
         if (el) el.innerHTML = '<div class="te"><i class="fas fa-exclamation-triangle"></i> Error: ' + _esc(e.message) + '</div>';
       });
     }
-    function _renderMuster(rows, month) {
+
+    function _renderMuster(rows, dates, hols, month) {
       var el = document.getElementById('mustTable');
       if (!el) return;
-      if (!rows || !rows.length) { el.innerHTML = '<div class="te"><i class="fas fa-table"></i>No muster data found</div>'; return; }
+      if (!rows || !rows.length) {
+        el.innerHTML = '<div class="te"><i class="fas fa-table"></i> No attendance records found for ' + month + '</div>';
+        return;
+      }
 
-      // Get day columns
-      var allKeys  = Object.keys(rows[0]);
-      var dateCols = allKeys.filter(function(k) { return k !== 'emp_id' && k !== 'emp_name' && k !== 'department' && k !== 'pct'; });
+      var holSet = {};
+      (hols || []).forEach(function(d){ holSet[d] = true; });
+      var dowMap   = ['S','M','T','W','T','F','S'];
+      var dowFull  = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
-      // Day-of-week labels
-      var yr = parseInt((month||'').split('-')[0]);
-      var mo = parseInt((month||'').split('-')[1]) - 1;
-      var dowMap = ['S','M','T','W','T','F','S'];
+      // Status display map
+      function cellHtml(v, date) {
+        var dow = new Date(date + 'T00:00:00').getDay();
+        var isHol = holSet[date];
+        var display, bg, fc;
+        if (v === 'P' || v === 'FD') { display='P'; bg='rgba(47,158,68,.15)'; fc='var(--G)'; }
+        else if (v === 'HD')         { display='HD'; bg='rgba(217,119,6,.15)'; fc='var(--O)'; }
+        else if (v === 'A')          { display='A'; bg='rgba(224,49,49,.15)'; fc='var(--R)'; }
+        else if (v === 'H')          { display='H'; bg='rgba(67,56,202,.12)'; fc='#4338ca'; }
+        else if (v === 'WO' || dow===0) { display=''; bg='rgba(148,163,184,.08)'; fc='var(--tx4)'; }
+        else if (isHol)              { display='H'; bg='rgba(67,56,202,.12)'; fc='#4338ca'; }
+        else                         { display=''; bg='transparent'; fc='var(--tx4)'; }
+        return '<td class="mst-cell" style="background:'+bg+';color:'+fc+';font-size:11px;font-weight:800">' + (display||'') + '</td>';
+      }
 
-      var html =
-        '<div style="margin-bottom:10px;color:var(--tx2);font-size:13px"><i class="fas fa-users"></i> <b>' + rows.length + '</b> employees · <b>' + dateCols.length + '</b> days</div>' +
-        '<div style="overflow-x:auto"><table class="muster-tbl"><thead><tr>' +
+      var html = '<div style="margin-bottom:8px;font-size:12px;color:var(--tx2)">' +
+        '<i class="fas fa-users"></i> <b>' + rows.length + '</b> employees &nbsp;·&nbsp; <b>' + dates.length + '</b> days' +
+        (hols && hols.length ? ' &nbsp;·&nbsp; <i class="fas fa-umbrella-beach" style="color:#4338ca"></i> <b>' + hols.length + '</b> holidays' : '') +
+        '</div>' +
+        '<div style="overflow-x:auto"><table class="muster-tbl" id="mstrGridTable"><thead><tr>' +
         '<th class="mst-emp">EMPLOYEE</th>' +
-        '<th class="mst-pct">%</th>' +
-        dateCols.map(function(d) {
+        '<th class="mst-pct" style="min-width:42px">P</th>' +
+        '<th class="mst-pct" style="min-width:42px;color:var(--R)">A</th>' +
+        '<th class="mst-pct" style="min-width:38px">%</th>' +
+        dates.map(function(d) {
           var day = parseInt(d.split('-').pop());
-          var dow = dowMap[new Date(yr, mo, day).getDay()];
-          return '<th class="mst-day"><div>' + day + '</div><div style="font-size:9px;opacity:.7">' + dow + '</div></th>';
+          var dow = new Date(d + 'T00:00:00').getDay();
+          var isHol = holSet[d];
+          var bg = dow === 0 ? 'rgba(148,163,184,.1)' : isHol ? 'rgba(67,56,202,.08)' : '';
+          return '<th class="mst-day" style="background:'+bg+'" title="'+dowFull[dow]+(isHol?' (Holiday)':'')+'">'+
+            '<div style="font-weight:700">'+day+'</div>'+
+            '<div style="font-size:9px;opacity:.6">'+dowMap[dow]+'</div></th>';
         }).join('') +
         '</tr></thead><tbody>' +
         rows.map(function(r) {
-          var presCount = dateCols.filter(function(d) { var v = r[d]; return v === 'P' || v === 'FD'; }).length;
-          var pct = dateCols.length ? Math.round(presCount / dateCols.length * 100) : 0;
-          return '<tr>' +
-            '<td class="mst-emp"><div style="font-weight:700">' + _esc(r.emp_name||'') + '</div><div style="font-size:11px;color:var(--tx3)">' + _esc(r.department||'') + '</div></td>' +
-            '<td class="mst-pct" style="color:' + (pct>=80?'var(--G)':pct>=50?'var(--O)':'var(--R)') + '">' + pct + '%</td>' +
-            dateCols.map(function(d) {
-              var v = String(r[d] || '').trim();
-              var clr = v==='P'||v==='FD' ? 'var(--G)' : v==='A' ? 'var(--R)' : v==='HD' ? 'var(--O)' : v==='H' ? '#4338ca' : v==='WO'||v==='WE' ? 'var(--tx3)' : 'var(--tx3)';
-              return '<td class="mst-cell" style="color:' + clr + '">' + (v||'—') + '</td>';
-            }).join('') +
+          var pct = r.pct || 0;
+          var pClr = pct>=80?'var(--G)':pct>=60?'var(--O)':'var(--R)';
+          return '<tr class="mstr-row">' +
+            '<td class="mst-emp">' +
+            '<div style="font-weight:700;font-size:12px">' + _esc(r.emp_name||'') + '</div>' +
+            '<div style="font-size:10px;color:var(--tx3)">' + _esc(r.dept||'') + '</div>' +
+            '</td>' +
+            '<td class="mst-pct" style="color:var(--G);font-weight:800">' + (r.days_present||0) + '</td>' +
+            '<td class="mst-pct" style="color:var(--R);font-weight:800">' + (r.days_absent||0) + '</td>' +
+            '<td class="mst-pct" style="color:'+pClr+';font-weight:900">' + pct + '%</td>' +
+            dates.map(function(d) { return cellHtml(r[d], d); }).join('') +
             '</tr>';
         }).join('') +
         '</tbody></table></div>';
 
       el.innerHTML = html;
+      _D.musterData = rows;
+    }
+
+    function _filterMuster(q) {
+      q = (q || '').toLowerCase().trim();
+      var rows = document.querySelectorAll('#mstrGridTable tbody tr.mstr-row');
+      rows.forEach(function(r) {
+        var txt = (r.cells[0] ? r.cells[0].textContent : '').toLowerCase();
+        r.style.display = (!q || txt.indexOf(q) >= 0) ? '' : 'none';
+      });
     }
 
 
@@ -9094,11 +9225,25 @@ function _loadSetupTasks() {
     }
 
     function _approveLeave(requestId, status) {
-      _gas('approveLeaveRequest', [requestId, status], function () {
-        _toast('Leave ' + status.toLowerCase() + '!', status === 'Approved' ? 'ok' : 'warn');
-        _addNtf('Leave request ' + status.toLowerCase(), status === 'Approved' ? 'fa-check-circle' : 'fa-times-circle', status === 'Approved' ? 'var(--Gl)' : 'var(--Rl)', status === 'Approved' ? 'var(--G)' : 'var(--R)');
-        _loadLeaveApprovals();
-      }, function (e) { _toast('Error: ' + e.message, 'err'); });
+      var label = status === 'Approved' ? 'Approve' : 'Reject';
+      var ico   = status === 'Approved' ? 'fa-check-circle' : 'fa-times-circle';
+      var clr   = status === 'Approved' ? 'var(--G)' : 'var(--R)';
+      _openModal(
+        '<i class="fas ' + ico + '" style="color:' + clr + '"></i> ' + label + ' Leave Request',
+        '<div><label style="font-size:11px;font-weight:800;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:8px">Remark for Employee (optional)</label>' +
+        '<textarea id="lvRemarkEl" rows="3" placeholder="Enter remark..." style="width:100%;padding:9px 12px;border:1.5px solid var(--bdr);border-radius:8px;font-size:13px;background:var(--bg);color:var(--tx);outline:none;resize:vertical;font-family:inherit"></textarea></div>',
+        function() {
+          var remark = (document.getElementById('lvRemarkEl') || {}).value || '';
+          _closeModal();
+          _gas('approveLeaveRequest', [requestId, status, remark], function() {
+            _toast('Leave ' + status.toLowerCase() + '!', status === 'Approved' ? 'ok' : 'warn');
+            _addNtf('Leave ' + status.toLowerCase(), status === 'Approved' ? 'fa-check-circle' : 'fa-times-circle',
+              status === 'Approved' ? 'var(--Gl)' : 'var(--Rl)', status === 'Approved' ? 'var(--G)' : 'var(--R)');
+            _loadLeaveApprovals();
+          }, function(e) { _toast('Error: ' + e.message, 'err'); });
+        },
+        '<i class="fas ' + ico + '"></i> Confirm ' + label
+      );
     }
 
     function _openLeaveReq() {
