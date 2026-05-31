@@ -4675,6 +4675,18 @@
     function _isOwner() {
       return _U && _U.role === 'OWNER';
     }
+    // Clean total_hours — strips GAS Date object serialization (e.g. "Sat Dec 30 1899...")
+    function _cleanHours(v) {
+      var s = String(v || '').trim();
+      if (!s || s === '-') return '—';
+      // GAS Date object becomes "Sat Dec 30 1899 HH:MM:SS GMT..." — contains 4-digit year
+      if (/\d{4}/.test(s) && s.length > 10) {
+        // Try extracting HH:MM from it
+        var m = s.match(/(\d{1,2}:\d{2})/);
+        return m ? m[1] : '—';
+      }
+      return s;
+    }
     // Returns <option> tags for all unique departments from loaded doer/emp list
     function _getDeptOptions() {
       var depts = [];
@@ -4851,7 +4863,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbzoA3NkBwxc1rvCrYJo1L4UHEqSJu-_FERc7FOAV1TeACT5KwwmlhaMEsbpjkLx3KP5SA/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbzvJkVn4vNaO11V_D_Mx7pthRZ3heKFfozGtNF2HiXdoqS4mxOvAXox0OohEM4EMErtkw/exec';
     var _TOKEN  = '';
 
 function _gas(fn, args, onOk, onErr) {
@@ -6556,11 +6568,11 @@ function _loadSetupTasks() {
 
       if (at === 'amy')  _loadMyAtt();
       else if (at === 'alv')  _loadLeave();
-      else if (at === 'alr')  _loadMyLeaveReqs();
+      else if (at === 'alr')  setTimeout(_loadMyLeaveReqs, 50);
       else if (at === 'areg') _loadMyRegularizations();
       else if (at === 'ala'   && _isManager()) _loadLeaveApprovals();
       else if (at === 'arega' && _isManager()) _loadRegApprovals();
-      else if (at === 'amust' && _isManager()) _loadMuster();
+      else if (at === 'amust' && _isManager()) _loadMustTab();
       else if (at === 'aana'  && _isManager()) _loadAttAnalytics();
       if (_ST) setTimeout(function () { _switchTab(_ST); }, 30);
     }
@@ -6667,24 +6679,41 @@ function _loadSetupTasks() {
       var el = document.getElementById('aanaContent');
       if (!el) return;
       el.innerHTML = _skel(4);
-      var dept  = (document.getElementById('aanaDept')  || {}).value || '';
+      var dept  = (document.getElementById('aanaDept')  || {}).value || 'All';
       var month = (document.getElementById('aanaMonth') || {}).value || _currMonth();
-      _gas('getAttendanceAnalytics', [dept, month], function(data) {
-        if (!data || data.error) { el.innerHTML = '<div class="te">No analytics data</div>'; return; }
-        var h = '<div class="kpi-grid">';
-        var cards = [
-          { lbl: 'Total Employees', val: data.totalEmployees || 0, ico: 'fa-users', c: 'var(--P)' },
-          { lbl: 'Avg Attendance %', val: (data.avgAttendance || 0) + '%', ico: 'fa-chart-line', c: 'var(--G)' },
-          { lbl: 'Total Present Days', val: data.totalPresent || 0, ico: 'fa-calendar-check', c: 'var(--T)' },
-          { lbl: 'Absent Days', val: data.totalAbsent || 0, ico: 'fa-calendar-xmark', c: 'var(--R)' }
-        ];
-        cards.forEach(function(c) {
-          h += '<div class="kpi-card"><div class="kpi-ico" style="background:' + c.c + '20;color:' + c.c + '"><i class="fas ' + c.ico + '"></i></div>' +
-               '<div class="kpi-val">' + c.val + '</div><div class="kpi-lbl">' + c.lbl + '</div></div>';
-        });
-        h += '</div>';
+      _gas('getAttendanceStats', [dept, month], function(data) {
+        if (!data) { el.innerHTML = '<div class="te">No analytics data</div>'; return; }
+        var depts = data.dept_breakdown || [];
+        var avgPct = depts.length > 0
+          ? Math.round(depts.reduce(function(s,d){return s+d.present_pct;},0)/depts.length)
+          : 0;
+        var totalRecs = data.total_records || 0;
+        var h = '<div class="krow" style="margin-bottom:18px">' +
+          [
+            {lbl:'Avg Presence', val:avgPct+'%', c:avgPct>=80?'var(--G)':avgPct>=60?'var(--O)':'var(--R)', ico:'fa-chart-pie'},
+            {lbl:'Departments',  val:depts.length, c:'var(--P)', ico:'fa-building'},
+            {lbl:'Records',      val:totalRecs,    c:'var(--I)', ico:'fa-database'}
+          ].map(function(k){
+            return '<div class="kpi" style="--kc:'+k.c+'"><div class="kpi-ico"><i class="fas '+k.ico+'"></i></div><div class="kpi-val">'+k.val+'</div><div class="kpi-lbl">'+k.lbl+'</div></div>';
+          }).join('') + '</div>';
+        if (depts.length) {
+          h += '<div class="card card-nohover card-sm"><div class="sec-title" style="margin-bottom:14px"><i class="fas fa-building" style="color:var(--P)"></i> Department Breakdown</div>' +
+            '<div class="tw"><table><thead><tr><th>Department</th><th style="text-align:center">Present</th><th style="text-align:center">Half Day</th><th style="text-align:center">Absent</th><th style="text-align:center">Presence %</th><th>Progress</th></tr></thead><tbody>' +
+            depts.map(function(d){
+              var clr = d.present_pct>=80?'var(--G)':d.present_pct>=60?'var(--O)':'var(--R)';
+              return '<tr><td style="font-weight:700">'+_esc(d.dept)+'</td>' +
+                '<td style="text-align:center;color:var(--G);font-weight:800">'+d.fd+'</td>' +
+                '<td style="text-align:center;color:var(--O);font-weight:800">'+d.hd+'</td>' +
+                '<td style="text-align:center;color:var(--R);font-weight:800">'+d.absent+'</td>' +
+                '<td style="text-align:center;font-weight:900;color:'+clr+'">'+d.present_pct+'%</td>' +
+                '<td style="min-width:100px"><div class="pbar-wrap"><div class="pbar" style="width:'+d.present_pct+'%;background:'+clr+'"></div></div></td>' +
+                '</tr>';
+            }).join('') + '</tbody></table></div></div>';
+        } else {
+          h += '<div class="te"><i class="fas fa-calendar-times"></i> No attendance data for '+month+'</div>';
+        }
         el.innerHTML = h;
-      }, function() { el.innerHTML = '<div class="te">Failed to load analytics</div>'; });
+      }, function(e) { el.innerHTML = '<div class="te">Error: '+_esc(e.message)+'</div>'; });
     }
 
     function _amyForm() {
@@ -6739,13 +6768,13 @@ function _loadSetupTasks() {
         '<th>Date</th><th>Day</th><th>In</th><th>Out</th><th>Hours</th><th>Status</th>' +
         '</tr></thead><tbody>' +
         recs.map(function(r) {
-          var stClr = r.status === 'Present' || r.status === 'P' ? 'var(--G)' : r.status === 'Absent' || r.status === 'A' ? 'var(--R)' : r.status === 'HD' ? 'var(--O)' : 'var(--tx2)';
+          var stClr = (r.status==='Present'||r.status==='P'||r.status==='FD') ? 'var(--G)' : (r.status==='Absent'||r.status==='A') ? 'var(--R)' : (r.status==='HD'||r.status==='Half Day') ? 'var(--O)' : (r.status==='Late'||r.status==='WFH') ? 'var(--V)' : 'var(--tx2)';
           return '<tr>' +
             '<td style="font-weight:700">' + _fmtDate(r.date) + '</td>' +
             '<td style="color:var(--tx2);font-weight:600">' + _esc(r.day||r.day_name||'') + '</td>' +
             '<td style="font-weight:700;color:var(--G)">' + _esc(r.check_in||r.punch_in||'—') + '</td>' +
             '<td style="font-weight:700;color:var(--R)">' + _esc(r.check_out||r.punch_out||'—') + '</td>' +
-            '<td style="color:var(--P);font-weight:800">' + _esc(r.total_hours||'—') + '</td>' +
+            '<td style="color:var(--P);font-weight:800">' + _cleanHours(r.total_hours) + '</td>' +
             '<td><span style="font-weight:800;color:' + stClr + '">' + _esc(r.status||'—') + '</span></td>' +
             '</tr>';
         }).join('') +
@@ -6794,6 +6823,20 @@ function _loadSetupTasks() {
             '</div>';
         }).join('') +
         '</div>';
+      _leaveSummaryExtra(r, el);
+    }
+    function _leaveSummaryExtra(r, el) {
+      // Append pending/approved/rejected badges below the grid
+      var extra = document.createElement('div');
+      extra.style.cssText = 'display:flex;gap:12px;flex-wrap:wrap;margin-top:14px;padding-top:14px;border-top:1px solid var(--bdr)';
+      [
+        ['Approved Days', r.total_approved||0, 'var(--G)'],
+        ['Pending Requests', r.total_pending||0, 'var(--O)'],
+        ['Rejected', r.total_rejected||0, 'var(--R)']
+      ].forEach(function(k) {
+        extra.innerHTML += '<div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700"><span style="width:10px;height:10px;border-radius:50%;background:'+k[2]+';display:inline-block"></span><span style="color:var(--tx2)">'+k[0]+':</span><span style="color:'+k[2]+';font-weight:900">'+k[1]+'</span></div>';
+      });
+      el.appendChild(extra);
     }
     function _alrForm() {
       return '<div style="display:grid;grid-template-columns:340px 1fr;gap:20px">' +
@@ -6883,6 +6926,18 @@ function _loadSetupTasks() {
     }
 
 
+    function _loadMustTab() {
+      var month = (document.getElementById('mustMonth') || {}).value || _currMonth();
+      var dept  = (document.getElementById('mustDept')  || {}).value || 'All';
+      var el = document.getElementById('mustTable');
+      if (el) el.innerHTML = _skel(4);
+      _gas('getMusterReport', [dept, month], function(rows) {
+        _renderMuster(rows || [], month);
+      }, function(e) {
+        var el2 = document.getElementById('mustTable');
+        if (el2) el2.innerHTML = '<div class="te">Error: ' + _esc(e.message) + '</div>';
+      });
+    }
     function _renderMuster(rows, month) {
       var el = document.getElementById('mustTable');
       if (!el) return;
