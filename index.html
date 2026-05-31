@@ -4407,6 +4407,9 @@
           <div class="nv" id="nv-attend" onclick="_loadV('attend')">
             <i class="fas fa-calendar-check"></i> Attendance
           </div>
+          <div class="nv" id="nv-leave" onclick="_loadV('leave')">
+            <i class="fas fa-umbrella-beach"></i> Leave Management
+          </div>
           <div class="nv" id="nv-holcal" onclick="_loadV('holcal')">
             <i class="fas fa-calendar-days"></i> Holiday Calendar
           </div>
@@ -4870,7 +4873,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbxuZDr4AefEJtlmW7vmJyf3ZElAwxZmQWT1J9oVInWumM7T0_jCc8bKyj2wEKUldSeteA/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbzX1cAn7Af__t65rRlDYvQkT0nveFRqM0LgZMZ2rpCT2qyRgrpmf9dK0ZG02XtlLjaLSQ/exec';
     var _TOKEN  = '';
 
 function _gas(fn, args, onOk, onErr) {
@@ -6654,11 +6657,17 @@ function _loadSetupTasks() {
       var outT   = (document.getElementById('regOut')    || {}).value || '';
       var reason = (document.getElementById('regReason') || {}).value.trim() || '';
       if (!date || !reason) { _toast('Date and reason required', 'err'); return; }
+      // Disable confirm button to prevent double-submit
+      var btns = document.querySelectorAll('.modal-footer .btn, #modalConfirm');
+      btns.forEach(function(b){ b.disabled = true; b.style.opacity = '0.6'; });
       _gas('requestRegularization', [{ date: date, req_in: inT, req_out: outT, reason: reason }], function(r) {
         _closeModal();
-        _toast('Regularization request submitted', 'ok');
+        _toast('Regularization request submitted successfully', 'ok');
         _loadMyRegularizations();
-      }, function(e) { _toast('Failed: ' + e.message, 'err'); });
+      }, function(e) {
+        btns.forEach(function(b){ b.disabled = false; b.style.opacity = ''; });
+        _toast('Failed: ' + e.message, 'err');
+      });
     }
 
     // Reg. Approvals form (manager)
@@ -6736,12 +6745,28 @@ function _loadSetupTasks() {
     // Analytics form (manager)
     function _aanaForm() {
       return '<div class="fbar">' +
-        '<label>Dept:</label><select id="aanaDept"><option value="">All Departments</option></select>' +
+        '<label>Dept:</label>' +
+        '<select id="aanaDept" style="min-width:140px" onchange="_loadAttAnalytics()">' +
+        '<option value="All">All Departments</option>' +
+        _getDeptOptions() +
+        '</select>' +
         '<label>Month:</label><input type="month" id="aanaMonth" value="' + _currMonth() + '">' +
         '<button class="btn btn-sm" onclick="_loadAttAnalytics()"><i class="fas fa-search"></i> Load</button>' +
+        '<div class="fbar-spacer"></div>' +
+        '<input type="text" id="aanaEmpSearch" placeholder="Search employee..." ' +
+        'oninput="_filterAnaEmps(this.value)" ' +
+        'style="padding:7px 12px;border:1.5px solid var(--bdr);border-radius:8px;font-size:12px;background:var(--bg);color:var(--tx);outline:none;width:170px">' +
         '</div><div id="aanaContent">' + _skel(4) + '</div>';
     }
 
+    function _filterAnaEmps(q) {
+      q = (q || '').toLowerCase().trim();
+      var rows = document.querySelectorAll('#anaEmpTable tbody tr');
+      rows.forEach(function(r) {
+        var txt = (r.cells[0] ? r.cells[0].textContent : '').toLowerCase();
+        r.style.display = (!q || txt.indexOf(q) >= 0) ? '' : 'none';
+      });
+    }
     function _loadAttAnalytics() {
       var el = document.getElementById('aanaContent');
       if (!el) return;
@@ -6854,7 +6879,7 @@ function _loadSetupTasks() {
           if (rows.length) {
             h += '<div class="card card-nohover card-sm" style="margin-top:16px"><div class="sec-title" style="margin-bottom:14px">' +
               '<i class="fas fa-users" style="color:var(--P)"></i> Employee-wise Summary</div>' +
-              '<div class="tw"><table><thead><tr>' +
+              '<div class="tw"><table id="anaEmpTable"><thead><tr>' +
               '<th>Employee</th><th>Dept</th>' +
               '<th style="text-align:center;color:var(--G)">Present</th>' +
               '<th style="text-align:center;color:var(--O)">Half Day</th>' +
@@ -6928,7 +6953,7 @@ function _loadSetupTasks() {
         ].map(function(k) {
           return '<div class="att-kpi"><div class="val" style="color:' + k[2] + '">' + (s[k[1]] || 0) + '</div><div class="lbl">' + k[0] + '</div></div>';
         }).join('') +
-        '<button class="btn btn-xs btn-outline" style="margin-left:auto" onclick="_D.myAttendance=null;_loadMyAtt()"><i class="fas fa-rotate-right"></i></button>' +
+
         '</div>';
 
       var recs = (data && data.records) || [];
@@ -6964,13 +6989,11 @@ function _loadSetupTasks() {
       var month = document.getElementById('alvMonth') ? document.getElementById('alvMonth').value : _currMonth();
       var el = document.getElementById('alvRes');
       if (!el) return;
-      // Use cache for current month
-      if (month === _currMonth() && _D.leaveBalance && Object.keys(_D.leaveBalance).length) {
-        _renderLeaveBalance(_D.leaveBalance, el); return;
-      }
+      // Always fresh — no cache, so approved/rejected status always reflects latest
       el.innerHTML = _skel(1, 'sk-h6');
       _gas('getLeaveSummary', [_U.emp_code, month], function(rows) {
         if (!rows || !rows.length) { el.innerHTML = '<div class="te"><i class="fas fa-calendar-times"></i> No leave records for this month</div>'; return; }
+        _D.leaveBalance = rows[0]; // update cache for other widgets
         _renderLeaveBalance(rows[0], el);
       }, function(e) { el.innerHTML = '<div class="te">Error: ' + _esc(e.message) + '</div>'; });
     }
@@ -7051,13 +7074,17 @@ function _loadSetupTasks() {
       el.innerHTML = _skel(2, 'sk-h4');
       _gas('getLeaveRequests', [{}], function (reqs) {
         if (!reqs || !reqs.length) { el.innerHTML = '<div class="te"><i class="fas fa-inbox"></i>No leave requests found</div>'; return; }
-        el.innerHTML = '<div class="table-card"><div class="tw"><table><thead><tr><th>Dates</th><th>Type</th><th>Days</th><th>Status</th></tr></thead><tbody>' +
+        el.innerHTML = '<div class="table-card"><div class="tw"><table><thead><tr>' +
+          '<th>Dates</th><th>Type</th><th>Days</th><th>Status</th><th>Remark</th>' +
+          '</tr></thead><tbody>' +
           reqs.map(function (r) {
+            var remark = _esc(r.remark || r.remarkbymanagement || '');
             return '<tr>' +
-              '<td style="font-weight:700">' + _fmtDate(r.from_date) + ' → ' + _fmtDate(r.to_date) + '</td>' +
-              '<td>' + _esc(r.leave_type) + '</td>' +
-              '<td style="font-weight:800">' + (r.num_days || '—') + '</td>' +
+              '<td style="font-weight:700;white-space:nowrap">' + _fmtDate(r.from_date) + ' → ' + _fmtDate(r.to_date) + '</td>' +
+              '<td>' + _esc(r.leave_type||'—') + '</td>' +
+              '<td style="font-weight:800;text-align:center">' + (r.num_days || '—') + '</td>' +
               '<td>' + _statusBadge(r.status, true) + '</td>' +
+              '<td style="font-size:12px;color:var(--tx3);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + remark + '">' + (remark || '—') + '</td>' +
               '</tr>';
           }).join('') +
           '</tbody></table></div></div>';
@@ -7085,7 +7112,7 @@ function _loadSetupTasks() {
     function _amustForm() {
       return '<div class="fbar" style="flex-wrap:wrap;gap:10px">' +
         '<label>Dept:</label>' +
-        '<select id="mustDept" style="min-width:140px">' +
+        '<select id="mustDept" style="min-width:140px" onchange="_loadMustTab()">' +
         '<option value="All">All Departments</option>' +
         _getDeptOptions() +
         '</select>' +
@@ -7094,7 +7121,7 @@ function _loadSetupTasks() {
         '<div class="fbar-spacer"></div>' +
         '<input type="text" id="mustSearch" placeholder="Search employee..." oninput="_filterMuster(this.value)" ' +
         'style="padding:7px 12px;border:1.5px solid var(--bdr);border-radius:8px;font-size:12px;background:var(--bg);color:var(--tx);outline:none;width:180px">' +
-        '<button class="btn btn-outline btn-sm" onclick="_exportMuster()"><i class="fas fa-download"></i> Export</button>' +
+
         '</div>' +
         '<div style="display:flex;gap:16px;font-size:12px;font-weight:600;color:var(--tx2);margin-bottom:12px;flex-wrap:wrap;padding:10px 14px;background:var(--sur2);border-radius:8px;border:1px solid var(--bdr)">' +
         '<span style="color:var(--G)"><i class="fas fa-circle" style="font-size:8px"></i> Present</span>' +
@@ -8840,7 +8867,7 @@ function _loadSetupTasks() {
         _getDeptOptions() +
         '</select>' +
         '<button class="btn btn-sm" onclick="_loadMuster()"><i class="fas fa-search"></i> Load</button>' +
-        '<button class="btn btn-outline btn-sm" onclick="_exportMuster()"><i class="fas fa-download"></i> Export CSV</button>' +
+
         '</div>' +
         '</div>' +
         '<div id="mstrKrow" class="krow">' +
