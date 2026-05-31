@@ -4692,7 +4692,7 @@
     }
     function _req(v, label) {
       var s = String(v || '').trim();
-      if (\!s) { _toast('Required: ' + label, 'err'); return false; }
+      if (!s) { _toast('Required: ' + label, 'err'); return false; }
       return true;
     }
     function _esc(s) {
