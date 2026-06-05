@@ -4623,6 +4623,9 @@
           <div class="nv" id="nv-empdir" onclick="_loadV('empdir')">
             <i class="fas fa-address-book"></i> Employee Directory
           </div>
+          <div class="nv" id="nv-clana" onclick="_loadV('clana')">
+            <i class="fas fa-list-check"></i> Checklist Analytics
+          </div>
           <div class="nv" id="nv-delana" onclick="_loadV('delana')">
             <i class="fas fa-diagram-project"></i> Delegation Analytics
           </div>
@@ -5089,7 +5092,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbwhFGdBGfEx-CK20ZTTWp1thAMN4DGFRxlCchCoXrrh67P2_zv6nCmeytnrKF8K-AycOQ/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycby8nMzA88gCL8XVjsMYcfJbD6e_AQ_wjeH4-MsFdN9GLPGH0Hxo1KysHgm5DzFsWEW-1Q/exec';
     var _TOKEN  = '';
 
 function _gas(fn, args, onOk, onErr) {
@@ -5257,6 +5260,7 @@ function _gasX(fn, args, timeout, onOk, onErr) {
       { title: 'Analytics', route: 'analytics', ico: 'fa-chart-bar', meta: 'Performance insights', cat: 'Manager', mgr: true },
       { title: 'Performance Reports', route: 'perf', ico: 'fa-trophy', meta: 'Rankings & leaderboard', cat: 'Manager', mgr: true },
       { title: 'Employee Directory', route: 'empdir', ico: 'fa-address-book', meta: 'Team member profiles', cat: 'Manager', mgr: true },
+      { title: 'Checklist Analytics', route: 'clana', ico: 'fa-list-check', meta: 'Task completion, frequency breakdown, top performers', cat: 'Manager', mgr: true },
       { title: 'Delegation Analytics', route: 'delana', ico: 'fa-diagram-project', meta: 'Delegation stats', cat: 'Manager', mgr: true },
       { title: 'Attendance Analytics', route: 'attana', ico: 'fa-user-clock', meta: 'Attendance reporting', cat: 'Manager', mgr: true },
       { title: 'Muster Report', route: 'muster', ico: 'fa-id-card-clip', meta: 'Monthly attendance muster', cat: 'Manager', mgr: true }
@@ -5517,6 +5521,7 @@ function _gasX(fn, args, timeout, onOk, onErr) {
         analytics: _vAnalytics,
         perf: _vPerf,
         empdir: _vEmpDir,
+        clana:  _vClAna,
         delana: _vDelAna,
         attana: _vAttAna,
         muster: _vMuster
@@ -9811,6 +9816,369 @@ function _loadSetupTasks() {
     // DELEGATION ANALYTICS — Fabulous Manager Dashboard
     // Workload distribution, completion rates, trend, insights & leaderboard
     // ═══════════════════════════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════════════════════════
+    // CHECKLIST ANALYTICS — Task completion, workload, frequency & trends
+    // ═══════════════════════════════════════════════════════════════════════
+    function _vClAna() {
+      if (!_isManager()) {
+        document.getElementById('content').innerHTML =
+          '<div class="empty-state"><i class="fas fa-lock"></i><h4>Access Restricted</h4></div>';
+        return;
+      }
+      document.getElementById('content').innerHTML =
+        '<div class="mod-head">' +
+        '<div><div class="mod-title">Checklist Analytics</div>' +
+        '<div class="mod-sub">Workload distribution, completion rates & frequency analysis</div></div>' +
+        '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
+        '<select id="claView" class="ana-sel" onchange="_renderCla()">' +
+        '<option value="overview">Overview</option>' +
+        '<option value="employee">By Employee</option>' +
+        '<option value="dept">By Department</option>' +
+        '<option value="trend">Daily Trend</option>' +
+        '</select>' +
+        '<input type="month" id="claMonth" class="ana-sel" value="' + _currMonth() + '">' +
+        '<select id="claFilter" class="ana-sel" onchange="_renderCla()">' +
+        '<option value="all">All Employees</option>' +
+        '<option value="perfect">Perfect (100%)</option>' +
+        '<option value="good">Good (≥80%)</option>' +
+        '<option value="avg">Average (50-79%)</option>' +
+        '<option value="low">Low (<50%)</option>' +
+        '</select>' +
+        '<select id="claSort" class="ana-sel" onchange="_renderCla()">' +
+        '<option value="planned_desc">Tasks ↓</option>' +
+        '<option value="rate_desc">Completion % ↓</option>' +
+        '<option value="rate_asc">Completion % ↑</option>' +
+        '<option value="done_desc">Done ↓</option>' +
+        '<option value="name_asc">Name A-Z</option>' +
+        '</select>' +
+        '<button class="btn btn-sm" onclick="_loadCla()"><i class="fas fa-chart-bar"></i> Analyze</button>' +
+        '<button class="btn btn-sm btn-outline" onclick="_exportClaCsv()"><i class="fas fa-download"></i> Export</button>' +
+        '</div></div>' +
+        '<div id="claRoot" style="margin-top:4px">' + _skel(4) + '</div>';
+
+      _loadCla();
+    }
+
+    function _loadCla() {
+      var root = document.getElementById('claRoot');
+      if (root) root.innerHTML = _skel(4);
+      var month = (document.getElementById('claMonth') || {}).value || _currMonth();
+      _gas('getChecklistAnalytics', [month], function(data) {
+        _D.claData = data;
+        _renderCla();
+      }, function(e) {
+        if (root) root.innerHTML =
+          '<div class="te"><i class="fas fa-exclamation-triangle"></i> ' + _esc(e.message) +
+          '<br><br><button class="btn btn-sm" onclick="_loadCla()"><i class="fas fa-rotate-right"></i> Retry</button></div>';
+      });
+    }
+
+    function _renderCla() {
+      var data = _D.claData;
+      if (!data) { _loadCla(); return; }
+      var root  = document.getElementById('claRoot');
+      if (!root) return;
+
+      var view   = (document.getElementById('claView')   || {}).value || 'overview';
+      var filter = (document.getElementById('claFilter') || {}).value || 'all';
+      var sort   = (document.getElementById('claSort')   || {}).value || 'planned_desc';
+
+      var emps  = (data.by_employee  || []).filter(function(e) {
+        if (filter === 'perfect') return e.completion_rate === 100;
+        if (filter === 'good')    return e.completion_rate >= 80;
+        if (filter === 'avg')     return e.completion_rate >= 50 && e.completion_rate < 80;
+        if (filter === 'low')     return e.completion_rate < 50;
+        return true;
+      });
+      emps = emps.slice().sort(function(a, b) {
+        if (sort === 'rate_desc')    return (b.completion_rate||0) - (a.completion_rate||0);
+        if (sort === 'rate_asc')     return (a.completion_rate||0) - (b.completion_rate||0);
+        if (sort === 'done_desc')    return (b.done||0)            - (a.done||0);
+        if (sort === 'name_asc')     return (a.name||'').localeCompare(b.name||'');
+        return (b.planned||0) - (a.planned||0);
+      });
+
+      var depts  = data.by_dept      || [];
+      var freqs  = data.by_frequency || [];
+      var trend  = data.daily_trend  || [];
+      var avgR   = data.avg_completion || 0;
+      var arClr  = avgR >= 80 ? 'var(--G)' : avgR >= 50 ? 'var(--O)' : 'var(--R)';
+
+      var h = '';
+
+      // ── KPI Strip ─────────────────────────────────────────────────────────
+      h += '<div class="da-kpi-strip">' + [
+        { lbl:'Employees',     val:data.employees     || 0, c:'var(--P)', ico:'fa-users',        sub:'Tracked this month' },
+        { lbl:'Tasks Planned', val:data.total_planned || 0, c:'var(--I)', ico:'fa-calendar-days', sub:data.month || '' },
+        { lbl:'Tasks Done',    val:data.total_done    || 0, c:'var(--G)', ico:'fa-circle-check',  sub:'Completed' },
+        { lbl:'Pending',       val:data.total_pending || 0, c:data.total_pending>0?'var(--O)':'var(--G)', ico:'fa-clock', sub:'Not yet done' },
+        { lbl:'Avg Completion',val:avgR + '%',              c:arClr,       ico:'fa-chart-pie',    sub:avgR>=80?'Excellent':avgR>=50?'Average':'Needs attention' },
+        { lbl:'Frequencies',   val:freqs.length,            c:'var(--V)',  ico:'fa-repeat',       sub:'Task types' }
+      ].map(function(k) {
+        return '<div class="da-kpi">' +
+          '<div class="da-kpi-row1"><div class="da-kpi-ico" style="--kc:'+k.c+'"><i class="fas '+k.ico+'"></i></div>' +
+          '<div class="da-kpi-val" style="color:'+k.c+'">'+k.val+'</div></div>' +
+          '<div class="da-kpi-lbl">'+k.lbl+'</div>' +
+          '<div class="da-kpi-sub">'+k.sub+'</div></div>';
+      }).join('') + '</div>';
+
+      // ── Completion ring banner ────────────────────────────────────────────
+      var tp = data.total_planned || 0;
+      var td = data.total_done    || 0;
+      var overallPct = tp > 0 ? Math.round(td / tp * 100) : 0;
+      var ovClr = overallPct >= 80 ? 'var(--G)' : overallPct >= 50 ? 'var(--O)' : 'var(--R)';
+      h += '<div class="da-banner">' +
+        '<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">' +
+        '<div class="da-banner-ring">' +
+        '<svg viewBox="0 0 36 36" class="da-ring-svg">' +
+        '<circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--bdr)" stroke-width="2.5"/>' +
+        '<circle cx="18" cy="18" r="15.9" fill="none" stroke="'+ovClr+'" stroke-width="2.5" stroke-dasharray="'+overallPct+',100" stroke-dashoffset="25" stroke-linecap="round"/>' +
+        '</svg><div class="da-ring-lbl" style="color:'+ovClr+'">'+overallPct+'%</div></div>' +
+        '<div><div style="font-size:18px;font-weight:900;color:var(--tx)">'+overallPct+'% Overall Completion</div>' +
+        '<div style="font-size:13px;color:var(--tx2);margin-top:3px">'+td+' done of '+tp+' planned tasks this month</div></div></div>' +
+        '<div style="display:flex;gap:20px;flex-wrap:wrap">' +
+        [
+          { lbl:'Done',    clr:'var(--G)', val:td },
+          { lbl:'Pending', clr:'var(--O)', val:data.total_pending||0 },
+        ].map(function(s) {
+          return '<div style="text-align:center">' +
+            '<div style="font-size:20px;font-weight:900;color:'+s.clr+'">'+s.val+'</div>' +
+            '<div style="font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.5px">'+s.lbl+'</div></div>';
+        }).join('') +
+        '</div></div>';
+
+      // ══ OVERVIEW view ═════════════════════════════════════════════════════
+      if (view === 'overview') {
+        h += '<div class="da-grid3">';
+
+        // Chart 1: Dept completion bar
+        h += '<div class="da-chart-card">' +
+          '<div class="da-chart-ttl"><i class="fas fa-building" style="color:var(--P)"></i> Dept Completion %</div>' +
+          '<div style="height:200px"><canvas id="claChDept"></canvas></div></div>';
+
+        // Chart 2: Done vs Pending donut
+        h += '<div class="da-chart-card">' +
+          '<div class="da-chart-ttl"><i class="fas fa-chart-pie" style="color:var(--G)"></i> Done vs Pending</div>' +
+          '<div style="height:200px"><canvas id="claChBreak"></canvas></div></div>';
+
+        // Chart 3: Frequency distribution
+        h += '<div class="da-chart-card">' +
+          '<div class="da-chart-ttl"><i class="fas fa-repeat" style="color:var(--V)"></i> By Frequency</div>' +
+          '<div style="height:200px"><canvas id="claChFreq"></canvas></div></div>';
+
+        h += '</div>';
+
+        // Top 5 + Bottom 5 panels
+        var top5 = (data.by_employee||[]).slice().sort(function(a,b){return (b.completion_rate||0)-(a.completion_rate||0);}).slice(0,5);
+        var bot5 = (data.by_employee||[]).slice().sort(function(a,b){return (a.completion_rate||0)-(b.completion_rate||0);}).slice(0,5);
+        h += '<div class="da-grid2" style="margin-top:16px">';
+        h += '<div class="card card-nohover card-sm">' +
+          '<div class="sec-title" style="margin-bottom:14px;color:var(--G)"><i class="fas fa-trophy"></i> Top Performers</div>' +
+          top5.map(function(e, i) {
+            var m = i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1);
+            var r = e.completion_rate||0;
+            return '<div class="da-emp-row">' +
+              '<div class="da-emp-rank">'+m+'</div>' +
+              '<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px">'+_esc(e.name)+'</div>' +
+              '<div style="font-size:10px;color:var(--tx3)">'+_esc(e.dept||'')+'</div></div>' +
+              '<div style="text-align:right"><div style="font-size:15px;font-weight:900;color:var(--G)">'+r+'%</div>' +
+              '<div style="font-size:10px;color:var(--tx3)">'+e.done+'/'+e.planned+' tasks</div></div></div>';
+          }).join('') + '</div>';
+        h += '<div class="card card-nohover card-sm">' +
+          '<div class="sec-title" style="margin-bottom:14px;color:var(--R)"><i class="fas fa-triangle-exclamation"></i> Needs Attention</div>' +
+          (bot5.every(function(e){return e.completion_rate===100;})
+            ? '<div style="text-align:center;padding:24px;color:var(--G)"><i class="fas fa-circle-check" style="font-size:32px;margin-bottom:8px;display:block"></i><div style="font-weight:700">All employees on track!</div></div>'
+            : bot5.map(function(e) {
+              var r = e.completion_rate||0;
+              var rC = r >= 80 ? 'var(--G)' : r >= 50 ? 'var(--O)' : 'var(--R)';
+              return '<div class="da-emp-row">' +
+                '<div class="da-emp-avatar" style="background:var(--Rl);color:var(--R)">'+_esc(e.name.charAt(0))+'</div>' +
+                '<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px">'+_esc(e.name)+'</div>' +
+                '<div style="font-size:10px;color:var(--tx3)">'+_esc(e.dept||'')+'</div></div>' +
+                '<div style="text-align:right"><div style="font-size:15px;font-weight:900;color:'+rC+'">'+r+'%</div>' +
+                '<div style="font-size:10px;color:var(--R)">'+e.pending+' pending</div></div></div>';
+            }).join('')
+          ) + '</div>';
+        h += '</div>';
+      }
+
+      // ══ EMPLOYEE view ═════════════════════════════════════════════════════
+      if (view === 'employee') {
+        h += '<div class="da-emp-search-bar" style="margin-top:4px">' +
+          '<input type="text" id="claEmpQ" class="ana-sel" placeholder="🔍 Search employee..." oninput="_filterClaEmps()" style="width:220px">' +
+          '<span style="font-size:12px;color:var(--tx3)">'+emps.length+' employees</span>' +
+          '</div>' +
+          '<div class="da-emp-cards" id="claEmpCards">' +
+          emps.map(function(e) {
+            var r = e.completion_rate || 0;
+            var rC = r >= 80 ? 'var(--G)' : r >= 50 ? 'var(--O)' : 'var(--R)';
+            // Top 3 frequencies for this emp
+            var topFreqs = Object.keys(e.freqs || {}).sort(function(a,b){return (e.freqs[b]||0)-(e.freqs[a]||0);}).slice(0,3);
+            var freqLabelsMap = { D:'Daily', W:'Weekly', F:'Fortnightly', M:'Monthly', '2M':'2-Month', Q:'Quarterly', H:'Half-Yearly', Y:'Yearly' };
+            return '<div class="da-emp-card' + (r < 50 ? ' da-emp-card-alert' : '') + '">' +
+              '<div class="da-emp-card-head">' +
+              '<div class="da-emp-avatar" style="background:var(--Pl);color:var(--P)">'+_esc(e.name.charAt(0).toUpperCase())+'</div>' +
+              '<div style="flex:1;min-width:0"><div style="font-weight:800;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+_esc(e.name)+'</div>' +
+              '<div style="font-size:11px;color:var(--tx3)">'+_esc(e.dept||'')+'</div></div>' +
+              '<div style="font-size:20px;font-weight:900;color:'+rC+'">'+r+'%</div></div>' +
+              '<div class="da-stat-row">' +
+              [
+                {lbl:'Planned', val:e.planned||0, c:'var(--P)'},
+                {lbl:'Done',    val:e.done||0,    c:'var(--G)'},
+                {lbl:'Pending', val:e.pending||0, c:e.pending>0?'var(--O)':'var(--tx3)'},
+              ].map(function(s){
+                return '<div class="da-stat-cell"><div style="font-size:16px;font-weight:900;color:'+s.c+'">'+s.val+'</div>' +
+                  '<div style="font-size:9px;color:var(--tx3);text-transform:uppercase;letter-spacing:.4px">'+s.lbl+'</div></div>';
+              }).join('') + '</div>' +
+              '<div class="pbar-wrap" style="margin:8px 0"><div class="pbar" style="width:'+r+'%;background:'+rC+'"></div></div>' +
+              (topFreqs.length ? '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px">' +
+                topFreqs.map(function(f){return '<span class="bdg" style="font-size:9px;background:var(--Vl);color:var(--V)">'+_esc(freqLabelsMap[f]||f)+'</span>';}).join('') +
+                '</div>' : '') +
+              '</div>';
+          }).join('') + '</div>';
+        if (!emps.length) h += '<div class="te" style="margin-top:16px"><i class="fas fa-search"></i> No employees match this filter</div>';
+      }
+
+      // ══ DEPT view ═════════════════════════════════════════════════════════
+      if (view === 'dept') {
+        h += '<div class="da-grid-dept" style="margin-top:4px">';
+        depts.forEach(function(d) {
+          var r = d.completion_rate || 0;
+          var rC = r >= 80 ? 'var(--G)' : r >= 50 ? 'var(--O)' : 'var(--R)';
+          h += '<div class="da-dept-card">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">' +
+            '<div style="font-weight:800;font-size:14px">'+_esc(d.dept)+'</div>' +
+            '<div style="font-size:20px;font-weight:900;color:'+rC+'">'+r+'%</div></div>' +
+            '<div class="pbar-wrap" style="margin-bottom:10px"><div class="pbar" style="width:'+r+'%;background:'+rC+'"></div></div>' +
+            '<div style="display:flex;justify-content:space-between;font-size:12px">' +
+            '<span style="color:var(--tx2)"><b>'+d.planned+'</b> planned</span>' +
+            '<span style="color:var(--G)"><b>'+d.done+'</b> done</span>' +
+            '<span style="color:'+(d.planned-d.done>0?'var(--O)':'var(--tx3)')+'"><b>'+(d.planned-d.done)+'</b> pending</span>' +
+            '</div></div>';
+        });
+        h += '</div>';
+        // Dept bar chart
+        h += '<div class="da-chart-card" style="margin-top:16px">' +
+          '<div class="da-chart-ttl"><i class="fas fa-building" style="color:var(--P)"></i> Department Comparison</div>' +
+          '<div style="height:220px"><canvas id="claChDeptBig"></canvas></div></div>';
+      }
+
+      // ══ TREND view ════════════════════════════════════════════════════════
+      if (view === 'trend') {
+        h += '<div class="da-grid2" style="margin-top:4px">';
+        h += '<div class="da-chart-card da-chart-wide-2">' +
+          '<div class="da-chart-ttl"><i class="fas fa-chart-line" style="color:var(--T)"></i> Daily Tasks Done vs Planned — '+data.month+'</div>' +
+          '<div style="height:240px"><canvas id="claChTrend"></canvas></div></div>';
+        h += '<div class="da-chart-card">' +
+          '<div class="da-chart-ttl"><i class="fas fa-repeat" style="color:var(--V)"></i> Frequency Breakdown</div>' +
+          '<div style="height:240px"><canvas id="claChFreqBig"></canvas></div></div>';
+        h += '</div>';
+
+        // Velocity table
+        h += '<div class="card card-nohover card-sm" style="margin-top:16px">' +
+          '<div class="sec-title" style="margin-bottom:12px"><i class="fas fa-calendar-days" style="color:var(--P)"></i> Daily Detail</div>' +
+          '<div class="tw"><table><thead><tr><th>Date</th><th style="text-align:center;color:var(--I)">Planned</th>' +
+          '<th style="text-align:center;color:var(--G)">Done</th><th style="text-align:center">Rate</th></tr></thead><tbody>' +
+          trend.slice(-20).reverse().map(function(t) {
+            var r2 = t.planned > 0 ? Math.round(t.done / t.planned * 100) : 0;
+            var c2 = r2 >= 80 ? 'var(--G)' : r2 >= 50 ? 'var(--O)' : 'var(--R)';
+            return '<tr><td style="font-weight:700">'+_fmtDate(t.date)+'</td>' +
+              '<td style="text-align:center;font-weight:800">'+t.planned+'</td>' +
+              '<td style="text-align:center;font-weight:800;color:var(--G)">'+t.done+'</td>' +
+              '<td style="text-align:center"><span style="font-weight:900;color:'+c2+'">'+r2+'%</span></td></tr>';
+          }).join('') + '</tbody></table></div></div>';
+      }
+
+      root.innerHTML = h;
+
+      // ── Charts ────────────────────────────────────────────────────────────
+      setTimeout(function() {
+        if (!window.Chart) return;
+        var isDk = document.body.classList.contains('dark');
+        var gc = isDk?'rgba(255,255,255,0.05)':'rgba(0,0,0,0.05)', tc = isDk?'#94a3b8':'#64748b';
+
+        function mkC(id, type, labels, datasets, extra) {
+          var cv = document.getElementById(id); if (!cv) return;
+          if (cv._ci) { try { cv._ci.destroy(); } catch(e){} }
+          function dm(a,b){var r=Object.assign({},a);Object.keys(b||{}).forEach(function(k){r[k]=(b[k]&&typeof b[k]==='object'&&!Array.isArray(b[k]))?dm(a[k]||{},b[k]):b[k];});return r;}
+          var isR = type==='pie'||type==='doughnut';
+          var base = { responsive:true, maintainAspectRatio:false,
+            plugins:{ legend:{ labels:{ color:tc, font:{size:11}, boxWidth:12 } } },
+            scales: isR ? {} : { x:{ticks:{color:tc,font:{size:10}},grid:{color:gc}}, y:{ticks:{color:tc,font:{size:10}},grid:{color:gc}} }
+          };
+          cv._ci = new Chart(cv, { type:type, data:{labels:labels, datasets:datasets}, options:dm(base, extra||{}) });
+        }
+
+        // Dept completion bar
+        if (depts.length) {
+          mkC('claChDept','bar', depts.map(function(d){return d.dept;}),
+            [{label:'%', data:depts.map(function(d){return d.completion_rate||0;}),
+              backgroundColor:depts.map(function(d){return (d.completion_rate||0)>=80?'rgba(47,158,68,.8)':(d.completion_rate||0)>=50?'rgba(245,158,11,.8)':'rgba(220,38,38,.8)';}),
+              borderRadius:5,borderSkipped:false}],
+            {plugins:{legend:{display:false}},scales:{y:{min:0,max:100}}});
+          mkC('claChDeptBig','bar', depts.map(function(d){return d.dept;}),
+            [{label:'Done',data:depts.map(function(d){return d.done||0;}),backgroundColor:'rgba(47,158,68,.8)',borderRadius:5,borderSkipped:false},
+             {label:'Pending',data:depts.map(function(d){return (d.planned||0)-(d.done||0);}),backgroundColor:'rgba(245,158,11,.5)',borderRadius:5,borderSkipped:false}],
+            {plugins:{legend:{position:'bottom'}},scales:{x:{stacked:true},y:{stacked:true}}});
+        }
+
+        // Done vs Pending donut
+        mkC('claChBreak','doughnut',['Done','Pending'],
+          [{data:[td, data.total_pending||0],
+            backgroundColor:['rgba(47,158,68,.85)','rgba(245,158,11,.75)'],
+            borderWidth:0,hoverOffset:10}],
+          {cutout:'60%',plugins:{legend:{position:'bottom'}}});
+
+        // Frequency
+        if (freqs.length) {
+          var fColors=['rgba(112,72,232,.8)','rgba(14,165,233,.8)','rgba(47,158,68,.8)','rgba(245,158,11,.8)','rgba(220,38,38,.8)','rgba(148,163,184,.7)'];
+          mkC('claChFreq','pie', freqs.map(function(f){return f.label;}),
+            [{data:freqs.map(function(f){return f.count;}),
+              backgroundColor:freqs.map(function(_,i){return fColors[i%fColors.length];}),
+              borderWidth:0}],
+            {plugins:{legend:{position:'bottom'}}});
+          mkC('claChFreqBig','bar', freqs.map(function(f){return f.label;}),
+            [{label:'Tasks', data:freqs.map(function(f){return f.count;}),
+              backgroundColor:freqs.map(function(_,i){return fColors[i%fColors.length];}),
+              borderRadius:5,borderSkipped:false}],
+            {plugins:{legend:{display:false}}});
+        }
+
+        // Daily trend line
+        if (trend.length) {
+          mkC('claChTrend','line',
+            trend.map(function(t){ var p=t.date.split('-'); return p[2]+'/'+p[1]; }),
+            [
+              {label:'Planned', data:trend.map(function(t){return t.planned;}),
+               borderColor:'rgba(14,165,233,.9)',backgroundColor:'rgba(14,165,233,.1)',fill:true,tension:0.4,pointRadius:2},
+              {label:'Done',    data:trend.map(function(t){return t.done;}),
+               borderColor:'rgba(47,158,68,.9)',backgroundColor:'rgba(47,158,68,.1)',fill:true,tension:0.4,pointRadius:2}
+            ],
+            {scales:{y:{beginAtZero:true}},plugins:{legend:{position:'bottom'}}});
+        }
+      }, 80);
+    }
+
+    function _filterClaEmps() {
+      var q = ((document.getElementById('claEmpQ')||{}).value||'').toLowerCase().trim();
+      document.querySelectorAll('#claEmpCards .da-emp-card').forEach(function(el) {
+        el.style.display = (!q || el.textContent.toLowerCase().indexOf(q) >= 0) ? '' : 'none';
+      });
+    }
+
+    function _exportClaCsv() {
+      if (!_D.claData || !_D.claData.by_employee) { _toast('Load analytics first', 'err'); return; }
+      var head = ['Employee','Department','Planned','Done','Pending','Completion %'];
+      var csv  = [head.join(',')].concat((_D.claData.by_employee||[]).map(function(e) {
+        return ['"'+(e.name||'')+'"','"'+(e.dept||'')+'"',e.planned||0,e.done||0,e.pending||0,(e.completion_rate||0)+'%'].join(',');
+      })).join('\n');
+      var a = document.createElement('a');
+      a.href = 'data:text/csv;charset=utf-8,'+encodeURIComponent('\uFEFF'+csv);
+      a.download = 'checklist_analytics_'+(_D.claData.month||_currMonth())+'.csv'; a.click();
+      _toast('Exported!', 'ok');
+    }
+
+
     function _vDelAna() {
       if (!_isManager()) {
         document.getElementById('content').innerHTML =
