@@ -128,7 +128,8 @@
       font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
       background: var(--bg);
       color: var(--tx);
-      overflow-x: hidden;
+      overflow: hidden;
+      max-width: 100vw;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
     }
@@ -172,8 +173,10 @@
 ══════════════════════════════════════════════════════════════════════ */
     .scr {
       display: none;
-      width: 100vw;
+      width: 100%;
+      max-width: 100vw;
       height: 100vh;
+      overflow: hidden;
     }
 
     .scr.on {
@@ -534,6 +537,8 @@
     .sb-toggle {
       display: none;
     }
+
+    .csetup-grid { display: grid; grid-template-columns: 380px 1fr; gap: 20px; }
 
     /* ── Muster Table ─────────────────────────────────────── */
     .muster-tbl { border-collapse: collapse; font-size: 12px; min-width: 100%; }
@@ -2290,6 +2295,7 @@
 
     .search-inp input {
       padding-left: 32px !important;
+      width: 100%;
     }
 
     /* ── Progress bar ── */
@@ -4590,6 +4596,46 @@
         box-shadow: none !important;
       }
 
+      /* ── csetup responsive grid ── */
+      .csetup-grid {
+        display: grid; grid-template-columns: 1fr; gap: 16px;
+      }
+
+      /* ── fbar: full width stacked on mobile ── */
+      .fbar { display: flex; flex-wrap: wrap; gap: 8px; }
+      .fbar label {
+        width: 100%; font-size: 11px; font-weight: 700;
+        color: var(--tx2); text-transform: uppercase; letter-spacing: .3px;
+      }
+      .fbar select, .fbar input, .fbar .btn {
+        width: 100% !important; min-width: 0 !important;
+      }
+      .fbar-spacer { display: none; }
+
+      /* ── mod-head: stack + search full width ── */
+      .mod-head { flex-direction: column !important; gap: 10px !important; }
+      .mod-head-right { width: 100%; flex-wrap: wrap; gap: 8px; }
+      .search-inp { width: 100% !important; }
+      .search-inp input { width: 100% !important; }
+
+      /* ── Delegation items ── */
+      .deleg-item { padding: 12px; border-radius: 14px; }
+
+      /* ── Leave/regularize forms ── */
+      .leave-form, .reg-form { gap: 12px; }
+
+      /* ── Profile page ── */
+      .prof-card { padding: 20px 16px; border-radius: 20px; }
+
+      /* ── Dashboard widgets ── */
+      .dash-widget { border-radius: 18px; padding: 14px; }
+
+      /* ── Announcements ── */
+      .ann-item { padding: 12px; }
+
+      /* ── Attendance grid ── */
+      .att-grid { grid-template-columns: 1fr !important; }
+
       /* ── 16. Misc ── */
       .sec-title { font-size: 13px; }
       .bdg       { font-size: 10px; padding: 2px 7px; }
@@ -6235,7 +6281,7 @@ function _gasX(fn, args, timeout, onOk, onErr) {
         '<div class="mod-head">' +
         '<div><div class="mod-title">Checklist</div><div class="mod-sub">KRA / KPI daily task tracker</div></div>' +
         '<div class="mod-head-right">' +
-        '<div class="search-inp"><i class="fas fa-search"></i><input type="text" id="ckSearchInp" placeholder="Filter tasks..." oninput="_filterTaskCards(this.value)" style="padding:7px 7px 7px 30px;border:1.5px solid var(--bdr);border-radius:8px;font-size:12px;background:var(--bg);color:var(--tx);outline:none;width:200px"></div>' +
+        '<div class="search-inp" style="flex:1;min-width:0"><i class="fas fa-search"></i><input type="text" id="ckSearchInp" placeholder="Filter tasks..." oninput="_filterTaskCards(this.value)" style="padding:7px 7px 7px 30px;border:1.5px solid var(--bdr);border-radius:8px;font-size:12px;background:var(--bg);color:var(--tx);outline:none;width:100%"></div>' +
         (_isManager() ? '<button class="btn btn-outline btn-sm" onclick="_loadV(\'check\',\'csetup\')"><i class="fas fa-gear"></i> Setup</button>' : '') +
         '</div>' +
         '</div>' +
@@ -6257,7 +6303,7 @@ function _gasX(fn, args, timeout, onOk, onErr) {
     function _ctodayForm() {
       return '<div class="fbar">' +
         '<label>Employee:</label>' +
-        '<select id="ckEmp" onchange="_loadToday()" style="min-width:160px">' +
+        '<select id="ckEmp" onchange="_loadToday()">' +
         '<option value="' + _U.emp_code + '">' + _esc(_U.name) + ' (Me)</option>' +
         '</select>' +
         '<label>Date:</label>' +
@@ -6273,9 +6319,9 @@ function _gasX(fn, args, timeout, onOk, onErr) {
       var opts = [];
       for (var w = 1; w <= 53; w++) opts.push('<option value="' + w + '"' + (w === _currentWeek() ? ' selected' : '') + '>Week ' + w + '</option>');
       return '<div class="fbar">' +
-        '<label>Week:</label><select id="ckWeek" style="min-width:90px">' + opts.join('') + '</select>' +
-        '<label>Year:</label><input type="number" id="ckWYear" value="' + new Date().getFullYear() + '" min="2020" max="2030" style="width:80px">' +
-        '<label>Employee:</label><select id="ckWEmp" style="min-width:160px"><option value="' + _U.emp_code + '">' + _esc(_U.name) + ' (Me)</option></select>' +
+        '<label>Week:</label><select id="ckWeek">' + opts.join('') + '</select>' +
+        '<label>Year:</label><input type="number" id="ckWYear" value="' + new Date().getFullYear() + '" min="2020" max="2030" >' +
+        '<label>Employee:</label><select id="ckWEmp" ><option value="' + _U.emp_code + '">' + _esc(_U.name) + ' (Me)</option></select>' +
         '<button class="btn btn-sm" onclick="_loadWeek()"><i class="fas fa-search"></i> Load</button>' +
         '</div>' +
         '<div id="ckWGrid">' + _skel(2, 'sk-h8') + '</div>';
@@ -6293,7 +6339,7 @@ function _gasX(fn, args, timeout, onOk, onErr) {
         '<div id="histTable"></div>';
     }
     function _csetupForm() {
-      return '<div style="display:grid;grid-template-columns:380px 1fr;gap:20px">' +
+      return '<div class="csetup-grid">' +
         '<div class="card card-nohover card-sm">' +
         '<div class="sec-title" style="margin-bottom:14px"><i class="fas fa-plus-circle" style="color:var(--P)"></i> Add New Task</div>' +
         '<div class="form-g">' +
@@ -7258,7 +7304,7 @@ function _loadSetupTasks() {
         '  <div class="ana-filter-grp"><label class="ana-lbl"><i class="fas fa-sort"></i> Sort</label><select id="aanaSort" class="ana-sel"><option value="pct_desc">Presence % ↓</option><option value="pct_asc">Presence % ↑</option><option value="absent_desc">Absent ↓</option><option value="name_asc">Name A-Z</option><option value="dept_asc">Department</option></select></div>',
         '</div>',
         '<div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap">',
-        '  <input type="text" id="aanaEmpSearch" class="ana-sel" placeholder="🔍 Search employee..." oninput="_filterAnaTable()" style="width:200px">',
+        '  <input type="text" id="aanaEmpSearch" class="ana-sel" placeholder="🔍 Search employee..." oninput="_filterAnaTable()" style="width:100%;max-width:220px">',
         '  <button class="btn btn-sm" onclick="_loadAttAnalytics()"><i class="fas fa-chart-bar"></i> Analyze</button>',
       
         '  <span id="aanaLastLoad" style="font-size:11px;color:var(--tx3)"></span>',
@@ -8143,7 +8189,7 @@ function _loadSetupTasks() {
         var maxVal = filtered[0].done || 1;
         el.innerHTML =
           '<div class="table-card"><div class="tw"><table><thead><tr>' +
-          '<th>Rank</th><th>Employee</th><th>Department</th><th>Tasks Done</th><th style="width:200px">Performance Bar</th>' +
+          '<th>Rank</th><th>Employee</th><th>Department</th><th>Tasks Done</th><th style="width:100%;max-width:220px">Performance Bar</th>' +
           '</tr></thead><tbody>' +
           filtered.map(function (e, i) {
             var pct = Math.round(e.done / maxVal * 100);
@@ -10272,7 +10318,7 @@ function _loadSetupTasks() {
       // ══ EMPLOYEE view ═════════════════════════════════════════════════════
       if (view === 'employee') {
         h += '<div class="da-emp-search-bar" style="margin-top:4px">' +
-          '<input type="text" id="claEmpQ" class="ana-sel" placeholder="🔍 Search employee..." oninput="_filterClaEmps()" style="width:220px">' +
+          '<input type="text" id="claEmpQ" class="ana-sel" placeholder="🔍 Search employee..." oninput="_filterClaEmps()" style="width:100%;max-width:220px">' +
           '<span style="font-size:12px;color:var(--tx3)">'+emps.length+' employees</span>' +
           '</div>' +
           '<div class="da-emp-cards" id="claEmpCards">' +
@@ -10655,7 +10701,7 @@ function _loadSetupTasks() {
       // ══ VIEW: BY EMPLOYEE ════════════════════════════════════════════════
       if (view==='employee') {
         h += '<div class="da-emp-search-bar">'+
-          '<input type="text" id="daEmpSearch" class="ana-sel" placeholder="🔍 Search employee..." oninput="_filterDaEmps()" style="width:220px">'+
+          '<input type="text" id="daEmpSearch" class="ana-sel" placeholder="🔍 Search employee..." oninput="_filterDaEmps()" style="width:100%;max-width:220px">'+
           '<span style="font-size:12px;color:var(--tx3)">'+filtEmps.length+' employees '+( filter!=='all'?'(filtered)':'')+'</span>'+
           '</div>';
 
@@ -10911,7 +10957,7 @@ function _loadSetupTasks() {
         '</select></div>' +
         '</div>' +
         '<div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap">' +
-        '<input type="text" id="aaaEmpSearch" class="ana-sel" placeholder="🔍 Search employee..." oninput="_filterAaaTable()" style="width:200px">' +
+        '<input type="text" id="aaaEmpSearch" class="ana-sel" placeholder="🔍 Search employee..." oninput="_filterAaaTable()" style="width:100%;max-width:220px">' +
         '<button class="btn btn-sm" onclick="_loadAaa()"><i class="fas fa-chart-bar"></i> Analyze</button>' +
         
         '<span id="aaaLastLoad" style="font-size:11px;color:var(--tx3)"></span>' +
@@ -13486,7 +13532,7 @@ function _deactivateTask(uid) {
       _moreOpen = true;
       var items = [
         {ico:'fa-bolt',          lbl:'Activity',   key:'feed'},
-        {ico:'fa-megaphone',     lbl:'Announce',   key:'ann'},
+        {ico:'fa-bullhorn',      lbl:'Announce',   key:'ann'},
         {ico:'fa-people-arrows', lbl:'Delegation', key:'deleg'},
         {ico:'fa-calendar-days', lbl:'Holidays',   key:'holcal'},
         {ico:'fa-circle-user',   lbl:'Profile',    key:'profile'},
