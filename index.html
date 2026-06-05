@@ -18,7 +18,7 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap"
     rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
 
   <style>
     /* ══════════════════════════════════════════════════════════════════════
@@ -4404,100 +4404,280 @@
       }
     }
 
-    @media (max-width: 768px) {
-      .att-punch-card {
-        flex-direction: column;
-        align-items: stretch;
-      }
-      .btn-checkin {
-        width: 100%;
-        padding: 14px;
-        font-size: 15px;
-      }
-      /* Responsive tables — horizontal scroll wrapper */
-      .tbl-wrap {
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-      }
-      /* Modal should fill screen on mobile */
-      .modal-box {
-        margin: 12px;
-        max-height: calc(100vh - 24px);
-        overflow-y: auto;
-      }
-      .modal-box.wide {
-        width: calc(100vw - 24px);
-        max-width: none;
-      }
-      /* Topbar search hidden on mobile already; ensure btn spacing */
-      .tb-right {
-        gap: 4px;
-      }
-      .ico-btn {
-        width: 32px;
-        height: 32px;
-        font-size: 14px;
-      }
-      /* Sidebar toggle hidden on mobile */
-      .sb-toggle {
-        display: none !important;
-      }
-      /* Filter bars: wrap on mobile */
-      .fbar {
-        flex-wrap: wrap;
-        gap: 8px;
-      }
-      .fbar label {
-        width: 100%;
-        margin-top: 4px;
-      }
-      .fbar input, .fbar select {
-        width: 100%;
-        min-width: unset;
-      }
-      /* KPI cards: 2 cols on mobile */
-      .krow {
-        grid-template-columns: repeat(2, 1fr) !important;
-      }
-      /* Login box: full width on very small screens */
-      .lbox {
-        padding: 28px 20px 24px;
-      }
-      /* Mod head: stack on mobile */
-      .mod-head {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 10px;
-      }
-      .mod-head-right {
-        width: 100%;
-        flex-wrap: wrap;
-      }
-      /* Export bar: wrap */
-      .export-bar {
-        flex-wrap: wrap;
-        gap: 8px;
-      }
+    /* ══════════════════════════════════════════════════════════
+       MOBILE / TABLET / PWA — Native app-like layout
+       Mobile:  ≤768px  → full native app feel
+       Tablet:  769–1024px → collapsible sidebar
+       Desktop: >1024px → full sidebar
+    ══════════════════════════════════════════════════════════ */
+
+    /* Sidebar overlay backdrop (mobile) */
+    .sb-overlay {
+      display: none;
+      position: fixed; inset: 0; z-index: 149;
+      background: rgba(0,0,0,.5);
+      backdrop-filter: blur(3px);
+      -webkit-backdrop-filter: blur(3px);
+      transition: opacity .25s;
+    }
+    .sb-overlay.on { display: block; }
+
+    /* ── Bottom navigation bar (mobile) ── */
+    .mob-nav {
+      display: none;
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 140;
+      background: var(--sur);
+      border-top: 1px solid var(--bdr);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+      box-shadow: 0 -4px 20px rgba(0,0,0,.08);
+    }
+    .mob-nav-inner {
+      height: 58px; display: flex; align-items: stretch;
+    }
+    .mob-nav-item {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 4px;
+      font-size: 10px; font-weight: 600; color: var(--tx3);
+      cursor: pointer; -webkit-tap-highlight-color: transparent;
+      border: none; background: none; padding: 6px 2px 4px;
+      transition: color .15s, transform .1s;
+      position: relative;
+      letter-spacing: .2px;
+      min-height: 44px;
+    }
+    .mob-nav-item i {
+      font-size: 20px;
+      transition: transform .15s;
+    }
+    .mob-nav-item.active {
+      color: var(--P);
+    }
+    .mob-nav-item.active i {
+      transform: translateY(-1px);
+    }
+    .mob-nav-item.active::before {
+      content: '';
+      position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+      width: 32px; height: 3px; border-radius: 0 0 3px 3px;
+      background: var(--P);
+    }
+    /* Active pill background */
+    .mob-nav-item.active .mob-nav-pill {
+      background: var(--Pl);
+      border-radius: 12px;
+      padding: 4px 12px 2px;
+      margin-bottom: -4px;
     }
 
-    @media (max-width: 400px) {
-      .krow {
-        grid-template-columns: 1fr !important;
+    /* Safe area — iPhone home indicator */
+    .safe-bot { height: env(safe-area-inset-bottom, 0px); display: block; }
+
+    /* ── Mobile page transitions ── */
+    .page-slide-in {
+      animation: slideInRight .22s cubic-bezier(.4,0,.2,1) forwards;
+    }
+    @keyframes slideInRight {
+      from { transform: translateX(30px); opacity: 0; }
+      to   { transform: translateX(0);   opacity: 1; }
+    }
+
+    /* ══════════════════════════════════════════════════════
+       MOBILE ≤768px — Native app experience
+    ══════════════════════════════════════════════════════ */
+    @media (max-width: 768px) {
+
+      /* ── Core Layout ── */
+      #sApp { flex-direction: row; }  /* keep row so sidebar slides in */
+
+      /* Sidebar: slide in from left as overlay */
+      .sb {
+        position: fixed; top: 0; left: 0; bottom: 0; z-index: 200;
+        width: 280px !important; min-width: 280px !important;
+        transform: translateX(-100%);
+        transition: transform .28s cubic-bezier(.4,0,.2,1);
+        box-shadow: none;
+        padding-top: env(safe-area-inset-top, 0px);
       }
-      .kpi {
-        padding: 14px;
+      #sApp.sb-open .sb {
+        transform: translateX(0);
+        box-shadow: 6px 0 40px rgba(0,0,0,.22);
       }
-      .kpi-val {
-        font-size: 24px;
+
+      /* Main area: full width */
+      .main {
+        width: 100%;
+        height: 100dvh;
+        height: 100vh;
+        overflow: hidden;
       }
-      .login-grid {
-        display: none;
+
+      /* Topbar: mobile style */
+      .topbar {
+        height: 56px;
+        padding: 0 16px;
+        padding-top: env(safe-area-inset-top, 0px);
       }
+      .tb-search { display: none !important; }
+      .tb-right { gap: 4px; }
+      .sb-toggle { display: none !important; }
+      .tb-divider { display: none; }
+      .tb-title { font-size: 16px; }
+      .tb-breadcrumb { font-size: 10px; }
+
+      /* Content: scrollable, padded for bottom nav */
+      #content {
+        height: calc(100dvh - 56px - 58px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+        height: calc(100vh - 56px - 58px);
+        overflow-y: auto; overflow-x: hidden;
+        padding: 14px 14px 16px;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-y: contain;
+      }
+
+      /* Bottom nav: show */
+      .mob-nav { display: block; }
+      .mob-nav-inner { height: 58px; display: flex; align-items: stretch; }
+
+      /* ── Touch targets: min 44px ── */
+      .btn { min-height: 44px; padding: 10px 16px; font-size: 14px; }
+      .btn-sm { min-height: 38px; }
+      .btn-xs { min-height: 34px; }
+      .ico-btn { width: 44px; height: 44px; font-size: 16px; }
+      select, input[type="text"], input[type="month"],
+      input[type="date"], input[type="time"], input[type="email"],
+      input[type="password"], textarea {
+        min-height: 44px; font-size: 16px !important; /* prevent iOS zoom */
+        padding: 10px 14px; border-radius: 10px;
+      }
+      .nv { min-height: 48px; font-size: 14px; padding: 12px 16px; }
+
+      /* ── Module head ── */
+      .mod-head { flex-direction: column; align-items: stretch; gap: 10px; }
+      .mod-head > div:last-child { width: 100%; }
+      .mod-head button, .mod-head .btn { width: 100%; justify-content: center; }
+      .mod-title { font-size: 20px !important; font-weight: 900; }
+      .mod-sub { font-size: 12px; }
+
+      /* ── Cards ── */
+      .card { border-radius: 16px !important; padding: 14px !important; }
+      .card-sm { padding: 12px !important; }
+      .card:active { transform: scale(.98); transition: transform .1s; }
+
+      /* ── KPI grids: 2 col ── */
+      .krow, .ana-kpi-row, .da-kpi-strip {
+        grid-template-columns: repeat(2,1fr) !important;
+        gap: 10px !important;
+      }
+      .ana-kpi-val, .da-kpi-val { font-size: 20px; }
+      .kpi-val { font-size: 24px; }
+      .ana-kpi-sub, .da-kpi-sub { display: none; }
+
+      /* ── Chart grids: 1 col ── */
+      .ana-charts-grid, .da-grid3 { grid-template-columns: 1fr !important; }
+      .da-grid2 { grid-template-columns: 1fr !important; }
+      .ana-chart-wide, .da-chart-wide-2 { grid-column: 1 !important; }
+
+      /* ── Employee/dept cards ── */
+      .da-emp-cards, .ed-grid { grid-template-columns: 1fr !important; }
+      .da-grid-dept { grid-template-columns: repeat(2,1fr) !important; }
+
+      /* ── Tables ── */
+      .tw, .tbl-wrap, .table-card {
+        overflow-x: auto; -webkit-overflow-scrolling: touch;
+        border-radius: 12px;
+      }
+      table { min-width: 480px; }
+      th, td { padding: 10px 12px; font-size: 12px; }
+
+      /* ── Modals: bottom sheet ── */
+      .modal-ov { align-items: flex-end; }
+      .modal-box {
+        position: fixed; bottom: 0; left: 0; right: 0; top: auto;
+        margin: 0; width: 100% !important; max-width: 100% !important;
+        border-radius: 20px 20px 0 0 !important;
+        max-height: 90dvh; max-height: 90vh;
+        overflow-y: auto; padding-bottom: env(safe-area-inset-bottom, 16px);
+        animation: sheetUp .28s cubic-bezier(.4,0,.2,1);
+      }
+      @keyframes sheetUp {
+        from { transform: translateY(100%); }
+        to   { transform: translateY(0); }
+      }
+      /* Sheet handle */
+      .modal-box::before {
+        content: ''; display: block;
+        width: 40px; height: 4px; border-radius: 2px;
+        background: var(--bdr2); margin: 0 auto 12px;
+      }
+
+      /* ── Toolbar/filter bars ── */
+      .ana-toolbar, .ed-toolbar {
+        padding: 12px 14px; border-radius: 14px; margin-bottom: 10px;
+      }
+      .ana-toolbar > div, .ed-toolbar > div { flex-wrap: wrap; gap: 8px; }
+      .ana-sel {
+        font-size: 13px; padding: 8px 10px;
+        min-width: 0 !important; flex: 1;
+        min-height: 40px; border-radius: 10px;
+      }
+      .fbar { flex-wrap: wrap; gap: 8px; }
+      .fbar label { width: 100%; font-size: 11px; font-weight: 700; margin-top: 2px; }
+      .fbar input, .fbar select, .fbar .ana-sel { width: 100%; }
+
+      /* ── Punch card ── */
+      .att-punch-card { flex-direction: column; align-items: stretch; gap: 12px; }
+      .btn-checkin { width: 100%; min-height: 56px; font-size: 16px; border-radius: 14px; }
+
+      /* ── Banner ── */
+      .da-banner { flex-direction: column; gap: 12px; padding: 16px; border-radius: 16px; }
+
+      /* ── Login: full screen ── */
+      .login-grid { display: none; }
       .lbox {
-        border-radius: 0;
-        min-height: 100vh;
-        justify-content: center;
+        padding: 32px 20px 24px; border-radius: 0;
+        min-height: 100dvh; min-height: 100vh;
       }
+      .lbox-logo { margin-bottom: 28px; }
+
+      /* ── Activity feed ── */
+      .ann-card { border-radius: 14px; padding: 14px; margin-bottom: 10px; }
+
+      /* ── Sections spacing ── */
+      .sec-title { font-size: 13px; margin-bottom: 10px; }
+
+      /* ── Checklist items ── */
+      .wkday { min-height: 48px; }
+
+      /* Tab bars: scrollable */
+      .tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; flex-wrap: nowrap; gap: 0; }
+      .tab { white-space: nowrap; padding: 10px 14px; font-size: 13px; min-height: 44px; }
+    }
+
+    /* ══════════════════════════════════════════════════════
+       TABLET 769–1024px
+    ══════════════════════════════════════════════════════ */
+    @media (min-width: 769px) and (max-width: 1024px) {
+      :root { --sbw: 210px; }
+      .tb-search { max-width: 200px; }
+      .ana-kpi-row { grid-template-columns: repeat(4,1fr) !important; }
+      .da-kpi-strip { grid-template-columns: repeat(3,1fr); }
+      .ana-charts-grid { grid-template-columns: repeat(2,1fr); }
+      .ana-chart-wide { grid-column: span 2; }
+      .da-grid3 { grid-template-columns: repeat(2,1fr); }
+      .da-emp-cards { grid-template-columns: repeat(2,1fr); }
+      .ed-grid { grid-template-columns: repeat(2,1fr); }
+      #content { padding: 18px 22px; }
+    }
+
+    /* ══════════════════════════════════════════════════════
+       VERY SMALL ≤400px
+    ══════════════════════════════════════════════════════ */
+    @media (max-width: 400px) {
+      .krow, .ana-kpi-row, .da-kpi-strip { grid-template-columns: 1fr !important; }
+      .kpi-val { font-size: 22px; }
+      .mod-title { font-size: 18px !important; }
+      .da-dept-card, .da-emp-card { padding: 12px; }
+      #content { padding: 10px; }
     }
   </style>
 </head>
@@ -4544,6 +4724,9 @@
   <!-- ═══════════════════════════════════════════════════════════
      APP SCREEN
 ═══════════════════════════════════════════════════════════ -->
+  <!-- Sidebar overlay (mobile tap-to-close) -->
+  <div class="sb-overlay" id="sbOverlay" onclick="_sbClose()"></div>
+
   <div class="scr" id="sApp">
 
     <!-- Mobile sidebar overlay -->
@@ -4655,11 +4838,11 @@
     </aside>
 
     <!-- ────────── MAIN CONTENT ────────── -->
-    <div class="main">
+    <div class="main main-area" id="mainArea">
       <!-- Top Bar -->
       <header class="topbar">
         <div class="tb-left">
-          <button class="ico-btn ham" id="hamBtn" onclick="_openSb()" title="Menu">
+          <button class="ico-btn ham" id="hamBtn" onclick="_isMobile&&_isMobile()?_sbToggleMob():_openSb()" title="Menu">
             <i class="fas fa-bars"></i>
           </button>
           <button type="button" class="ico-btn sb-toggle" id="sbToggle" onclick="_toggleSbCollapse()"
@@ -4840,6 +5023,22 @@
     }
     var _dark = false;  // Dark mode state
     var _charts = {};     // Active Chart.js instances (key → instance)
+    var _chartQ  = [];    // Queue of chart-render callbacks waiting for Chart.js
+
+    // Safe chart render — waits for Chart.js if not yet loaded
+    function _whenChart(fn) {
+      if (window.Chart) { fn(); return; }
+      _chartQ.push(fn);
+      // Poll until Chart.js loads (CDN defer may not be ready yet)
+      if (_chartQ.length === 1) {
+        var poll = setInterval(function() {
+          if (!window.Chart) return;
+          clearInterval(poll);
+          var q = _chartQ.splice(0);
+          q.forEach(function(f){ try { f(); } catch(e){} });
+        }, 50);
+      }
+    }
     var _ntfs = [];     // Notification list
     var _ntfU = 0;      // Unread count
 
@@ -5493,11 +5692,14 @@ function _gasX(fn, args, timeout, onOk, onErr) {
         }
 
         // Render dashboard with cached data
-        _loadV('dash');
+        _loadV(window._pwaStartRoute || 'dash');
+        window._pwaStartRoute = null;
+        _updateMobNav && _updateMobNav('home');
 
       }, function() {
         // Fallback: load dashboard anyway
         _loadV('dash');
+        _updateMobNav && _updateMobNav('home');
       });
     }
     function _bootNtfs() {
@@ -7329,8 +7531,7 @@ function _loadSetupTasks() {
           if (lEl) lEl.textContent='Updated '+new Date().toLocaleTimeString();
 
           // Draw charts
-          setTimeout(function(){
-            if (!window.Chart) return;
+          _whenChart(function() {
             if (document.getElementById('anaChDept') && dList.length) {
               _anaChart('anaChDept','bar',dList.map(function(d){return d.dept;}),
                 [{label:'Avg %',data:dList.map(function(d){return d.avg_pct;}),
@@ -7371,7 +7572,7 @@ function _loadSetupTasks() {
                 [{label:'Days',data:b10.map(function(r){return r.days_absent||0;}),backgroundColor:'rgba(220,38,38,.75)',borderRadius:4,borderSkipped:false}],
                 {indexAxis:'y',plugins:{legend:{display:false}}});
             }
-          }, 80);
+          });
 
         }, function(e){ el.innerHTML='<div class="te">Error: '+_esc(e.message)+'</div>'; });
       }); // end _populateDeptSel
@@ -10209,8 +10410,7 @@ function _loadSetupTasks() {
       root.innerHTML = h;
 
       // ── Charts ────────────────────────────────────────────────────────────
-      setTimeout(function() {
-        if (!window.Chart) return;
+      _whenChart(function() {
         var isDk = document.body.classList.contains('dark');
         var gc = isDk?'rgba(255,255,255,0.05)':'rgba(0,0,0,0.05)', tc = isDk?'#94a3b8':'#64748b';
 
@@ -10617,8 +10817,7 @@ function _loadSetupTasks() {
       root.innerHTML = h;
 
       // ══ DRAW CHARTS ══════════════════════════════════════════════════════
-      setTimeout(function() {
-        if (!window.Chart) return;
+      _whenChart(function() {
         var isDk = document.body.classList.contains('dark');
         var gc=isDk?'rgba(255,255,255,0.05)':'rgba(0,0,0,0.05)', tc=isDk?'#94a3b8':'#64748b';
 
@@ -11033,8 +11232,7 @@ function _loadSetupTasks() {
         if (lEl) lEl.textContent='Updated '+new Date().toLocaleTimeString();
 
         // ── Draw Charts ───────────────────────────────────────────────────
-        setTimeout(function(){
-          if (!window.Chart) return;
+        _whenChart(function() {
           var isDk=document.body.classList.contains('dark');
           var gc=isDk?'rgba(255,255,255,0.05)':'rgba(0,0,0,0.05)', tc=isDk?'#94a3b8':'#64748b';
           var baseOpts={responsive:true,maintainAspectRatio:false,
@@ -13083,8 +13281,7 @@ function _loadSetupTasks() {
         root.innerHTML = h;
 
         // ── Charts ───────────────────────────────────────────────────────
-        setTimeout(function() {
-          if (!window.Chart) return;
+        _whenChart(function() {
           var isDk=document.body.classList.contains('dark');
           var gc=isDk?'rgba(255,255,255,0.05)':'rgba(0,0,0,0.05)', tc=isDk?'#94a3b8':'#64748b';
           function mkC(id,type,labels,datasets,extra){
@@ -13265,7 +13462,180 @@ function _deactivateTask(uid) {
 
     
 
+    // ══════════════════════════════════════════════════════════════════════════
+    // MOBILE / PWA — Sidebar overlay + Bottom nav + touch helpers
+    // ══════════════════════════════════════════════════════════════════════════
+    var _isMobile = function() { return window.innerWidth <= 768; };
+
+    function _sbOpen() {
+      document.getElementById('sApp').classList.add('sb-open');
+      var ov = document.getElementById('sbOverlay');
+      if (ov) ov.classList.add('on');
+      document.body.style.overflow = 'hidden';
+    }
+    function _sbClose() {
+      document.getElementById('sApp').classList.remove('sb-open');
+      var ov = document.getElementById('sbOverlay');
+      if (ov) ov.classList.remove('on');
+      document.body.style.overflow = '';
+    }
+    function _sbToggleMob() {
+      var app = document.getElementById('sApp');
+      if (app.classList.contains('sb-open')) _sbClose();
+      else _sbOpen();
+    }
+
+    // Bottom nav routing
+    var _mbnMap = {
+      'dash':   'dash',
+      'check':  'check',
+      'attend': 'attend',
+      'leave':  'leave'
+    };
+    function _mbNav(key) {
+      _sbClose();
+      _loadV(_mbnMap[key] || key);
+      _updateMobNav(key);
+    }
+    function _updateMobNav(activeKey) {
+      var keyMap = { home:'home', check:'check', attend:'attend', leave:'leave', more:'more' };
+      document.querySelectorAll('.mob-nav-item').forEach(function(el) {
+        el.classList.remove('active');
+      });
+      var key = keyMap[activeKey] || 'more';
+      var el = document.getElementById('mbn-' + key);
+      if (!el) el = document.getElementById('mbn-more');
+      if (el) el.classList.add('active');
+    }
+
+    // "More" tray — shows a sheet with remaining nav items
+    var _moreOpen = false;
+    function _mbMore() {
+      if (_moreOpen) { _closeMobTray(); return; }
+      _moreOpen = true;
+      var tray = document.createElement('div');
+      tray.id = 'mobTray';
+      tray.style.cssText = 'position:fixed;inset:0 0 60px 0;z-index:139;display:flex;flex-direction:column;justify-content:flex-end';
+      var bg = document.createElement('div');
+      bg.style.cssText = 'position:absolute;inset:0;background:rgba(0,0,0,.4)';
+      bg.onclick = _closeMobTray;
+      var sheet = document.createElement('div');
+      sheet.style.cssText = 'position:relative;background:var(--sur);border-radius:20px 20px 0 0;padding:16px;max-height:70vh;overflow-y:auto';
+
+      var items = [
+        {ico:'fa-house',           lbl:'Dashboard',          key:'dash'},
+        {ico:'fa-megaphone',       lbl:'Announcements',      key:'announce'},
+        {ico:'fa-diagram-project', lbl:'Delegation',         key:'deleg'},
+        {ico:'fa-calendar-days',   lbl:'Holiday Calendar',   key:'holcal'},
+        {ico:'fa-circle-user',     lbl:'My Profile',         key:'profile'},
+      ];
+      // Add manager items if applicable
+      if (_isManager && _isManager()) {
+        items = items.concat([
+          {ico:'fa-chart-bar',       lbl:'Analytics',           key:'analytics'},
+          {ico:'fa-trophy',          lbl:'Performance',         key:'perf'},
+          {ico:'fa-address-book',    lbl:'Employee Directory',  key:'empdir'},
+          {ico:'fa-list-check',      lbl:'Checklist Analytics', key:'clana'},
+          {ico:'fa-diagram-project', lbl:'Delegation Analytics',key:'delana'},
+          {ico:'fa-user-clock',      lbl:'Attendance Analytics',key:'attana'},
+        ]);
+      }
+
+      sheet.innerHTML = '<div style="width:40px;height:4px;border-radius:2px;background:var(--bdr);margin:0 auto 16px"></div>' +
+        '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">' +
+        items.map(function(it) {
+          return '<button onclick="_closeMobTray();_mbNav(\'' + it.key + '\')" ' +
+            'style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 8px;' +
+            'background:var(--sur2);border:1.5px solid var(--bdr);border-radius:12px;cursor:pointer;' +
+            'font-size:10px;font-weight:700;color:var(--tx2);-webkit-tap-highlight-color:transparent">' +
+            '<i class="fas ' + it.ico + '" style="font-size:20px;color:var(--P)"></i>' +
+            it.lbl + '</button>';
+        }).join('') + '</div>';
+
+      tray.appendChild(bg);
+      tray.appendChild(sheet);
+      document.body.appendChild(tray);
+
+      // Animate in
+      sheet.style.transform = 'translateY(100%)';
+      sheet.style.transition = 'transform .25s cubic-bezier(.4,0,.2,1)';
+      requestAnimationFrame(function() { sheet.style.transform = 'translateY(0)'; });
+    }
+    function _closeMobTray() {
+      _moreOpen = false;
+      var tray = document.getElementById('mobTray');
+      if (tray) {
+        var sheet = tray.querySelector('div:last-child');
+        if (sheet) {
+          sheet.style.transform = 'translateY(100%)';
+          setTimeout(function() { tray.remove(); }, 250);
+        } else { tray.remove(); }
+      }
+    }
+
+    // Auto-close sidebar when nav item clicked on mobile
+    document.addEventListener('click', function(e) {
+      if (!_isMobile()) return;
+      var nv = e.target.closest('.nv');
+      if (nv) _sbClose();
+    }, { passive: true });
+
+    // Swipe to open sidebar
+    (function() {
+      var sx = 0, sy = 0;
+      document.addEventListener('touchstart', function(e) {
+        sx = e.touches[0].clientX;
+        sy = e.touches[0].clientY;
+      }, { passive: true });
+      document.addEventListener('touchend', function(e) {
+        if (!_isMobile()) return;
+        var dx = e.changedTouches[0].clientX - sx;
+        var dy = Math.abs(e.changedTouches[0].clientY - sy);
+        // Swipe right from left edge (≤40px) → open sidebar
+        if (sx < 40 && dx > 60 && dy < 60) _sbOpen();
+        // Swipe left → close sidebar
+        if (dx < -60 && dy < 60) _sbClose();
+      }, { passive: true });
+    })();
+
+    // Make back button open sidebar on mobile
+    (function() {
+      var backBtn = document.querySelector('.tb-back');
+      if (backBtn) {
+        backBtn.addEventListener('click', function() {
+          if (_isMobile()) _sbToggleMob();
+        });
+      }
+    })();
+
+    // Patch _loadV — update bottom nav + slide animation on mobile
+    var _origLoadV = _loadV;
+    _loadV = function(route, sub) {
+      _origLoadV(route, sub);
+      // Mobile: slide-in animation
+      if (_isMobile && _isMobile()) {
+        var ct = document.getElementById('content');
+        if (ct) {
+          ct.classList.remove('page-slide-in');
+          void ct.offsetWidth; // reflow
+          ct.classList.add('page-slide-in');
+          setTimeout(function(){ ct.classList.remove('page-slide-in'); }, 300);
+        }
+      }
+      // Update bottom nav active
+      var navMap = { dash:'home', check:'check', attend:'attend', leave:'leave' };
+      _updateMobNav(navMap[route] || 'more');
+    };
+
+    // ── PWA startup URL routing (?v=dash etc.) ─────────────────────────────
+    (function() {
+      var params = new URLSearchParams(window.location.search);
+      var startV = params.get('v');
+      if (startV && window._pwaStartRoute === undefined) window._pwaStartRoute = startV;
+    })();
+
     // ── Auto-restore login session on page refresh ───────────────────────────
+
     // Runs AFTER all functions are defined — safe to call _bootApp here
     (function _autoRestoreSession() {
       try {
@@ -13288,6 +13658,32 @@ function _deactivateTask(uid) {
     })();
 
   </script>
+  <!-- ── Mobile Bottom Navigation ── -->
+  <nav class="mob-nav" id="mobNav" aria-label="Mobile navigation">
+    <div class="mob-nav-inner">
+      <button class="mob-nav-item" id="mbn-home" onclick="_mbNav('dash')" aria-label="Home">
+        <span class="mob-nav-pill"><i class="fas fa-house"></i></span>
+        <span>Home</span>
+      </button>
+      <button class="mob-nav-item" id="mbn-check" onclick="_mbNav('check')" aria-label="Tasks">
+        <span class="mob-nav-pill"><i class="fas fa-list-check"></i></span>
+        <span>Tasks</span>
+      </button>
+      <button class="mob-nav-item" id="mbn-attend" onclick="_mbNav('attend')" aria-label="Attendance">
+        <span class="mob-nav-pill"><i class="fas fa-clock"></i></span>
+        <span>Attendance</span>
+      </button>
+      <button class="mob-nav-item" id="mbn-leave" onclick="_mbNav('leave')" aria-label="Leave">
+        <span class="mob-nav-pill"><i class="fas fa-calendar-days"></i></span>
+        <span>Leave</span>
+      </button>
+      <button class="mob-nav-item mob-nav-more" id="mbn-more" onclick="_mbMore()" aria-label="More">
+        <span class="mob-nav-pill"><i class="fas fa-grid-2"></i></span>
+        <span>More</span>
+      </button>
+    </div>
+  </nav>
+  <div class="safe-bot"></div>
 </body>
 
 </html>
