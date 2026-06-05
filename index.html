@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="Fresko Portal">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-180.png">
-  <title>Fresko Staff Portal — </title>
+  <title>Fresko Staff Portal — v3.0</title>
 
   <!-- External Assets -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -4557,7 +4557,7 @@
             onerror="this.style.display='none'">
           <div>
             <div class="sb-brand-txt">Fresko</div>
-            <div class="sb-brand-ver">Portal </div>
+            <div class="sb-brand-ver">Portal v3.0</div>
           </div>
         </div>
         <div class="sb-prof" onclick="_loadV('profile')">
@@ -4712,7 +4712,7 @@
       <p>You'll be returned to the login screen. Make sure you've saved any open work.</p>
       <div class="so-btns">
         <button class="btn btn-outline" onclick="_soHide()">Cancel</button>
-        <button class="btn btn-red" onclick="location.reload()">
+        <button class="btn btn-red" onclick="_clearSession();location.reload()">
           <i class="fas fa-sign-out-alt"></i> Sign Out
         </button>
       </div>
@@ -4785,6 +4785,33 @@
        STATE VARIABLES
     ══════════════════════════════════════════════════════════ */
     var _U = null;   // Current logged-in user object from GAS
+
+    // ── Session persistence helpers ───────────────────────────────────────────
+    var _SESSION_KEY = 'fk_session_v2';
+    function _saveSession(user, token) {
+      try {
+        var sessionHours = 12; // default 12h
+        // Use AppConfig value if already loaded
+        if (_D && _D.appConfig && _D.appConfig.SESSION_HOURS) {
+          sessionHours = parseInt(_D.appConfig.SESSION_HOURS) || 12;
+        }
+        var exp = Date.now() + sessionHours * 3600 * 1000;
+        sessionStorage.setItem(_SESSION_KEY, JSON.stringify({ user: user, token: token, exp: exp }));
+      } catch(e) {}
+    }
+    function _loadSession() {
+      try {
+        var raw = sessionStorage.getItem(_SESSION_KEY);
+        if (!raw) return null;
+        var s = JSON.parse(raw);
+        if (!s || !s.user || !s.token) return null;
+        if (Date.now() > s.exp) { sessionStorage.removeItem(_SESSION_KEY); return null; }
+        return s;
+      } catch(e) { return null; }
+    }
+    function _clearSession() {
+      try { sessionStorage.removeItem(_SESSION_KEY); } catch(e) {}
+    }
     var _V = null;   // Current view name
     var _ST = null;   // Current sub-tab
     var _D = {};     // Cached data store (empDir, todayTasks, etc.)
@@ -5092,7 +5119,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbzYEmbtgVZlN3b4xxryj18V6uB3nToYYcQV8Ipzn_FWQHD3Yutc6XZV-R77shuxiG_oZA/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbyrraQPYFM_wNB30DxqinpPGs5yBHABhLMCaaQBHUOoq9-EVzMD4Gqx3cWciucOzLwI4w/exec';
     var _TOKEN  = '';
 
 function _gas(fn, args, onOk, onErr) {
@@ -5374,6 +5401,8 @@ function _gasX(fn, args, timeout, onOk, onErr) {
         if (r && r.success && r.user) {
           _U = r.user;
           _TOKEN = r.user.email + ':' + (r.user.role || 'STAFF').toLowerCase();
+          // Save session so page refresh doesn't log out
+          _saveSession(_U, _TOKEN);
           _bootApp();
         } else {
           errEl.textContent = (r && r.error) || 'Invalid email or password';
@@ -5387,6 +5416,19 @@ function _gasX(fn, args, timeout, onOk, onErr) {
         errEl.classList.add('on');
       });
     }
+
+    // ── Auto-restore session on page load (runs before anything) ───────────────
+    (function() {
+      var saved = _loadSession();
+      if (saved) {
+        _U      = saved.user;
+        _TOKEN  = saved.token;
+        // Refresh session TTL
+        _saveSession(_U, _TOKEN);
+        // Boot directly without showing login screen
+        setTimeout(function() { _bootApp(); }, 0);
+      }
+    })();
 
     /* ══════════════════════════════════════════════════════════
        APP BOOTSTRAP
@@ -5428,6 +5470,7 @@ function _gasX(fn, args, timeout, onOk, onErr) {
         if (d.holidays)      _D.holidays      = d.holidays;
         if (d.myDelegations) _D.myDelegations = d.myDelegations;
         if (d.empDir)        _D.empDir        = d.empDir;
+        if (d.appConfig)     _D.appConfig     = d.appConfig;   // AppConfig from sheet
         // Pre-fetch analytics in background after login (non-blocking)
         if (_isManager && _isManager()) {
           setTimeout(function() {
@@ -5612,6 +5655,39 @@ function _gasX(fn, args, timeout, onOk, onErr) {
       }
     }
 
+    // GPS-aware check-in call — payload can be {ts,lat,lng} or plain timestamp string
+    function _doCheckInCall(btn, payload) {
+      btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Processing...';
+      _gas('recordCheckIn', [payload], function(res) {
+        if (res && res.success) {
+          _punchState = 'checked_in';
+          _toast('✓ Checked in at ' + (res.check_in || ''), 'ok');
+          _addNtf('Check IN at ' + (res.check_in || ''), 'fa-sign-in-alt', 'var(--Gl)', 'var(--G)');
+          _renderPunchCard({ status: 'checked_in', check_in: res.check_in, check_in_ts: res.timestamp || '' });
+        } else {
+          var errMsg = (res && res.error) ? res.error : 'Unknown error';
+          // GPS_BLOCKED message — show nicely
+          if (errMsg.indexOf('GPS_BLOCKED:') === 0) {
+            errMsg = errMsg.replace('GPS_BLOCKED:', '');
+            _toast('📍 ' + errMsg, 'err');
+          } else {
+            _toast('Check-in failed: ' + errMsg, 'err');
+          }
+          btn.disabled  = false;
+          btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Check IN';
+        }
+      }, function(e) {
+        var msg = e.message || '';
+        if (msg.indexOf('GPS_BLOCKED:') === 0) {
+          _toast('📍 ' + msg.replace('GPS_BLOCKED:', ''), 'err');
+        } else {
+          _toast('Check-in failed: ' + msg, 'err');
+        }
+        btn.disabled  = false;
+        btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Check IN';
+      });
+    }
+
     function _doPunch() {
       var btn = document.getElementById('dashPunchBtn');
       if (!btn) return;
@@ -5621,8 +5697,33 @@ function _gasX(fn, args, timeout, onOk, onErr) {
 
       if (_punchState === 'not_checked_in') {
         btn.disabled  = true;
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Getting location...';
+
+        // ── GPS check: only if AppConfig.GPS_ATTENDANCE = Yes ────────────────
+        var gpsEnabled = _D.appConfig && (_D.appConfig.GPS_ATTENDANCE||'').toLowerCase() === 'yes';
+        if (gpsEnabled && navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            function(pos) {
+              var payload = { ts: deviceTs, lat: pos.coords.latitude, lng: pos.coords.longitude };
+              _doCheckInCall(btn, payload);
+            },
+            function(err) {
+              // Location denied/failed — let GAS decide (will block if GPS_ATTENDANCE=Yes)
+              var msgs = { 1: 'Location permission denied. Please allow location access.', 2: 'Location unavailable.', 3: 'Location request timed out.' };
+              _toast(msgs[err.code] || 'Could not get location', 'err');
+              btn.disabled  = false;
+              btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Check IN';
+            },
+            { timeout: 10000, maximumAge: 60000, enableHighAccuracy: true }
+          );
+        } else {
+          _doCheckInCall(btn, deviceTs);
+        }
+
+      } else if (_punchState === 'checked_in') {
+        btn.disabled  = true;
         btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Processing...';
-        _gas('recordCheckIn', [deviceTs], function(res) {
+        _gas('recordCheckOut', [deviceTs], function(res) {
           if (res && res.success) {
             _punchState = 'checked_in';
             _toast('✓ Checked in at ' + (res.check_in || ''), 'ok');
@@ -8225,7 +8326,7 @@ function _loadSetupTasks() {
 
         '</div>' +
         '<div style="padding:14px 20px;border-top:1px solid var(--bdr)">' +
-        '<div style="font-size:10px;color:var(--tx3);font-weight:600">Fresko Portal  &nbsp;·&nbsp; &copy; 2026 Fresko</div>' +
+        '<div style="font-size:10px;color:var(--tx3);font-weight:600">Fresko Portal v3.0 &nbsp;·&nbsp; &copy; 2026 Fresko</div>' +
         '</div>';
 
       document.body.appendChild(panel);
@@ -9220,8 +9321,8 @@ function _loadSetupTasks() {
       // Show first onboarding tip 2 seconds after login (triggered from _bootApp)
       // _showNextTip is called from _bootApp after login
 
-      console.log('[Fresko Portal ] Initialized. Ready for login.');
-      console.log('[Fresko Portal ] Press ? for keyboard shortcuts, ⌘K for search.');
+      console.log('[Fresko Portal v3.0] Initialized. Ready for login.');
+      console.log('[Fresko Portal v3.0] Press ? for keyboard shortcuts, ⌘K for search.');
     }());
 
     /* ══════════════════════════════════════════════════════════════════════
@@ -11511,9 +11612,9 @@ function _loadSetupTasks() {
         document.body.classList.add('dense');
       }
 
-      console.log('[Fresko Portal ] Initialized. Ready for login.');
-      console.log('[Fresko Portal ] Press ? for keyboard shortcuts, ⌘K for search.');
-      console.log('[Fresko Portal ] Navigation routes:', _navRoutes.length, 'views registered.');
+      console.log('[Fresko Portal v3.0] Initialized. Ready for login.');
+      console.log('[Fresko Portal v3.0] Press ? for keyboard shortcuts, ⌘K for search.');
+      console.log('[Fresko Portal v3.0] Navigation routes:', _navRoutes.length, 'views registered.');
     }());
 
     /* ══════════════════════════════════════════════════════════════════════
@@ -12501,7 +12602,7 @@ function _loadSetupTasks() {
     // ═══════════════════════════════════════════════════════════════════════
     // EMPLOYEE DIRECTORY — Rich cards with search, filters & quick stats
     // ═══════════════════════════════════════════════════════════════════════
-function _vEmpDir() {
+    function _vEmpDir() {
       document.getElementById('content').innerHTML =
         '<div class="mod-head">' +
         '<div><div class="mod-title">Employee Directory</div>' +
@@ -12531,7 +12632,7 @@ function _vEmpDir() {
         '</div>' +
         '<div style="display:flex;align-items:center;gap:8px;margin-top:8px">' +
         '<span id="edCount" style="font-size:12px;color:var(--tx3)"></span>' +
-        '<div class="fbar-spacer"></div>' + // Added missing quote and plus here
+        '<div class="fbar-spacer"></div>' +
         '<button class="btn btn-sm" onclick="_loadEmpDir()"><i class="fas fa-rotate-right"></i> Refresh</button>' +
         '</div>' +
         '</div>' +
