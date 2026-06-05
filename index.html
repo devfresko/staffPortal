@@ -5089,7 +5089,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbz7Eb5fcf0uNs8TmoRE1FUxAponRvc2IXq3dAiW1hfoxneASjWx08JopzKcXktAJLr3ug/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbwCOh9tPx2KnLjCRcp4MtgPgrkZPBJqvJhOf-Wm76Xe7E-zP4Mwq4FfNzxZt_twScPI-g/exec';
     var _TOKEN  = '';
 
 function _gas(fn, args, onOk, onErr) {
@@ -5424,6 +5424,12 @@ function _gasX(fn, args, timeout, onOk, onErr) {
         if (d.holidays)      _D.holidays      = d.holidays;
         if (d.myDelegations) _D.myDelegations = d.myDelegations;
         if (d.empDir)        _D.empDir        = d.empDir;
+        // Pre-fetch analytics in background after login (non-blocking)
+        if (_isManager && _isManager()) {
+          setTimeout(function() {
+            _gas('getAnalyticsSummary', [null], function(s) { _D.analyticsSummary = s; }, function() {});
+          }, 3000); // 3s after login — give GAS time to warm up
+        }
         if (d.myAttendance)  _D.myAttendance  = d.myAttendance;
         _D.lastFetch = Date.now();
         // Update cache toggle display
@@ -12452,10 +12458,6 @@ function _loadSetupTasks() {
       if (root) root.innerHTML = _skel(6);
       var month = (document.getElementById('anaMonth')||{}).value || _currMonth();
 
-      // ── Use cached data (no GAS call needed) ─────────────────────────────
-      // dashStats already has total_employees, total_done, pending_dels, overdue_dels
-      // _D.doers has employee + dept info
-      // For dept breakdown use getDelegationAnalytics cached or getAnalyticsSummary only if cache miss
       function _buildAndRender(data) {
         _D.analyticsData = data;
         var depts = data.dept_breakdown  || [];
@@ -12608,58 +12610,59 @@ function _loadSetupTasks() {
 
       }
 
-      // ── Smart loading strategy ────────────────────────────────────────────
-      // 1. If dashStats already loaded → use it + doers for quick render
-      // 2. Only call GAS if no cached data available
-      var ds = _D.dashStats;
-      var doers = _D.doers || _D.empDir || [];
-
-      if (ds && doers.length) {
-        // Build dept breakdown from doer list (no GAS call)
-        var deptCounts = {};
-        doers.forEach(function(d) {
-          var dept = d.dept || d.department || 'Other';
-          if (!deptCounts[dept]) deptCounts[dept] = { dept: dept, employees: 0, planned: 0, done: 0 };
-          deptCounts[dept].employees++;
-        });
-
-        var quickData = {
-          month: month,
-          total_employees: doers.length,
-          total_scheduled: ds.pendingTasks != null ? (ds.doneTasks||0) + (ds.pendingTasks||0) : 0,
-          total_done: ds.doneTasks || 0,
-          completion_pct: (ds.doneTasks != null && (ds.doneTasks||0) + (ds.pendingTasks||0) > 0)
-            ? Math.round((ds.doneTasks) / ((ds.doneTasks||0)+(ds.pendingTasks||0)) * 100) : 0,
-          pending_dels: ds.pendingDelegations || 0,
-          overdue_dels: ds.overdueDelegations || 0,
-          dept_breakdown: Object.keys(deptCounts).sort().map(function(k){ return deptCounts[k]; }),
-          status_breakdown: {
-            done:    ds.doneTasks    || 0,
-            pending: ds.pendingTasks || 0,
-            overdue: ds.overdueDelegations || 0
-          },
-          _from_cache: true
-        };
-        _buildAndRender(quickData);
-
-        // Silently refresh in background for accurate dept data
-        _gas('getAnalyticsSummary', [month], function(fullData) {
-          _D.analyticsData = fullData;
-          // Update only if still on analytics page
-          if (document.getElementById('anaRoot')) _buildAndRender(fullData);
-        }, function() {}); // silent fail — cached data already shown
-
-      } else {
-        // No cache — show loading and fetch
-        _gas('getAnalyticsSummary', [month], function(data) {
-          _buildAndRender(data);
-        }, function(e) {
-          var root2 = document.getElementById('anaRoot');
-          if (root2) root2.innerHTML =
-            '<div class="te"><i class="fas fa-exclamation-triangle"></i> Error loading analytics: '+_esc(e.message)+
-            '<br><small style="opacity:.7">Try refreshing — data may take a moment to load</small></div>';
-        });
+      // ── Priority 1: Use pre-loaded analyticsSummary from getAllData (instant) ─
+      if (_D.analyticsSummary) {
+        var cached = _D.analyticsSummary;
+        // If user picked a different month, rebuild from fresh
+        if (!month || cached.month === month || month === _currMonth()) {
+          _buildAndRender(cached);
+          return;
+        }
       }
+
+      // ── Priority 2: Build from empDir + dashStats (no extra GAS call) ─────
+      var doers = _D.empDir || _D.doers || [];
+      var ds    = _D.dashStats;
+      if (doers.length) {
+        var dMap = {};
+        doers.forEach(function(d) {
+          var dept = String(d.dept || d.department || 'Other').trim();
+          if (!dMap[dept]) dMap[dept] = { dept: dept, employees: 0, planned: 0, done: 0 };
+          dMap[dept].employees++;
+        });
+        var built = {
+          month:            month,
+          total_employees:  doers.length,
+          total_scheduled:  0,
+          total_done:       0,
+          completion_pct:   0,
+          pending_dels:     ds ? (ds.overdueDelegations || 0) : 0,
+          overdue_dels:     ds ? (ds.overdueDelegations || 0) : 0,
+          dept_breakdown:   Object.keys(dMap).sort().map(function(k){ return dMap[k]; }),
+          status_breakdown: { done: 0, pending: 0, overdue: 0 },
+          _from_cache:      true
+        };
+        _buildAndRender(built);
+
+        // Fetch real data silently in background
+        _gas('getAnalyticsSummary', [month], function(full) {
+          _D.analyticsSummary = full;
+          if (document.getElementById('anaRoot')) _buildAndRender(full);
+        }, function() {}); // silent — cached already shown
+        return;
+      }
+
+      // ── Priority 3: Direct fetch (only if nothing is cached) ─────────────
+      _gas('getAnalyticsSummary', [month], function(data) {
+        _D.analyticsSummary = data;
+        _buildAndRender(data);
+      }, function(e) {
+        var r2 = document.getElementById('anaRoot');
+        if (r2) r2.innerHTML =
+          '<div class="te"><i class="fas fa-exclamation-triangle"></i> Analytics data could not be loaded.' +
+          '<br><small>Please try again after a moment.</small>' +
+          '<br><br><button class="btn btn-sm" onclick="_loadAnalytics()"><i class="fas fa-rotate-right"></i> Retry</button></div>';
+      });
     }
 
     function _exportAnalytics() {
