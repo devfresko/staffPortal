@@ -4788,29 +4788,36 @@
 
     // ── Session persistence helpers ───────────────────────────────────────────
     var _SESSION_KEY = 'fk_session_v2';
+    // Uses localStorage so session survives page refresh AND tab close
+    // Expiry enforced client-side; sign-out always clears it
     function _saveSession(user, token) {
       try {
-        var sessionHours = 12; // default 12h
-        // Use AppConfig value if already loaded
-        if (_D && _D.appConfig && _D.appConfig.SESSION_HOURS) {
-          sessionHours = parseInt(_D.appConfig.SESSION_HOURS) || 12;
-        }
+        var sessionHours = 12;
+        try {
+          var sh = parseInt(localStorage.getItem('fk_session_hours') || '');
+          if (!isNaN(sh) && sh > 0) sessionHours = sh;
+        } catch(e) {}
         var exp = Date.now() + sessionHours * 3600 * 1000;
-        sessionStorage.setItem(_SESSION_KEY, JSON.stringify({ user: user, token: token, exp: exp }));
+        localStorage.setItem(_SESSION_KEY, JSON.stringify({
+          user: user, token: token, exp: exp, v: 2
+        }));
       } catch(e) {}
     }
     function _loadSession() {
       try {
-        var raw = sessionStorage.getItem(_SESSION_KEY);
+        var raw = localStorage.getItem(_SESSION_KEY);
         if (!raw) return null;
         var s = JSON.parse(raw);
-        if (!s || !s.user || !s.token) return null;
-        if (Date.now() > s.exp) { sessionStorage.removeItem(_SESSION_KEY); return null; }
+        if (!s || !s.user || !s.token || s.v !== 2) return null;
+        if (Date.now() > s.exp) { localStorage.removeItem(_SESSION_KEY); return null; }
         return s;
       } catch(e) { return null; }
     }
     function _clearSession() {
-      try { sessionStorage.removeItem(_SESSION_KEY); } catch(e) {}
+      try {
+        localStorage.removeItem(_SESSION_KEY);
+        sessionStorage.removeItem('fk_last_view'); // clear nav state too
+      } catch(e) {}
     }
     var _V = null;   // Current view name
     var _ST = null;   // Current sub-tab
@@ -5119,7 +5126,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbyrraQPYFM_wNB30DxqinpPGs5yBHABhLMCaaQBHUOoq9-EVzMD4Gqx3cWciucOzLwI4w/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbxhsdyAyoSIPf4MFDEWopocdX2e5cWZVeu7gFQHYfqTajF2GUXdXiSxuGwBFxAB4vI2rQ/exec';
     var _TOKEN  = '';
 
 function _gas(fn, args, onOk, onErr) {
@@ -5417,19 +5424,6 @@ function _gasX(fn, args, timeout, onOk, onErr) {
       });
     }
 
-    // ── Auto-restore session on page load (runs before anything) ───────────────
-    (function() {
-      var saved = _loadSession();
-      if (saved) {
-        _U      = saved.user;
-        _TOKEN  = saved.token;
-        // Refresh session TTL
-        _saveSession(_U, _TOKEN);
-        // Boot directly without showing login screen
-        setTimeout(function() { _bootApp(); }, 0);
-      }
-    })();
-
     /* ══════════════════════════════════════════════════════════
        APP BOOTSTRAP
     ══════════════════════════════════════════════════════════ */
@@ -5470,7 +5464,15 @@ function _gasX(fn, args, timeout, onOk, onErr) {
         if (d.holidays)      _D.holidays      = d.holidays;
         if (d.myDelegations) _D.myDelegations = d.myDelegations;
         if (d.empDir)        _D.empDir        = d.empDir;
-        if (d.appConfig)     _D.appConfig     = d.appConfig;   // AppConfig from sheet
+        if (d.appConfig) {
+          _D.appConfig = d.appConfig;
+          // Store session hours so next _saveSession call uses correct value
+          if (d.appConfig.SESSION_HOURS) {
+            try { localStorage.setItem('fk_session_hours', String(parseInt(d.appConfig.SESSION_HOURS)||12)); } catch(e) {}
+          }
+          // Refresh session TTL with correct hours now that we know them
+          if (_U && _TOKEN) _saveSession(_U, _TOKEN);
+        }
         // Pre-fetch analytics in background after login (non-blocking)
         if (_isManager && _isManager()) {
           setTimeout(function() {
@@ -5540,7 +5542,7 @@ function _gasX(fn, args, timeout, onOk, onErr) {
         tbCrumb.textContent = 'Portal / ' + title + ' · ' + shortD;
       }
 
-      _saveSession();
+      _saveNavState();
 
       Object.keys(_charts).forEach(function (k) {
         try { _charts[k].destroy(); } catch (e) { }
@@ -8135,14 +8137,14 @@ function _loadSetupTasks() {
        SESSION MANAGEMENT
     ══════════════════════════════════════════════════════════ */
     /* Auto-save last viewed section to sessionStorage */
-    function _saveSession() {
+    function _saveNavState() {
       try {
         sessionStorage.setItem('fk_last_view', JSON.stringify({ v: _V, st: _ST, ts: Date.now() }));
       } catch (e) { }
     }
 
-    /* Restore last session on app boot */
-    function _restoreSession() {
+    /* Restore last nav state on app boot */
+    function _restoreNavState() {
       try {
         var saved = JSON.parse(sessionStorage.getItem('fk_last_view') || 'null');
         if (saved && saved.v && (Date.now() - saved.ts) < 3600000) {
@@ -11149,7 +11151,7 @@ function _loadSetupTasks() {
     //   }, 2000);
 
     //   // Try to restore last session
-    //   var lastSession = _restoreSession();
+    //   var lastSession = _restoreNavState();
     //   if (lastSession && lastSession.view) {
     //     _loadV(lastSession.view, lastSession.sub);
     //   } else {
@@ -13262,6 +13264,29 @@ function _deactivateTask(uid) {
 
 
     
+
+    // ── Auto-restore login session on page refresh ───────────────────────────
+    // Runs AFTER all functions are defined — safe to call _bootApp here
+    (function _autoRestoreSession() {
+      try {
+        var saved = _loadSession();
+        if (saved && saved.user && saved.token) {
+          _U     = saved.user;
+          _TOKEN = saved.token;
+          // Refresh TTL on each restore
+          _saveSession(_U, _TOKEN);
+          // Hide login, boot app — don't show login screen at all
+          var sLogin = document.getElementById('sLogin');
+          var sApp   = document.getElementById('sApp');
+          if (sLogin) sLogin.classList.remove('on');
+          if (sApp)   sApp.classList.add('on');
+          _bootApp();
+        }
+      } catch(e) {
+        console.warn('[Session] Restore failed:', e.message);
+      }
+    })();
+
   </script>
 </body>
 
