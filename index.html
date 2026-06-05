@@ -5092,7 +5092,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycby8nMzA88gCL8XVjsMYcfJbD6e_AQ_wjeH4-MsFdN9GLPGH0Hxo1KysHgm5DzFsWEW-1Q/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbzYEmbtgVZlN3b4xxryj18V6uB3nToYYcQV8Ipzn_FWQHD3Yutc6XZV-R77shuxiG_oZA/exec';
     var _TOKEN  = '';
 
 function _gas(fn, args, onOk, onErr) {
@@ -6010,7 +6010,7 @@ function _gasX(fn, args, timeout, onOk, onErr) {
         '<input type="date" id="ckDate" value="' + _today() + '" onchange="_loadToday()">' +
         '<button class="btn btn-sm" onclick="_loadToday()"><i class="fas fa-search"></i> Load</button>' +
         '<div class="fbar-spacer"></div>' +
-        '<button class="btn btn-outline btn-sm" onclick="_exportTasks()"><i class="fas fa-download"></i> Export CSV</button>' +
+        
         '</div>' +
         '<div id="ckProgress" style="margin-bottom:14px"></div>' +
         '<div id="ckList"></div>';
@@ -6034,7 +6034,7 @@ function _gasX(fn, args, timeout, onOk, onErr) {
         '<label>Freq:</label><select id="histFreq"><option value="">All</option><option value="D">D — Daily</option><option value="W">W — Weekly</option><option value="F">F — Fortnightly</option><option value="M">M — Monthly</option><option value="2M">2M — Every 2 Months</option><option value="Q">Q — Quarterly</option><option value="4M">4M — Every 4 Months</option><option value="H">H — Half Yearly</option><option value="Y">Y — Yearly</option><option value="E1st">E1st — 1st Weekday</option><option value="E2nd">E2nd — 2nd Weekday</option><option value="E3rd">E3rd — 3rd Weekday</option><option value="E4th">E4th — 4th Weekday</option><option value="ELast">ELast — Last Weekday</option></select>' +
         '<button class="btn btn-sm" onclick="_loadHist()"><i class="fas fa-search"></i> Search</button>' +
         '<div class="fbar-spacer"></div>' +
-        '<button class="btn btn-outline btn-sm" onclick="_exportHistory()"><i class="fas fa-download"></i> Export</button>' +
+        
         '</div>' +
         '<div id="histTable"></div>';
     }
@@ -6565,7 +6565,7 @@ function _loadSetupTasks() {
         '<option value="All">All</option><option>Pending</option><option>Completed</option><option>Shifted</option><option>Cancelled</option>' +
         '</select>' +
         '<div class="fbar-spacer"></div>' +
-        '<button class="btn btn-outline btn-sm" onclick="_exportDelegAll()"><i class="fas fa-download"></i> Export</button>' +
+        
         '</div>' +
         '<div id="dallList">' + _skel(3) + '</div>';
       _loadDAllFilter();
@@ -7006,7 +7006,7 @@ function _loadSetupTasks() {
         '<div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap">',
         '  <input type="text" id="aanaEmpSearch" class="ana-sel" placeholder="🔍 Search employee..." oninput="_filterAnaTable()" style="width:200px">',
         '  <button class="btn btn-sm" onclick="_loadAttAnalytics()"><i class="fas fa-chart-bar"></i> Analyze</button>',
-        '  <button class="btn btn-sm btn-outline" onclick="_exportAnaCSV()"><i class="fas fa-download"></i> Export CSV</button>',
+      
         '  <span id="aanaLastLoad" style="font-size:11px;color:var(--tx3)"></span>',
         '</div>',
         '</div>',
@@ -7837,7 +7837,7 @@ function _loadSetupTasks() {
         '<label>To:</label><input type="date" id="ptTo" value="' + _today() + '">' +
         '<button class="btn btn-sm" onclick="_loadTopPerformers()"><i class="fas fa-trophy"></i> Load</button>' +
         '<div class="fbar-spacer"></div>' +
-        '<button class="btn btn-outline btn-sm" onclick="_exportTopPerf()"><i class="fas fa-download"></i> Export</button>' +
+        
         '</div><div id="ptContent"></div>';
     }
     function _exportTopPerf() {
@@ -7855,7 +7855,7 @@ function _loadSetupTasks() {
         '<label>To:</label><input type="date" id="pindTo" value="' + _today() + '">' +
         '<button class="btn btn-sm" onclick="_loadIndivPerf()"><i class="fas fa-search"></i> Load</button>' +
         '<div class="fbar-spacer"></div>' +
-        '<button class="btn btn-outline btn-sm" onclick="_exportIndPerf()"><i class="fas fa-download"></i> Export</button>' +
+        
         '</div><div id="pindContent"></div>';
     }
     function _exportIndPerf() {
@@ -7873,7 +7873,7 @@ function _loadSetupTasks() {
         '<label>Month:</label><input type="month" id="pteamMonth" value="' + _currMonth() + '">' +
         '<button class="btn btn-sm" onclick="_loadTeamPerf()"><i class="fas fa-search"></i> Load</button>' +
         '<div class="fbar-spacer"></div>' +
-        '<button class="btn btn-outline btn-sm" onclick="_exportTeamPerf()"><i class="fas fa-download"></i> Export</button>' +
+        
         '</div><div id="pteamContent"></div>';
     }
     function _loadTeamPerf() {
@@ -9658,7 +9658,7 @@ function _loadSetupTasks() {
         '<option value="Approved">Approved</option><option value="Rejected">Rejected</option>' +
         '</select>' +
         '<div class="fbar-spacer"></div>' +
-        '<button class="btn btn-outline btn-sm" onclick="_exportLeaveApprovals()"><i class="fas fa-download"></i> Export</button>' +
+        
         '</div><div id="laprvList">' + _skel(4) + '</div>';
     }
 
@@ -9837,6 +9837,17 @@ function _loadSetupTasks() {
         '<option value="trend">Daily Trend</option>' +
         '</select>' +
         '<input type="month" id="claMonth" class="ana-sel" value="' + _currMonth() + '">' +
+        '<select id="claDept" class="ana-sel" onchange="_renderCla()">' +
+        '<option value="all">All Departments</option>' +
+        _getDeptOptions() +
+        '</select>' +
+        '<select id="claFreqFlt" class="ana-sel" onchange="_renderCla()">' +
+        '<option value="all">All Frequencies</option>' +
+        '<option value="D">Daily</option>' +
+        '<option value="W">Weekly</option>' +
+        '<option value="F">Fortnightly</option>' +
+        '<option value="M">Monthly</option>' +
+        '</select>' +
         '<select id="claFilter" class="ana-sel" onchange="_renderCla()">' +
         '<option value="all">All Employees</option>' +
         '<option value="perfect">Perfect (100%)</option>' +
@@ -9852,7 +9863,7 @@ function _loadSetupTasks() {
         '<option value="name_asc">Name A-Z</option>' +
         '</select>' +
         '<button class="btn btn-sm" onclick="_loadCla()"><i class="fas fa-chart-bar"></i> Analyze</button>' +
-        '<button class="btn btn-sm btn-outline" onclick="_exportClaCsv()"><i class="fas fa-download"></i> Export</button>' +
+        
         '</div></div>' +
         '<div id="claRoot" style="margin-top:4px">' + _skel(4) + '</div>';
 
@@ -9883,7 +9894,10 @@ function _loadSetupTasks() {
       var filter = (document.getElementById('claFilter') || {}).value || 'all';
       var sort   = (document.getElementById('claSort')   || {}).value || 'planned_desc';
 
+      var deptFlt = (document.getElementById('claDept')    || {}).value || 'all';
+      var freqFlt = (document.getElementById('claFreqFlt') || {}).value || 'all';
       var emps  = (data.by_employee  || []).filter(function(e) {
+        if (deptFlt !== 'all' && e.dept !== deptFlt) return false;
         if (filter === 'perfect') return e.completion_rate === 100;
         if (filter === 'good')    return e.completion_rate >= 80;
         if (filter === 'avg')     return e.completion_rate >= 50 && e.completion_rate < 80;
@@ -10197,14 +10211,24 @@ function _loadSetupTasks() {
         '<option value="trend">Trend & Velocity</option>' +
         '<option value="giver">By Delegator</option>' +
         '</select>' +
+        '<select id="daDept" class="ana-sel" onchange="_renderDa()">' +
+        '<option value="all">All Departments</option>' +
+        _getDeptOptions() +
+        '</select>' +
         '<select id="daFilter" class="ana-sel" onchange="_renderDa()">' +
         '<option value="all">All Tasks</option>' +
         '<option value="overdue">Overdue Only</option>' +
         '<option value="pending">Pending Only</option>' +
         '<option value="completed">Completed Only</option>' +
+        '<option value="low_rate">Low Rate (<50%)</option>' +
         '</select>' +
-        '<button class="btn btn-sm btn-outline" onclick="_exportDaCSV()"><i class="fas fa-download"></i> Export</button>' +
-        '<button class="btn btn-sm" onclick="_loadDa()"><i class="fas fa-rotate-right"></i> Refresh</button>' +
+        '<select id="daSort2" class="ana-sel" onchange="_renderDa()">' +
+        '<option value="assigned_desc">Assigned ↓</option>' +
+        '<option value="rate_desc">Completion % ↓</option>' +
+        '<option value="rate_asc">Completion % ↑</option>' +
+        '<option value="overdue_desc">Overdue ↓</option>' +
+        '<option value="name_asc">Name A-Z</option>' +
+        '</select>' +
         '</div></div>' +
         '<div id="daRoot"><div class="da-loading">' + _skel(4) + '</div></div>';
 
@@ -10240,11 +10264,21 @@ function _loadSetupTasks() {
       var total= data.total || 0;
 
       // ── Filter employees ─────────────────────────────────────────────────
+      var daDeptFlt = (document.getElementById('daDept')  || {}).value || 'all';
+      var daSort2   = (document.getElementById('daSort2') || {}).value || 'assigned_desc';
       var filtEmps = emps.filter(function(e) {
+        if (daDeptFlt !== 'all' && e.dept !== daDeptFlt) return false;
         if (filter==='overdue')   return e.overdue   > 0;
         if (filter==='pending')   return e.pending   > 0;
         if (filter==='completed') return e.completion_rate >= 100;
+        if (filter==='low_rate')  return e.completion_rate < 50;
         return true;
+      }).sort(function(a,b) {
+        if (daSort2==='rate_desc')    return (b.completion_rate||0)-(a.completion_rate||0);
+        if (daSort2==='rate_asc')     return (a.completion_rate||0)-(b.completion_rate||0);
+        if (daSort2==='overdue_desc') return (b.overdue||0)-(a.overdue||0);
+        if (daSort2==='name_asc')     return (a.name||'').localeCompare(b.name||'');
+        return (b.assigned||0)-(a.assigned||0);
       });
 
       var avgDays = data.avg_completion_days || 0;
@@ -10628,7 +10662,7 @@ function _loadSetupTasks() {
         '<div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap">' +
         '<input type="text" id="aaaEmpSearch" class="ana-sel" placeholder="🔍 Search employee..." oninput="_filterAaaTable()" style="width:200px">' +
         '<button class="btn btn-sm" onclick="_loadAaa()"><i class="fas fa-chart-bar"></i> Analyze</button>' +
-        '<button class="btn btn-sm btn-outline" onclick="_exportAaa()"><i class="fas fa-download"></i> Export CSV</button>' +
+        
         '<span id="aaaLastLoad" style="font-size:11px;color:var(--tx3)"></span>' +
         '</div></div>' +
         '<div id="aaaContent" style="margin-top:16px">' + _skel(4) + '</div>' +
@@ -10638,10 +10672,36 @@ function _loadSetupTasks() {
     }
 
     function _filterAaaTable() {
-      var q = ((document.getElementById('aaaEmpSearch') || {}).value || '').toLowerCase().trim();
-      document.querySelectorAll('#aaaEmpTable tbody tr').forEach(function(r) {
-        r.style.display = (!q || r.textContent.toLowerCase().indexOf(q) >= 0) ? '' : 'none';
+      var q      = ((document.getElementById('aaaEmpSearch') || {}).value || '').toLowerCase().trim();
+      var stFlt  = (document.getElementById('aaaStatusFlt')  || {}).value || 'all';
+      var sortFl = (document.getElementById('aaaSortFlt')    || {}).value || 'pct_desc';
+      var tbody  = document.querySelector('#aaaEmpTable tbody');
+      if (!tbody) return;
+      var rows = Array.from(tbody.querySelectorAll('tr'));
+      rows.forEach(function(r) {
+        var txt  = r.textContent.toLowerCase();
+        var pct  = parseInt(r.dataset.pct  || '0');
+        var abs  = parseInt(r.dataset.abs  || '0');
+        var showQ = !q || txt.indexOf(q) >= 0;
+        var showF = stFlt === 'all'
+          || (stFlt === 'perfect'      && pct === 100)
+          || (stFlt === 'good'         && pct >= 80)
+          || (stFlt === 'avg'          && pct >= 60 && pct < 80)
+          || (stFlt === 'low'          && pct < 60)
+          || (stFlt === 'absent_heavy' && abs > 3);
+        r.style.display = (showQ && showF) ? '' : 'none';
       });
+      // Re-sort visible rows
+      var visRows = rows.filter(function(r){ return r.style.display !== 'none'; });
+      visRows.sort(function(a, b) {
+        var av = parseInt(a.dataset[sortFl==='pct_asc'||sortFl==='pct_desc'?'pct':'abs']||0);
+        var bv = parseInt(b.dataset[sortFl==='pct_asc'||sortFl==='pct_desc'?'pct':'abs']||0);
+        if (sortFl === 'pct_desc' || sortFl === 'absent_desc') return bv - av;
+        if (sortFl === 'pct_asc')  return av - bv;
+        if (sortFl === 'name_asc') return (a.dataset.name||'').localeCompare(b.dataset.name||'');
+        return 0;
+      });
+      visRows.forEach(function(r){ tbody.appendChild(r); });
     }
 
     function _exportAaa() {
@@ -10819,7 +10879,7 @@ function _loadSetupTasks() {
                 :p>=80?'<span class="bdg" style="background:var(--Gl);color:var(--G);font-size:10px">Good</span>'
                 :p>=60?'<span class="bdg" style="background:var(--Ol);color:var(--O);font-size:10px">Average</span>'
                 :'<span class="bdg" style="background:var(--Rl);color:var(--R);font-size:10px"><i class="fas fa-triangle-exclamation"></i> Low</span>';
-              return '<tr>'+
+              return '<tr data-pct="'+(r.pct||0)+'" data-abs="'+(r.days_absent||0)+'" data-name="'+_esc(r.emp_name||'')+'">'+
                 '<td style="font-weight:700;min-width:130px">'+_esc(r.emp_name||'')+'</td>'+
                 '<td><span class="bdg" style="background:var(--Pl);color:var(--P);font-size:10px">'+_esc(r.dept||'')+'</span></td>'+
                 '<td style="text-align:center;color:var(--G);font-weight:800">'+(r.days_present||0)+'</td>'+
@@ -11487,7 +11547,7 @@ function _loadSetupTasks() {
         '<div class="mod-title">Performance Reports</div>' +
         '<div class="mod-sub">Task completion rates, trends and top performers</div>' +
         '</div>' +
-        '<button class="btn btn-outline btn-sm" onclick="_exportPerf()"><i class="fas fa-download"></i> Export</button>' +
+        '' +
         '</div>' +
         _mkTabs(tabs, at) +
         _mkPanes(tabs, at, [
@@ -11601,7 +11661,7 @@ function _loadSetupTasks() {
         '<label>From:</label><input type="date" id="pindFrom" value="' + _daysAgo(30) + '">' +
         '<label>To:</label><input type="date" id="pindTo" value="' + _today() + '">' +
         '<button class="btn btn-sm" onclick="_loadIndivPerf()"><i class="fas fa-search"></i> Load</button>' +
-        '<button class="btn btn-outline btn-sm" onclick="_exportIndivPerf()"><i class="fas fa-download"></i> Export</button>' +
+        
         '</div>' +
         '<div class="krow" id="pindKrow"></div>' +
         '<div class="chart-wrap" style="margin-top:16px">' +
@@ -11711,7 +11771,7 @@ function _loadSetupTasks() {
       return '<div class="fbar">' +
         '<label>Month:</label><input type="month" id="pteamMonth" value="' + _currMonth() + '">' +
         '<button class="btn btn-sm" onclick="_loadTeamPerfFull()"><i class="fas fa-search"></i> Load</button>' +
-        '<button class="btn btn-outline btn-sm" onclick="_exportTeamPerf()"><i class="fas fa-download"></i> Export</button>' +
+        
         '</div>' +
         '<div class="krow" id="pteamKrow">' +
         [1, 2, 3, 4].map(function () { return '<div class="sk sk-h6" style="border-radius:14px"></div>'; }).join('') +
@@ -11871,7 +11931,7 @@ function _loadSetupTasks() {
           return '<option value="' + y + '"' + (y === curYear ? ' selected' : '') + '>' + y + '</option>';
         }).join('') +
         '</select>' +
-        '<button class="btn btn-outline btn-sm" onclick="_exportHolidays()"><i class="fas fa-download"></i> Export CSV</button>' +
+        
         '</div>' +
         '</div>' +
         '<div class="krow" id="holKrow">' +
@@ -12441,7 +12501,7 @@ function _loadSetupTasks() {
     // ═══════════════════════════════════════════════════════════════════════
     // EMPLOYEE DIRECTORY — Rich cards with search, filters & quick stats
     // ═══════════════════════════════════════════════════════════════════════
-    function _vEmpDir() {
+function _vEmpDir() {
       document.getElementById('content').innerHTML =
         '<div class="mod-head">' +
         '<div><div class="mod-title">Employee Directory</div>' +
@@ -12471,8 +12531,7 @@ function _loadSetupTasks() {
         '</div>' +
         '<div style="display:flex;align-items:center;gap:8px;margin-top:8px">' +
         '<span id="edCount" style="font-size:12px;color:var(--tx3)"></span>' +
-        '<div class="fbar-spacer"></div>' +
-        '<button class="btn btn-sm btn-outline" onclick="_exportEmpDir()"><i class="fas fa-download"></i> Export</button>' +
+        '<div class="fbar-spacer"></div>' + // Added missing quote and plus here
         '<button class="btn btn-sm" onclick="_loadEmpDir()"><i class="fas fa-rotate-right"></i> Refresh</button>' +
         '</div>' +
         '</div>' +
@@ -12814,7 +12873,7 @@ function _loadSetupTasks() {
         '<div style="display:flex;gap:8px;align-items:center">' +
         '<input type="month" id="anaMonth" class="ana-sel" value="' + _currMonth() + '">' +
         '<button class="btn btn-sm" onclick="_loadAnalytics()"><i class="fas fa-rotate-right"></i> Refresh</button>' +
-        '<button class="btn btn-sm btn-outline" onclick="_exportAnalytics()"><i class="fas fa-download"></i> Export</button>' +
+        '' +
         '</div></div>' +
         '<div id="anaRoot">' + _skel(6) + '</div>';
 
@@ -12905,10 +12964,11 @@ function _loadSetupTasks() {
         }
 
         // ── Quick Links to other analytics ───────────────────────────────
-        h += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">' + [
-          {icon:'fa-user-clock',   title:'Attendance Analytics', sub:'Presence rates, trends, muster', route:'attana', clr:'var(--T)'},
-          {icon:'fa-diagram-project',title:'Delegation Analytics',sub:'Workload, completion, overdue', route:'delana', clr:'var(--V)'},
-          {icon:'fa-trophy',       title:'Performance Reports',  sub:'Top performers, individual stats', route:'perf',   clr:'var(--G)'},
+        h += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px">' + [
+          {icon:'fa-list-check',     title:'Checklist Analytics',  sub:'Task completion & frequency',         route:'clana',   clr:'var(--P)'},
+          {icon:'fa-user-clock',     title:'Attendance Analytics', sub:'Presence rates, trends, muster',      route:'attana',  clr:'var(--T)'},
+          {icon:'fa-diagram-project',title:'Delegation Analytics', sub:'Workload, completion, overdue',       route:'delana',  clr:'var(--V)'},
+          {icon:'fa-trophy',         title:'Performance Reports',  sub:'Top performers, individual stats',    route:'perf',    clr:'var(--G)'},
         ].map(function(q) {
           return '<div class="card card-sm" style="cursor:pointer;display:flex;align-items:center;gap:14px;border-left:4px solid '+q.clr+'" onclick="_loadV(\''+q.route+'\')">' +
             '<div style="width:42px;height:42px;border-radius:10px;background:'+q.clr+'22;color:'+q.clr+';display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0"><i class="fas '+q.icon+'"></i></div>' +
