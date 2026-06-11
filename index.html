@@ -4656,6 +4656,51 @@
       /* ── Attendance grid ── */
       .att-grid { grid-template-columns: 1fr !important; }
 
+      /* ── Dashboard punch card ── */
+      .att-punch-info { flex-direction: column; gap: 8px; }
+      .att-punch-time { font-size: 13px; }
+      .att-punch-stat { flex-direction: column; text-align: center; gap: 6px; }
+
+      /* ── Delegation form ── */
+      .deleg-form-grid { grid-template-columns: 1fr !important; }
+
+      /* ── Leave form ── */
+      .form-g { gap: 12px; }
+      .fgrp { gap: 6px; }
+      .fgrp label { font-size: 12px; font-weight: 700; }
+
+      /* ── Announcement cards ── */
+      .ann-card-inner { flex-direction: column; gap: 8px; }
+
+      /* ── Performance chart area ── */
+      .perf-top { flex-direction: column; gap: 10px; }
+      .perf-kpi-row { grid-template-columns: repeat(2,1fr) !important; }
+
+      /* ── Profile page ── */
+      .prof-head { flex-direction: column; align-items: center; text-align: center; gap: 12px; }
+      .prof-stats { grid-template-columns: repeat(2,1fr) !important; }
+
+      /* ── Muster table: smaller text ── */
+      .muster-tbl th, .muster-tbl td { padding: 6px 4px; font-size: 10px; }
+
+      /* ── Holiday calendar ── */
+      .hol-grid { grid-template-columns: 1fr !important; }
+
+      /* ── Analytics banner ── */
+      .da-banner > div:last-child { flex-wrap: wrap; gap: 10px; }
+
+      /* ── Sidebar on mobile: bigger user section ── */
+      .sb-prof { padding: 12px 14px; }
+      .sb-name { font-size: 14px; }
+      .sb-role { font-size: 11px; }
+
+      /* ── Bottom nav labels ── */
+      .mob-nav-item span { font-size: 9px; }
+
+      /* ── Prevent horizontal overflow everywhere ── */
+      * { max-width: 100%; box-sizing: border-box; }
+      img { max-width: 100%; height: auto; }
+
       /* ── 16. Misc ── */
       .sec-title { font-size: 13px; }
       .bdg       { font-size: 10px; padding: 2px 7px; }
@@ -5340,7 +5385,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbw7XcLCtPoB3_H5sj_phXjdEMkIpE87LbNERsWfE0-KH5_5TrYCdkxQN92-TPZveTtPMw/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbx_F46eDAAaRAHfj6jWsBjjwXxWC2Q5cKhKzmXPw53IDnHDtkUnAQGZiyxp4pchHm-syA/exec';
     var _TOKEN  = '';
 
 function _gas(fn, args, onOk, onErr) {
@@ -5920,45 +5965,39 @@ function _gasX(fn, args, timeout, onOk, onErr) {
 
         // ── GPS check: only if AppConfig.GPS_ATTENDANCE = Yes ────────────────
         var gpsEnabled = _D.appConfig && (_D.appConfig.GPS_ATTENDANCE||'').toLowerCase() === 'yes';
-        if (gpsEnabled && navigator.geolocation) {
+        if (gpsEnabled) {
+          // GPS required — MUST get location, no bypass
+          if (!navigator.geolocation) {
+            _toast('📍 GPS not supported on this device/browser.', 'err');
+            btn.disabled  = false;
+            btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Check IN';
+            return;
+          }
+          btn.innerHTML = '<i class="fas fa-location-dot fa-beat"></i> Getting location...';
           navigator.geolocation.getCurrentPosition(
             function(pos) {
+              btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Processing...';
               var payload = { ts: deviceTs, lat: pos.coords.latitude, lng: pos.coords.longitude };
               _doCheckInCall(btn, payload);
             },
             function(err) {
-              // Location denied/failed — let GAS decide (will block if GPS_ATTENDANCE=Yes)
-              var msgs = { 1: 'Location permission denied. Please allow location access.', 2: 'Location unavailable.', 3: 'Location request timed out.' };
-              _toast(msgs[err.code] || 'Could not get location', 'err');
+              // GPS required but denied — HARD BLOCK
+              var msgs = {
+                1: '📍 Location permission denied. Please allow location access to check in.',
+                2: '📍 Location unavailable. Please try again.',
+                3: '📍 Location request timed out. Please try again.'
+              };
+              _toast(msgs[err.code] || '📍 Location error. Check-in blocked.', 'err');
               btn.disabled  = false;
               btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Check IN';
+              // Do NOT call _doCheckInCall — GPS is mandatory
             },
-            { timeout: 10000, maximumAge: 60000, enableHighAccuracy: true }
+            { timeout: 12000, maximumAge: 0, enableHighAccuracy: true }
           );
         } else {
+          // GPS not required
           _doCheckInCall(btn, deviceTs);
         }
-
-      } else if (_punchState === 'checked_in') {
-        btn.disabled  = true;
-        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Processing...';
-        _gas('recordCheckOut', [deviceTs], function(res) {
-          if (res && res.success) {
-            _punchState = 'checked_in';
-            _toast('✓ Checked in at ' + (res.check_in || ''), 'ok');
-            _addNtf('Check IN at ' + (res.check_in || ''), 'fa-sign-in-alt', 'var(--Gl)', 'var(--G)');
-            // Directly render — no need to re-call GAS
-            _renderPunchCard({ status: 'checked_in', check_in: res.check_in, check_in_ts: res.timestamp || '' });
-          } else {
-            _toast('Check-in failed: ' + (res && res.error ? res.error : 'Unknown error'), 'err');
-            btn.disabled  = false;
-            btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Check IN';
-          }
-        }, function(e) {
-          _toast('Check-in failed: ' + e.message, 'err');
-          btn.disabled  = false;
-          btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Check IN';
-        });
 
       } else if (_punchState === 'checked_in') {
         btn.disabled  = true;
