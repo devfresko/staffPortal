@@ -5385,7 +5385,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbyczNtEEGZNopTmAqDO-eNRaNCVI_QN2iAK36uYoyOaAdxTicUYn6VvjP8aalv-NgzN3g/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbzvnRgK6Wlgsw5Qx4u9goFQLZv--Qu_C7YkM2ckOY4VBUIPRmxPetBCNuZ0MjNFFfFOXQ/exec';
     var _TOKEN  = '';
 
 function _gas(fn, args, onOk, onErr) {
@@ -6267,7 +6267,15 @@ function _gasX(fn, args, timeout, onOk, onErr) {
       });
 
       /* ── Celebrations (Birthday / Anniversary) ── */
-      _renderDashCelebrations();
+      if (_D.celebrations && _D.celebrations.length) {
+        _renderDashCelebrations();
+      } else {
+        // Fetch fresh if not in cache
+        _gas('getTodayCelebrations', [], function(cels) {
+          _D.celebrations = cels || [];
+          _renderDashCelebrations();
+        }, function() {});
+      }
 
       /* Attendance */
       _gas('getMyAttendance', [_U.emp_code, _currMonth()], function (data) {
