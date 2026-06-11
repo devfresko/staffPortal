@@ -181,6 +181,8 @@
 
     .scr.on {
       display: flex;
+      align-items: center;
+      justify-content: center;
       animation: fadein .3s ease both;
     }
 
@@ -4588,13 +4590,31 @@
 
       /* ── 15. Login: full screen ── */
       .login-grid { display: none !important; }
-      .scr#sLogin { align-items: stretch; background: var(--bg); }
+      .scr#sLogin {
+        align-items: stretch; justify-content: stretch;
+        background: var(--bg);
+        overflow-y: auto; -webkit-overflow-scrolling: touch;
+        position: fixed; inset: 0; z-index: 500;
+        height: 100svh; height: 100vh;
+      }
       .lbox {
-        border-radius: 0 !important; width: 100%; max-width: 100%;
-        min-height: 100svh; padding: 48px 24px 32px;
+        border-radius: 0 !important;
+        width: 100%; max-width: 100%;
+        min-height: 100svh; min-height: 100vh;
+        padding: 60px 24px 40px;
         display: flex; flex-direction: column; justify-content: center;
         box-shadow: none !important;
+        background: var(--bg) !important;
       }
+      /* Login inputs — bigger on mobile */
+      .l-field input {
+        min-height: 52px; font-size: 16px !important;
+        border-radius: 14px; padding: 14px 14px 14px 44px;
+      }
+      .l-btn {
+        min-height: 52px; font-size: 16px; border-radius: 14px; margin-top: 8px;
+      }
+      .l-title { font-size: 26px; }
 
       /* ── csetup responsive grid ── */
       .csetup-grid {
@@ -4675,7 +4695,7 @@
   <!-- ═══════════════════════════════════════════════════════════
      LOGIN SCREEN
 ═══════════════════════════════════════════════════════════ -->
-  <div class="scr on" id="sLogin">
+  <div class="scr on" id="sLogin" style="background:linear-gradient(135deg,#005F73 0%,#0A9396 40%,#94D2BD 100%)">
     <div class="lbox">
       <div class="l-logo-wrap">
         <img src="https://fresko.co.in/wp-content/uploads/2025/08/Untitled-design-21.png" alt="Fresko Logo"
@@ -5320,7 +5340,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbxhsdyAyoSIPf4MFDEWopocdX2e5cWZVeu7gFQHYfqTajF2GUXdXiSxuGwBFxAB4vI2rQ/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbw7XcLCtPoB3_H5sj_phXjdEMkIpE87LbNERsWfE0-KH5_5TrYCdkxQN92-TPZveTtPMw/exec';
     var _TOKEN  = '';
 
 function _gas(fn, args, onOk, onErr) {
@@ -13644,7 +13664,10 @@ function _deactivateTask(uid) {
           // Hide login, boot app — don't show login screen at all
           var sLogin = document.getElementById('sLogin');
           var sApp   = document.getElementById('sApp');
-          if (sLogin) sLogin.classList.remove('on');
+          if (sLogin) {
+            sLogin.classList.remove('on');
+            sLogin.style.display = 'none';
+          }
           if (sApp)   sApp.classList.add('on');
           _bootApp();
         }
