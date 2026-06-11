@@ -5385,7 +5385,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbx_F46eDAAaRAHfj6jWsBjjwXxWC2Q5cKhKzmXPw53IDnHDtkUnAQGZiyxp4pchHm-syA/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbzsU9gjC4Bn4BmZMq2sgJAVadV0brAYZdmRjCfYEbbnkMtqJ5m4iVB9qDQXjKZ_01JxbA/exec';
     var _TOKEN  = '';
 
 function _gas(fn, args, onOk, onErr) {
@@ -5723,6 +5723,7 @@ function _gasX(fn, args, timeout, onOk, onErr) {
         if (d.holidays)      _D.holidays      = d.holidays;
         if (d.myDelegations) _D.myDelegations = d.myDelegations;
         if (d.empDir)        _D.empDir        = d.empDir;
+        if (d.celebrations)  _D.celebrations  = d.celebrations || [];
         if (d.appConfig) {
           _D.appConfig = d.appConfig;
           // Store session hours so next _saveSession call uses correct value
@@ -6029,6 +6030,31 @@ function _gasX(fn, args, timeout, onOk, onErr) {
        ██   ██ ██   ██      ██ ██   ██ ██   ██ ██    ██ ██   ██ ██   ██ ██   ██
        ██████  ██████  ███████ ██   ██ ██████   ██████  ██   ██ ██   ██ ██████
     ══════════════════════════════════════════════════════════ */
+    function _renderDashCelebrations() {
+      var el = document.getElementById('dashCelebrations');
+      if (!el) return;
+      var cels = _D.celebrations || [];
+      if (!cels.length) { el.style.display = 'none'; return; }
+      el.style.display = '';
+      el.innerHTML = '<div style="background:linear-gradient(135deg,#7c3aed22,#db277722);border:1.5px solid #7c3aed44;border-radius:18px;padding:14px 18px;display:flex;flex-wrap:wrap;gap:12px;align-items:center">' +
+        '<div style="font-size:20px">🎊</div>' +
+        '<div style="flex:1;min-width:0">' +
+        '<div style="font-weight:800;font-size:14px;color:var(--tx)">Today&#39;s Celebrations</div>' +
+        '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px">' +
+        cels.map(function(cel) {
+          var yrs = cel.years > 0 ? ' · ' + cel.years + ' yr' + (cel.years>1?'s':'') : '';
+          var color = cel.type === 'birthday' ? '#7c3aed' : '#0891b2';
+          var bg    = cel.type === 'birthday' ? '#7c3aed18' : '#0891b218';
+          return '<div style="display:flex;align-items:center;gap:6px;background:' + bg + ';border:1px solid ' + color + '44;border-radius:10px;padding:5px 12px">' +
+            '<span style="font-size:16px">' + cel.icon + '</span>' +
+            '<div>' +
+            '<div style="font-size:12px;font-weight:800;color:var(--tx)">' + _esc(cel.name) + '</div>' +
+            '<div style="font-size:10px;color:' + color + ';font-weight:700">' + cel.label + yrs + '</div>' +
+            '</div></div>';
+        }).join('') +
+        '</div></div></div>';
+    }
+
     function _vDash() {
       var hr = new Date().getHours();
       var greet = hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening';
@@ -6056,6 +6082,9 @@ function _gasX(fn, args, timeout, onOk, onErr) {
         '<i class="fas fa-circle-notch ci-spinner"></i> Checking...' +
         '</button>' +
         '</div>' +
+
+        /* Celebrations Widget (hidden if no celebrations) */
+        '<div id="dashCelebrations" style="display:none;margin-bottom:14px"></div>' +
 
         /* KPI Row */
         '<div class="krow" id="dashKrow">' + [1, 2, 3, 4].map(function () { return '<div class="sk sk-h6" style="border-radius:14px"></div>'; }).join('') + '</div>' +
@@ -6236,6 +6265,9 @@ function _gasX(fn, args, timeout, onOk, onErr) {
             '</div>';
         }).join('');
       });
+
+      /* ── Celebrations (Birthday / Anniversary) ── */
+      _renderDashCelebrations();
 
       /* Attendance */
       _gas('getMyAttendance', [_U.emp_code, _currMonth()], function (data) {
