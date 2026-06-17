@@ -5385,7 +5385,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbyHoaV3Jmtr3Zozuz9NF1Daej9Sr7XPLsvxf04aQAGNHGLCSyODbZyx66iM39VHWWZBcA/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbwZNwXnk5u2RuasSU3tyKVDuW8e2yCgtUlWNlDs0_HETMTFqO6UUt-hl36EemSi_QWyJA/exec';
     var _TOKEN  = '';
 
 function _gas(fn, args, onOk, onErr) {
@@ -10215,67 +10215,148 @@ function _loadSetupTasks() {
     // Workload distribution, completion rates, trend, insights & leaderboard
     // ═══════════════════════════════════════════════════════════════════════════
     // ═══════════════════════════════════════════════════════════════════════
-    // CHECKLIST ANALYTICS — Task completion, workload, frequency & trends
     // ═══════════════════════════════════════════════════════════════════════
+    // CHECKLIST ANALYTICS — Task completion, workload, frequency, on-time
+    // performance, pending aging & trend analysis. Manager-only.
+    // Backed by getChecklistAnalyticsV2 (new — old getChecklistAnalytics is
+    // untouched on the backend and no longer called from this page).
+    // ═══════════════════════════════════════════════════════════════════════
+    var CLA_FREQ_LABELS = { D:'Daily', W:'Weekly', F:'Fortnightly', M:'Monthly', '2M':'Bi-Monthly', Q:'Quarterly', H:'Half-Yearly', Y:'Yearly' };
+
+    function _getEmpOptions() {
+      var emps = [];
+      var seen = {};
+      var src = (_D.empDir && _D.empDir.length) ? _D.empDir
+              : (_D.doers  && _D.doers.length)  ? _D.doers
+              : [];
+      src.forEach(function(d) {
+        var id   = String(d.emp_id || d['Emp ID'] || '').trim();
+        var name = String(d.name   || d['Name']   || '').trim();
+        if (id && name && !seen[id]) { seen[id] = true; emps.push({ id:id, name:name }); }
+      });
+      emps.sort(function(a,b){ return a.name.localeCompare(b.name); });
+      return emps.map(function(e) { return '<option value="'+_esc(e.id)+'">'+_esc(e.name)+'</option>'; }).join('');
+    }
+
     function _vClAna() {
       if (!_isManager()) {
         document.getElementById('content').innerHTML =
           '<div class="empty-state"><i class="fas fa-lock"></i><h4>Access Restricted</h4></div>';
         return;
       }
+      var defFrom = _currMonth() + '-01';
+      var defTo   = _today();
       document.getElementById('content').innerHTML =
         '<div class="mod-head">' +
         '<div><div class="mod-title">Checklist Analytics</div>' +
-        '<div class="mod-sub">Workload distribution, completion rates & frequency analysis</div></div>' +
+        '<div class="mod-sub">Workload, completion rates, on-time performance, pending aging &amp; trends</div></div>' +
         '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
-        '<select id="claView" class="ana-sel" onchange="_renderCla()">' +
-        '<option value="overview">Overview</option>' +
-        '<option value="employee">By Employee</option>' +
-        '<option value="dept">By Department</option>' +
-        '<option value="trend">Daily Trend</option>' +
+
+        '<select id="claPreset" class="ana-sel" onchange="_claApplyPreset()">' +
+        '<option value="month">This Month</option>' +
+        '<option value="today">Today</option>' +
+        '<option value="yesterday">Yesterday</option>' +
+        '<option value="week">This Week</option>' +
+        '<option value="lastmonth">Last Month</option>' +
+        '<option value="quarter">This Quarter</option>' +
+        '<option value="year">This Year</option>' +
+        '<option value="custom">Custom Range</option>' +
         '</select>' +
-        '<input type="month" id="claMonth" class="ana-sel" value="' + _currMonth() + '">' +
-        '<select id="claDept" class="ana-sel" onchange="_renderCla()">' +
+        '<input type="date" id="claFrom" class="ana-sel" value="'+defFrom+'" onchange="_claMarkCustom();_loadCla()">' +
+        '<span style="color:var(--tx3);font-size:12px">to</span>' +
+        '<input type="date" id="claTo" class="ana-sel" value="'+defTo+'" onchange="_claMarkCustom();_loadCla()">' +
+
+        '<select id="claDept" class="ana-sel" onchange="_loadCla()">' +
         '<option value="all">All Departments</option>' +
         _getDeptOptions() +
         '</select>' +
-        '<select id="claFreqFlt" class="ana-sel" onchange="_renderCla()">' +
+        '<select id="claFreqFlt" class="ana-sel" onchange="_loadCla()">' +
         '<option value="all">All Frequencies</option>' +
         '<option value="D">Daily</option>' +
         '<option value="W">Weekly</option>' +
         '<option value="F">Fortnightly</option>' +
         '<option value="M">Monthly</option>' +
+        '<option value="2M">Bi-Monthly</option>' +
+        '<option value="Q">Quarterly</option>' +
+        '<option value="H">Half-Yearly</option>' +
+        '<option value="Y">Yearly</option>' +
+        '</select>' +
+        '<select id="claEmp" class="ana-sel" onchange="_loadCla()">' +
+        '<option value="all">All Employees</option>' +
+        _getEmpOptions() +
+        '</select>' +
+
+        '<select id="claView" class="ana-sel" onchange="_renderCla()">' +
+        '<option value="overview">Overview</option>' +
+        '<option value="employee">By Employee</option>' +
+        '<option value="dept">By Department</option>' +
+        '<option value="task">By Task</option>' +
+        '<option value="trend">Trends &amp; Patterns</option>' +
+        '<option value="aging">Pending &amp; Aging</option>' +
         '</select>' +
         '<select id="claFilter" class="ana-sel" onchange="_renderCla()">' +
-        '<option value="all">All Employees</option>' +
+        '<option value="all">All Performance</option>' +
         '<option value="perfect">Perfect (100%)</option>' +
-        '<option value="good">Good (≥80%)</option>' +
+        '<option value="good">Good (&ge;80%)</option>' +
         '<option value="avg">Average (50-79%)</option>' +
-        '<option value="low">Low (<50%)</option>' +
+        '<option value="low">Low (&lt;50%)</option>' +
         '</select>' +
         '<select id="claSort" class="ana-sel" onchange="_renderCla()">' +
-        '<option value="planned_desc">Tasks ↓</option>' +
-        '<option value="rate_desc">Completion % ↓</option>' +
-        '<option value="rate_asc">Completion % ↑</option>' +
-        '<option value="done_desc">Done ↓</option>' +
+        '<option value="planned_desc">Tasks &darr;</option>' +
+        '<option value="rate_desc">Completion % &darr;</option>' +
+        '<option value="rate_asc">Completion % &uarr;</option>' +
+        '<option value="done_desc">Done &darr;</option>' +
+        '<option value="lag_desc">Avg Delay &darr;</option>' +
         '<option value="name_asc">Name A-Z</option>' +
         '</select>' +
+
         '<button class="btn btn-sm" onclick="_loadCla()"><i class="fas fa-chart-bar"></i> Analyze</button>' +
-        
+        '<button class="btn btn-sm" onclick="_exportClaCsv()"><i class="fas fa-file-export"></i> Export</button>' +
         '</div></div>' +
         '<div id="claRoot" style="margin-top:4px">' + _skel(4) + '</div>';
 
       _loadCla();
     }
 
+    function _claMarkCustom() {
+      var p = document.getElementById('claPreset');
+      if (p) p.value = 'custom';
+    }
+
+    function _claApplyPreset() {
+      var p = (document.getElementById('claPreset') || {}).value || 'month';
+      if (p === 'custom') return; // user picked dates manually — leave inputs alone
+      var t = new Date();
+      function iso(d) { return d.toISOString().slice(0, 10); }
+      var from, to = iso(t);
+      if (p === 'today') { from = to; }
+      else if (p === 'yesterday') { var y = new Date(t); y.setDate(y.getDate() - 1); from = iso(y); to = iso(y); }
+      else if (p === 'week') { var w = new Date(t); w.setDate(w.getDate() - w.getDay()); from = iso(w); }
+      else if (p === 'lastmonth') {
+        var lm = new Date(t.getFullYear(), t.getMonth() - 1, 1);
+        var lmEnd = new Date(t.getFullYear(), t.getMonth(), 0);
+        from = iso(lm); to = iso(lmEnd);
+      }
+      else if (p === 'quarter') { from = iso(new Date(t.getFullYear(), Math.floor(t.getMonth() / 3) * 3, 1)); }
+      else if (p === 'year') { from = t.getFullYear() + '-01-01'; }
+      else { from = iso(t).slice(0, 8) + '01'; } // 'month' / fallback
+      document.getElementById('claFrom').value = from;
+      document.getElementById('claTo').value = to;
+      _loadCla();
+    }
+
     function _loadCla() {
       var root = document.getElementById('claRoot');
       if (root) root.innerHTML = _skel(4);
-      var month = (document.getElementById('claMonth') || {}).value || _currMonth();
-      _gas('getChecklistAnalytics', [month], function(data) {
+      var from = (document.getElementById('claFrom')    || {}).value || (_currMonth() + '-01');
+      var to   = (document.getElementById('claTo')      || {}).value || _today();
+      var dept = (document.getElementById('claDept')    || {}).value || 'all';
+      var freq = (document.getElementById('claFreqFlt') || {}).value || 'all';
+      var emp  = (document.getElementById('claEmp')     || {}).value || 'all';
+      _gas('getChecklistAnalyticsV2', [{ from: from, to: to, dept: dept, freq: freq, empId: emp }], function (data) {
         _D.claData = data;
         _renderCla();
-      }, function(e) {
+      }, function (e) {
         if (root) root.innerHTML =
           '<div class="te"><i class="fas fa-exclamation-triangle"></i> ' + _esc(e.message) +
           '<br><br><button class="btn btn-sm" onclick="_loadCla()"><i class="fas fa-rotate-right"></i> Retry</button></div>';
@@ -10285,48 +10366,69 @@ function _loadSetupTasks() {
     function _renderCla() {
       var data = _D.claData;
       if (!data) { _loadCla(); return; }
-      var root  = document.getElementById('claRoot');
+      var root = document.getElementById('claRoot');
       if (!root) return;
 
       var view   = (document.getElementById('claView')   || {}).value || 'overview';
-      var filter = (document.getElementById('claFilter') || {}).value || 'all';
+      var bucket = (document.getElementById('claFilter') || {}).value || 'all';
       var sort   = (document.getElementById('claSort')   || {}).value || 'planned_desc';
 
-      var deptFlt = (document.getElementById('claDept')    || {}).value || 'all';
-      var freqFlt = (document.getElementById('claFreqFlt') || {}).value || 'all';
-      var emps  = (data.by_employee  || []).filter(function(e) {
-        if (deptFlt !== 'all' && e.dept !== deptFlt) return false;
-        if (filter === 'perfect') return e.completion_rate === 100;
-        if (filter === 'good')    return e.completion_rate >= 80;
-        if (filter === 'avg')     return e.completion_rate >= 50 && e.completion_rate < 80;
-        if (filter === 'low')     return e.completion_rate < 50;
+      var emps = (data.by_employee || []).filter(function (e) {
+        if (bucket === 'perfect') return e.completion_rate === 100;
+        if (bucket === 'good')    return e.completion_rate >= 80;
+        if (bucket === 'avg')     return e.completion_rate >= 50 && e.completion_rate < 80;
+        if (bucket === 'low')     return e.completion_rate < 50;
         return true;
       });
-      emps = emps.slice().sort(function(a, b) {
-        if (sort === 'rate_desc')    return (b.completion_rate||0) - (a.completion_rate||0);
-        if (sort === 'rate_asc')     return (a.completion_rate||0) - (b.completion_rate||0);
-        if (sort === 'done_desc')    return (b.done||0)            - (a.done||0);
-        if (sort === 'name_asc')     return (a.name||'').localeCompare(b.name||'');
-        return (b.planned||0) - (a.planned||0);
+      emps = emps.slice().sort(function (a, b) {
+        if (sort === 'rate_desc') return (b.completion_rate || 0) - (a.completion_rate || 0);
+        if (sort === 'rate_asc')  return (a.completion_rate || 0) - (b.completion_rate || 0);
+        if (sort === 'done_desc') return (b.done || 0) - (a.done || 0);
+        if (sort === 'lag_desc')  return (b.avg_lag_days || 0) - (a.avg_lag_days || 0);
+        if (sort === 'name_asc')  return (a.name || '').localeCompare(b.name || '');
+        return (b.planned || 0) - (a.planned || 0);
       });
 
-      var depts  = data.by_dept      || [];
-      var freqs  = data.by_frequency || [];
-      var trend  = data.daily_trend  || [];
-      var avgR   = data.avg_completion || 0;
-      var arClr  = avgR >= 80 ? 'var(--G)' : avgR >= 50 ? 'var(--O)' : 'var(--R)';
+      var depts    = data.by_dept          || [];
+      var freqs    = data.by_frequency     || [];
+      var tasks    = data.by_task          || [];
+      var missed   = data.most_missed_tasks|| [];
+      var trend    = data.daily_trend      || [];
+      var monthly  = data.monthly_trend    || [];
+      var weekday  = data.weekday_pattern  || [];
+      var hours    = data.hour_pattern     || [];
+      var deptFreq = data.dept_freq_matrix || [];
+      var overdue  = data.overdue_tasks    || [];
+      var empDetail= data.employee_detail;
+
+      var avgR  = data.avg_completion || 0;
+      var arClr = avgR >= 80 ? 'var(--G)' : avgR >= 50 ? 'var(--O)' : 'var(--R)';
 
       var h = '';
 
+      // ── Range / filter strip ────────────────────────────────────────────
+      h += '<div style="font-size:12px;color:var(--tx3);font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">' +
+        '<i class="fas fa-calendar-week"></i> ' + _fmtDate(data.from) + ' &rarr; ' + _fmtDate(data.to) +
+        (data.filters && data.filters.dept !== 'all'  ? ' &middot; <span style="color:var(--P)">' + _esc(data.filters.dept) + '</span>' : '') +
+        (data.filters && data.filters.freq !== 'all'  ? ' &middot; <span style="color:var(--V)">' + _esc(CLA_FREQ_LABELS[data.filters.freq] || data.filters.freq) + '</span>' : '') +
+        (empDetail ? ' &middot; <span style="color:var(--T)">' + _esc(empDetail.name) + '</span>' : '') +
+        '</div>';
+
       // ── KPI Strip ─────────────────────────────────────────────────────────
       h += '<div class="da-kpi-strip">' + [
-        { lbl:'Employees',     val:data.employees     || 0, c:'var(--P)', ico:'fa-users',        sub:'Tracked this month' },
-        { lbl:'Tasks Planned', val:data.total_planned || 0, c:'var(--I)', ico:'fa-calendar-days', sub:data.month || '' },
-        { lbl:'Tasks Done',    val:data.total_done    || 0, c:'var(--G)', ico:'fa-circle-check',  sub:'Completed' },
-        { lbl:'Pending',       val:data.total_pending || 0, c:data.total_pending>0?'var(--O)':'var(--G)', ico:'fa-clock', sub:'Not yet done' },
-        { lbl:'Avg Completion',val:avgR + '%',              c:arClr,       ico:'fa-chart-pie',    sub:avgR>=80?'Excellent':avgR>=50?'Average':'Needs attention' },
-        { lbl:'Frequencies',   val:freqs.length,            c:'var(--V)',  ico:'fa-repeat',       sub:'Task types' }
-      ].map(function(k) {
+        { lbl:'Employees',      val:data.employees||0,                c:'var(--P)', ico:'fa-users',              sub:(data.working_days||0)+' working days' },
+        { lbl:'Tasks Planned',  val:data.total_planned||0,            c:'var(--I)', ico:'fa-calendar-days',      sub:'In selected range' },
+        { lbl:'Tasks Done',     val:data.total_done||0,               c:'var(--G)', ico:'fa-circle-check',       sub:'Completed' },
+        { lbl:'Pending',        val:data.total_pending||0,            c:data.total_pending>0?'var(--O)':'var(--G)', ico:'fa-clock', sub:'Not yet done' },
+        { lbl:'Avg Completion', val:avgR+'%',                         c:arClr,      ico:'fa-chart-pie',          sub:avgR>=80?'Excellent':avgR>=50?'Average':'Needs attention' },
+        { lbl:'On-Time',        val:(data.on_time_rate||0)+'%',       c:'var(--G)', ico:'fa-bolt',               sub:(data.on_time_done||0)+' tasks' },
+        { lbl:'Late',           val:(data.late_rate||0)+'%',          c:'var(--O)', ico:'fa-hourglass-half',     sub:(data.late_done||0)+' tasks' },
+        { lbl:'Avg Delay',      val:(data.avg_lag_days||0)+'d',       c:(data.avg_lag_days||0)>1?'var(--R)':'var(--tx2)', ico:'fa-stopwatch', sub:'When completed late' },
+        { lbl:'Overdue Now',    val:data.overdue_count||0,            c:data.overdue_count>0?'var(--R)':'var(--G)', ico:'fa-triangle-exclamation', sub:'Past due, still pending' },
+        { lbl:'Tasks Tracked',  val:data.distinct_tasks||0,           c:'var(--V)', ico:'fa-list-check',         sub:'Unique task types' },
+        { lbl:'Frequencies',    val:freqs.length,                     c:'var(--V)', ico:'fa-repeat',             sub:'Task cadences' },
+        { lbl:'Buddy Notes',    val:(data.buddy_usage_rate||0)+'%',   c:'var(--T)', ico:'fa-comment-dots',       sub:(data.buddy_usage_count||0)+' remarks left' }
+      ].map(function (k) {
         return '<div class="da-kpi">' +
           '<div class="da-kpi-row1"><div class="da-kpi-ico" style="--kc:'+k.c+'"><i class="fas '+k.ico+'"></i></div>' +
           '<div class="da-kpi-val" style="color:'+k.c+'">'+k.val+'</div></div>' +
@@ -10347,64 +10449,87 @@ function _loadSetupTasks() {
         '<circle cx="18" cy="18" r="15.9" fill="none" stroke="'+ovClr+'" stroke-width="2.5" stroke-dasharray="'+overallPct+',100" stroke-dashoffset="25" stroke-linecap="round"/>' +
         '</svg><div class="da-ring-lbl" style="color:'+ovClr+'">'+overallPct+'%</div></div>' +
         '<div><div style="font-size:18px;font-weight:900;color:var(--tx)">'+overallPct+'% Overall Completion</div>' +
-        '<div style="font-size:13px;color:var(--tx2);margin-top:3px">'+td+' done of '+tp+' planned tasks this month</div></div></div>' +
+        '<div style="font-size:13px;color:var(--tx2);margin-top:3px">'+td+' done of '+tp+' planned tasks &middot; '+(data.on_time_rate||0)+'% on-time</div></div></div>' +
         '<div style="display:flex;gap:20px;flex-wrap:wrap">' +
         [
           { lbl:'Done',    clr:'var(--G)', val:td },
           { lbl:'Pending', clr:'var(--O)', val:data.total_pending||0 },
-        ].map(function(s) {
+          { lbl:'Overdue', clr:'var(--R)', val:data.overdue_count||0 }
+        ].map(function (s) {
           return '<div style="text-align:center">' +
             '<div style="font-size:20px;font-weight:900;color:'+s.clr+'">'+s.val+'</div>' +
             '<div style="font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.5px">'+s.lbl+'</div></div>';
         }).join('') +
         '</div></div>';
 
+      // ── Employee drill-down panel (shown whenever a specific employee is selected) ──
+      if (empDetail) {
+        h += '<div class="card card-nohover card-sm" style="margin-bottom:16px">' +
+          '<div class="sec-title" style="margin-bottom:12px"><i class="fas fa-user" style="color:var(--P)"></i> '+_esc(empDetail.name)+' &mdash; Daily Log <span style="color:var(--tx3);font-weight:600">('+_esc(empDetail.dept)+')</span></div>' +
+          '<div class="tw"><table><thead><tr><th>Date</th><th>Task</th><th>Freq</th><th>Status</th><th>Completed At</th><th>Note</th></tr></thead><tbody>' +
+          (empDetail.log.length ? empDetail.log.map(function (r) {
+            var lagTag = '';
+            if (r.status === 'Done' && r.actual && r.date) {
+              var ld = Math.round((new Date(String(r.actual).substring(0,10)) - new Date(r.date)) / 86400000);
+              lagTag = ld > 0 ? ' <span style="color:var(--O);font-weight:800;font-size:10px">(+'+ld+'d late)</span>' : ' <span style="color:var(--G);font-weight:800;font-size:10px">(on time)</span>';
+            }
+            return '<tr><td style="font-weight:700">'+_fmtDateShort(r.date)+'</td>' +
+              '<td>'+_esc(r.task)+'</td>' +
+              '<td>'+_freqBadge(r.freq)+'</td>' +
+              '<td>'+_statusBadge(r.status)+'</td>' +
+              '<td>'+(r.actual ? _fmtDateTime(r.actual) : '&mdash;')+lagTag+'</td>' +
+              '<td style="color:var(--tx3);font-size:11px">'+_esc(r.buddy_remark||'')+'</td></tr>';
+          }).join('') : '<tr><td colspan="6" style="text-align:center;color:var(--tx3);padding:16px">No tasks in this range</td></tr>') +
+          '</tbody></table></div></div>';
+      }
+
       // ══ OVERVIEW view ═════════════════════════════════════════════════════
       if (view === 'overview') {
         h += '<div class="da-grid3">';
-
-        // Chart 1: Dept completion bar
         h += '<div class="da-chart-card">' +
           '<div class="da-chart-ttl"><i class="fas fa-building" style="color:var(--P)"></i> Dept Completion %</div>' +
           '<div style="height:200px"><canvas id="claChDept"></canvas></div></div>';
-
-        // Chart 2: Done vs Pending donut
         h += '<div class="da-chart-card">' +
           '<div class="da-chart-ttl"><i class="fas fa-chart-pie" style="color:var(--G)"></i> Done vs Pending</div>' +
           '<div style="height:200px"><canvas id="claChBreak"></canvas></div></div>';
-
-        // Chart 3: Frequency distribution
         h += '<div class="da-chart-card">' +
           '<div class="da-chart-ttl"><i class="fas fa-repeat" style="color:var(--V)"></i> By Frequency</div>' +
           '<div style="height:200px"><canvas id="claChFreq"></canvas></div></div>';
-
         h += '</div>';
 
-        // Top 5 + Bottom 5 panels
+        h += '<div class="da-grid2" style="margin-bottom:16px">';
+        h += '<div class="da-chart-card">' +
+          '<div class="da-chart-ttl"><i class="fas fa-bolt" style="color:var(--G)"></i> On-Time vs Late</div>' +
+          '<div style="height:190px"><canvas id="claChOnTime"></canvas></div></div>';
+        h += '<div class="da-chart-card">' +
+          '<div class="da-chart-ttl"><i class="fas fa-triangle-exclamation" style="color:var(--R)"></i> Pending Aging</div>' +
+          '<div style="height:190px"><canvas id="claChAgingMini"></canvas></div></div>';
+        h += '</div>';
+
         var top5 = (data.by_employee||[]).slice().sort(function(a,b){return (b.completion_rate||0)-(a.completion_rate||0);}).slice(0,5);
         var bot5 = (data.by_employee||[]).slice().sort(function(a,b){return (a.completion_rate||0)-(b.completion_rate||0);}).slice(0,5);
-        h += '<div class="da-grid2" style="margin-top:16px">';
+        h += '<div class="da-grid2">';
         h += '<div class="card card-nohover card-sm">' +
           '<div class="sec-title" style="margin-bottom:14px;color:var(--G)"><i class="fas fa-trophy"></i> Top Performers</div>' +
-          top5.map(function(e, i) {
-            var m = i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1);
-            var r = e.completion_rate||0;
+          (top5.length ? top5.map(function (e, i) {
+            var m = i===0?'\uD83E\uDD47':i===1?'\uD83E\uDD48':i===2?'\uD83E\uDD49':'#'+(i+1);
+            var r = e.completion_rate || 0;
             return '<div class="da-emp-row">' +
               '<div class="da-emp-rank">'+m+'</div>' +
               '<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px">'+_esc(e.name)+'</div>' +
               '<div style="font-size:10px;color:var(--tx3)">'+_esc(e.dept||'')+'</div></div>' +
               '<div style="text-align:right"><div style="font-size:15px;font-weight:900;color:var(--G)">'+r+'%</div>' +
               '<div style="font-size:10px;color:var(--tx3)">'+e.done+'/'+e.planned+' tasks</div></div></div>';
-          }).join('') + '</div>';
+          }).join('') : '<div class="te">No data</div>') + '</div>';
         h += '<div class="card card-nohover card-sm">' +
           '<div class="sec-title" style="margin-bottom:14px;color:var(--R)"><i class="fas fa-triangle-exclamation"></i> Needs Attention</div>' +
-          (bot5.every(function(e){return e.completion_rate===100;})
+          (!bot5.length || bot5.every(function(e){return e.completion_rate===100;})
             ? '<div style="text-align:center;padding:24px;color:var(--G)"><i class="fas fa-circle-check" style="font-size:32px;margin-bottom:8px;display:block"></i><div style="font-weight:700">All employees on track!</div></div>'
-            : bot5.map(function(e) {
+            : bot5.map(function (e) {
               var r = e.completion_rate||0;
               var rC = r >= 80 ? 'var(--G)' : r >= 50 ? 'var(--O)' : 'var(--R)';
               return '<div class="da-emp-row">' +
-                '<div class="da-emp-avatar" style="background:var(--Rl);color:var(--R)">'+_esc(e.name.charAt(0))+'</div>' +
+                '<div class="da-emp-avatar" style="background:var(--Rl);color:var(--R)">'+_esc((e.name||'?').charAt(0))+'</div>' +
                 '<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px">'+_esc(e.name)+'</div>' +
                 '<div style="font-size:10px;color:var(--tx3)">'+_esc(e.dept||'')+'</div></div>' +
                 '<div style="text-align:right"><div style="font-size:15px;font-weight:900;color:'+rC+'">'+r+'%</div>' +
@@ -10412,39 +10537,52 @@ function _loadSetupTasks() {
             }).join('')
           ) + '</div>';
         h += '</div>';
+
+        if (missed.length) {
+          h += '<div class="card card-nohover card-sm" style="margin-top:16px">' +
+            '<div class="sec-title" style="margin-bottom:14px;color:var(--O)"><i class="fas fa-list-check"></i> Most-Missed Tasks</div>' +
+            missed.slice(0,5).map(function (t) {
+              return '<div class="da-emp-row">' +
+                '<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px">'+_esc(t.task)+'</div>' +
+                '<div style="font-size:10px;color:var(--tx3)">'+_esc(t.dept||'')+' &middot; '+_esc(CLA_FREQ_LABELS[t.freq]||t.freq)+'</div></div>' +
+                '<div style="text-align:right"><div style="font-size:15px;font-weight:900;color:var(--R)">'+t.pending+'</div>' +
+                '<div style="font-size:10px;color:var(--tx3)">of '+t.planned+' missed</div></div></div>';
+            }).join('') + '</div>';
+        }
       }
 
       // ══ EMPLOYEE view ═════════════════════════════════════════════════════
       if (view === 'employee') {
         h += '<div class="da-emp-search-bar" style="margin-top:4px">' +
-          '<input type="text" id="claEmpQ" class="ana-sel" placeholder="🔍 Search employee..." oninput="_filterClaEmps()" style="width:100%;max-width:220px">' +
+          '<input type="text" id="claEmpQ" class="ana-sel" placeholder="\uD83D\uDD0D Search employee..." oninput="_filterClaEmps()" style="width:100%;max-width:220px">' +
           '<span style="font-size:12px;color:var(--tx3)">'+emps.length+' employees</span>' +
           '</div>' +
           '<div class="da-emp-cards" id="claEmpCards">' +
-          emps.map(function(e) {
+          emps.map(function (e) {
             var r = e.completion_rate || 0;
             var rC = r >= 80 ? 'var(--G)' : r >= 50 ? 'var(--O)' : 'var(--R)';
-            // Top 3 frequencies for this emp
-            var topFreqs = Object.keys(e.freqs || {}).sort(function(a,b){return (e.freqs[b]||0)-(e.freqs[a]||0);}).slice(0,3);
-            var freqLabelsMap = { D:'Daily', W:'Weekly', F:'Fortnightly', M:'Monthly', '2M':'2-Month', Q:'Quarterly', H:'Half-Yearly', Y:'Yearly' };
-            return '<div class="da-emp-card' + (r < 50 ? ' da-emp-card-alert' : '') + '">' +
+            var topFreqs = Object.keys(e.freqs || {}).sort(function (a, b) { return (e.freqs[b]||0) - (e.freqs[a]||0); }).slice(0, 3);
+            return '<div class="da-emp-card'+(r < 50 ? ' da-emp-card-alert' : '')+'">' +
               '<div class="da-emp-card-head">' +
-              '<div class="da-emp-avatar" style="background:var(--Pl);color:var(--P)">'+_esc(e.name.charAt(0).toUpperCase())+'</div>' +
+              '<div class="da-emp-avatar" style="background:var(--Pl);color:var(--P)">'+_esc((e.name||'?').charAt(0).toUpperCase())+'</div>' +
               '<div style="flex:1;min-width:0"><div style="font-weight:800;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+_esc(e.name)+'</div>' +
               '<div style="font-size:11px;color:var(--tx3)">'+_esc(e.dept||'')+'</div></div>' +
               '<div style="font-size:20px;font-weight:900;color:'+rC+'">'+r+'%</div></div>' +
               '<div class="da-stat-row">' +
               [
-                {lbl:'Planned', val:e.planned||0, c:'var(--P)'},
-                {lbl:'Done',    val:e.done||0,    c:'var(--G)'},
-                {lbl:'Pending', val:e.pending||0, c:e.pending>0?'var(--O)':'var(--tx3)'},
-              ].map(function(s){
+                { lbl:'Planned', val:e.planned||0, c:'var(--P)' },
+                { lbl:'Done',    val:e.done||0,    c:'var(--G)' },
+                { lbl:'Pending', val:e.pending||0, c:e.pending>0?'var(--O)':'var(--tx3)' }
+              ].map(function (s) {
                 return '<div class="da-stat-cell"><div style="font-size:16px;font-weight:900;color:'+s.c+'">'+s.val+'</div>' +
                   '<div style="font-size:9px;color:var(--tx3);text-transform:uppercase;letter-spacing:.4px">'+s.lbl+'</div></div>';
               }).join('') + '</div>' +
               '<div class="pbar-wrap" style="margin:8px 0"><div class="pbar" style="width:'+r+'%;background:'+rC+'"></div></div>' +
-              (topFreqs.length ? '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px">' +
-                topFreqs.map(function(f){return '<span class="bdg" style="font-size:9px;background:var(--Vl);color:var(--V)">'+_esc(freqLabelsMap[f]||f)+'</span>';}).join('') +
+              '<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--tx3);margin-top:6px">' +
+              '<span><i class="fas fa-bolt" style="color:var(--G)"></i> '+(e.on_time_rate||0)+'% on-time</span>' +
+              '<span><i class="fas fa-stopwatch"></i> '+(e.avg_lag_days||0)+'d avg delay</span></div>' +
+              (topFreqs.length ? '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px">' +
+                topFreqs.map(function (f) { return '<span class="bdg" style="font-size:9px;background:var(--Vl);color:var(--V)">'+_esc(CLA_FREQ_LABELS[f]||f)+'</span>'; }).join('') +
                 '</div>' : '') +
               '</div>';
           }).join('') + '</div>';
@@ -10454,140 +10592,299 @@ function _loadSetupTasks() {
       // ══ DEPT view ═════════════════════════════════════════════════════════
       if (view === 'dept') {
         h += '<div class="da-grid-dept" style="margin-top:4px">';
-        depts.forEach(function(d) {
+        depts.forEach(function (d) {
           var r = d.completion_rate || 0;
           var rC = r >= 80 ? 'var(--G)' : r >= 50 ? 'var(--O)' : 'var(--R)';
           h += '<div class="da-dept-card">' +
             '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">' +
-            '<div style="font-weight:800;font-size:14px">'+_esc(d.dept)+'</div>' +
+            '<div><div style="font-weight:800;font-size:14px">'+_esc(d.dept)+'</div>' +
+            '<div style="font-size:10px;color:var(--tx3)">'+(d.employees||0)+' employees</div></div>' +
             '<div style="font-size:20px;font-weight:900;color:'+rC+'">'+r+'%</div></div>' +
             '<div class="pbar-wrap" style="margin-bottom:10px"><div class="pbar" style="width:'+r+'%;background:'+rC+'"></div></div>' +
             '<div style="display:flex;justify-content:space-between;font-size:12px">' +
             '<span style="color:var(--tx2)"><b>'+d.planned+'</b> planned</span>' +
             '<span style="color:var(--G)"><b>'+d.done+'</b> done</span>' +
-            '<span style="color:'+(d.planned-d.done>0?'var(--O)':'var(--tx3)')+'"><b>'+(d.planned-d.done)+'</b> pending</span>' +
+            '<span style="color:'+(d.pending>0?'var(--O)':'var(--tx3)')+'"><b>'+d.pending+'</b> pending</span>' +
             '</div></div>';
         });
         h += '</div>';
-        // Dept bar chart
+        if (!depts.length) h += '<div class="te"><i class="fas fa-building"></i> No department data in this range</div>';
+
         h += '<div class="da-chart-card" style="margin-top:16px">' +
           '<div class="da-chart-ttl"><i class="fas fa-building" style="color:var(--P)"></i> Department Comparison</div>' +
           '<div style="height:220px"><canvas id="claChDeptBig"></canvas></div></div>';
+
+        if (deptFreq.length) {
+          h += '<div class="card card-nohover card-sm" style="margin-top:16px">' +
+            '<div class="sec-title" style="margin-bottom:12px"><i class="fas fa-table-cells" style="color:var(--V)"></i> Department &times; Frequency Matrix</div>' +
+            '<div class="tw"><table><thead><tr><th>Department</th><th>Frequency</th>' +
+            '<th style="text-align:center">Planned</th><th style="text-align:center">Done</th><th style="text-align:center">Rate</th></tr></thead><tbody>' +
+            deptFreq.map(function (d) {
+              return d.freqs.map(function (f, i) {
+                var c = f.completion_rate >= 80 ? 'var(--G)' : f.completion_rate >= 50 ? 'var(--O)' : 'var(--R)';
+                return '<tr>' + (i===0 ? '<td rowspan="'+d.freqs.length+'" style="font-weight:800;vertical-align:top">'+_esc(d.dept)+'</td>' : '') +
+                  '<td>'+_freqBadge(f.freq)+'</td>' +
+                  '<td style="text-align:center;font-weight:700">'+f.planned+'</td>' +
+                  '<td style="text-align:center;font-weight:700;color:var(--G)">'+f.done+'</td>' +
+                  '<td style="text-align:center;font-weight:900;color:'+c+'">'+f.completion_rate+'%</td></tr>';
+              }).join('');
+            }).join('') + '</tbody></table></div></div>';
+        }
       }
 
-      // ══ TREND view ════════════════════════════════════════════════════════
+      // ══ TASK view (NEW) ═══════════════════════════════════════════════════
+      if (view === 'task') {
+        if (missed.length) {
+          h += '<div class="card card-nohover card-sm" style="margin-top:4px;margin-bottom:16px">' +
+            '<div class="sec-title" style="margin-bottom:14px;color:var(--O)"><i class="fas fa-triangle-exclamation"></i> Most-Missed Tasks</div>' +
+            missed.map(function (t) {
+              var r = t.completion_rate || 0;
+              var rC = r >= 80 ? 'var(--G)' : r >= 50 ? 'var(--O)' : 'var(--R)';
+              return '<div class="da-emp-row">' +
+                '<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px">'+_esc(t.task)+'</div>' +
+                '<div style="font-size:10px;color:var(--tx3)">'+_esc(t.dept||'')+' &middot; '+_esc(CLA_FREQ_LABELS[t.freq]||t.freq)+'</div></div>' +
+                '<div style="text-align:right"><div style="font-size:15px;font-weight:900;color:'+rC+'">'+r+'%</div>' +
+                '<div style="font-size:10px;color:var(--R)">'+t.pending+' of '+t.planned+' pending</div></div></div>';
+            }).join('') + '</div>';
+        }
+
+        h += '<div class="card card-nohover card-sm">' +
+          '<div class="sec-title" style="margin-bottom:12px"><i class="fas fa-list-check" style="color:var(--P)"></i> All Tasks ('+tasks.length+')</div>' +
+          '<div class="tw"><table><thead><tr><th>Task</th><th>Dept</th><th>Freq</th>' +
+          '<th style="text-align:center">Planned</th><th style="text-align:center">Done</th><th style="text-align:center">Pending</th><th style="text-align:center">Rate</th></tr></thead><tbody>' +
+          (tasks.length ? tasks.map(function (t) {
+            var c = t.completion_rate >= 80 ? 'var(--G)' : t.completion_rate >= 50 ? 'var(--O)' : 'var(--R)';
+            return '<tr><td style="font-weight:700">'+_esc(t.task)+'</td>' +
+              '<td style="color:var(--tx2)">'+_esc(t.dept||'')+'</td>' +
+              '<td>'+_freqBadge(t.freq)+'</td>' +
+              '<td style="text-align:center">'+t.planned+'</td>' +
+              '<td style="text-align:center;color:var(--G);font-weight:700">'+t.done+'</td>' +
+              '<td style="text-align:center;color:'+(t.pending>0?'var(--O)':'var(--tx3)')+';font-weight:700">'+t.pending+'</td>' +
+              '<td style="text-align:center;font-weight:900;color:'+c+'">'+t.completion_rate+'%</td></tr>';
+          }).join('') : '<tr><td colspan="7" style="text-align:center;color:var(--tx3);padding:16px">No tasks in this range</td></tr>') +
+          '</tbody></table></div></div>';
+      }
+
+      // ══ TREND view (Trends & Patterns) ════════════════════════════════════
       if (view === 'trend') {
         h += '<div class="da-grid2" style="margin-top:4px">';
         h += '<div class="da-chart-card da-chart-wide-2">' +
-          '<div class="da-chart-ttl"><i class="fas fa-chart-line" style="color:var(--T)"></i> Daily Tasks Done vs Planned — '+data.month+'</div>' +
-          '<div style="height:240px"><canvas id="claChTrend"></canvas></div></div>';
+          '<div class="da-chart-ttl"><i class="fas fa-chart-line" style="color:var(--T)"></i> Daily Tasks Done vs Planned</div>' +
+          '<div style="height:230px"><canvas id="claChTrend"></canvas></div></div>';
         h += '<div class="da-chart-card">' +
           '<div class="da-chart-ttl"><i class="fas fa-repeat" style="color:var(--V)"></i> Frequency Breakdown</div>' +
-          '<div style="height:240px"><canvas id="claChFreqBig"></canvas></div></div>';
+          '<div style="height:230px"><canvas id="claChFreqBig"></canvas></div></div>';
         h += '</div>';
 
-        // Velocity table
+        h += '<div class="da-grid2" style="margin-top:16px">';
+        h += '<div class="da-chart-card">' +
+          '<div class="da-chart-ttl"><i class="fas fa-calendar-day" style="color:var(--P)"></i> Day-of-Week Pattern</div>' +
+          '<div style="height:220px"><canvas id="claChWeekday"></canvas></div></div>';
+        h += '<div class="da-chart-card">' +
+          '<div class="da-chart-ttl"><i class="fas fa-clock" style="color:var(--I)"></i> Time-of-Day — When Tasks Get Done</div>' +
+          '<div style="height:220px"><canvas id="claChHour"></canvas></div></div>';
+        h += '</div>';
+
+        if (monthly.length > 1) {
+          h += '<div class="da-chart-card" style="margin-top:16px">' +
+            '<div class="da-chart-ttl"><i class="fas fa-chart-line" style="color:var(--G)"></i> Month-over-Month Completion %</div>' +
+            '<div style="height:220px"><canvas id="claChMonthly"></canvas></div></div>';
+        }
+
         h += '<div class="card card-nohover card-sm" style="margin-top:16px">' +
-          '<div class="sec-title" style="margin-bottom:12px"><i class="fas fa-calendar-days" style="color:var(--P)"></i> Daily Detail</div>' +
+          '<div class="sec-title" style="margin-bottom:12px"><i class="fas fa-calendar-days" style="color:var(--P)"></i> Daily Detail (last 30)</div>' +
           '<div class="tw"><table><thead><tr><th>Date</th><th style="text-align:center;color:var(--I)">Planned</th>' +
           '<th style="text-align:center;color:var(--G)">Done</th><th style="text-align:center">Rate</th></tr></thead><tbody>' +
-          trend.slice(-20).reverse().map(function(t) {
+          (trend.length ? trend.slice(-30).reverse().map(function (t) {
             var r2 = t.planned > 0 ? Math.round(t.done / t.planned * 100) : 0;
             var c2 = r2 >= 80 ? 'var(--G)' : r2 >= 50 ? 'var(--O)' : 'var(--R)';
             return '<tr><td style="font-weight:700">'+_fmtDate(t.date)+'</td>' +
               '<td style="text-align:center;font-weight:800">'+t.planned+'</td>' +
               '<td style="text-align:center;font-weight:800;color:var(--G)">'+t.done+'</td>' +
               '<td style="text-align:center"><span style="font-weight:900;color:'+c2+'">'+r2+'%</span></td></tr>';
-          }).join('') + '</tbody></table></div></div>';
+          }).join('') : '<tr><td colspan="4" style="text-align:center;color:var(--tx3);padding:16px">No data</td></tr>') +
+          '</tbody></table></div></div>';
+      }
+
+      // ══ AGING view — Pending & Aging (NEW) ═══════════════════════════════
+      if (view === 'aging') {
+        var ag = data.pending_aging || { d0_1:0, d2_3:0, d4_7:0, d8plus:0 };
+        h += '<div class="da-grid2" style="margin-top:4px">';
+        h += '<div class="da-chart-card">' +
+          '<div class="da-chart-ttl"><i class="fas fa-hourglass-half" style="color:var(--R)"></i> Pending Aging Buckets</div>' +
+          '<div style="height:220px"><canvas id="claChAgingBig"></canvas></div></div>';
+        h += '<div class="card card-nohover card-sm">' +
+          '<div class="sec-title" style="margin-bottom:12px;color:var(--R)"><i class="fas fa-triangle-exclamation"></i> Aging Summary</div>' +
+          [
+            { lbl:'0-1 day overdue',  val:ag.d0_1,   c:'var(--O)' },
+            { lbl:'2-3 days overdue', val:ag.d2_3,   c:'var(--O)' },
+            { lbl:'4-7 days overdue', val:ag.d4_7,   c:'var(--R)' },
+            { lbl:'8+ days overdue',  val:ag.d8plus, c:'var(--R)' }
+          ].map(function (b) {
+            return '<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--bdr)">' +
+              '<span style="font-size:13px;color:var(--tx2)">'+b.lbl+'</span>' +
+              '<span style="font-size:16px;font-weight:900;color:'+b.c+'">'+b.val+'</span></div>';
+          }).join('') + '</div>';
+        h += '</div>';
+
+        h += '<div class="card card-nohover card-sm" style="margin-top:16px">' +
+          '<div class="sec-title" style="margin-bottom:12px;color:var(--R)"><i class="fas fa-list-ol"></i> Most Overdue Tasks ('+(data.overdue_count||0)+' total pending &amp; overdue)</div>' +
+          '<div class="tw"><table><thead><tr><th>Employee</th><th>Dept</th><th>Task</th><th>Freq</th>' +
+          '<th style="text-align:center">Planned</th><th style="text-align:center">Overdue</th></tr></thead><tbody>' +
+          (overdue.length ? overdue.map(function (o) {
+            var c = o.days_overdue >= 7 ? 'var(--R)' : o.days_overdue >= 3 ? 'var(--O)' : 'var(--tx2)';
+            return '<tr><td style="font-weight:700">'+_esc(o.name)+'</td>' +
+              '<td style="color:var(--tx2)">'+_esc(o.dept||'')+'</td>' +
+              '<td>'+_esc(o.task)+'</td>' +
+              '<td>'+_freqBadge(o.freq)+'</td>' +
+              '<td style="text-align:center">'+_fmtDateShort(o.planned)+'</td>' +
+              '<td style="text-align:center;font-weight:900;color:'+c+'">'+o.days_overdue+'d</td></tr>';
+          }).join('') : '<tr><td colspan="6" style="text-align:center;color:var(--G);padding:16px"><i class="fas fa-circle-check"></i> Nothing overdue — all caught up!</td></tr>') +
+          '</tbody></table></div></div>';
       }
 
       root.innerHTML = h;
 
       // ── Charts ────────────────────────────────────────────────────────────
-      _whenChart(function() {
+      _whenChart(function () {
         var isDk = document.body.classList.contains('dark');
-        var gc = isDk?'rgba(255,255,255,0.05)':'rgba(0,0,0,0.05)', tc = isDk?'#94a3b8':'#64748b';
+        var gc = isDk ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', tc = isDk ? '#94a3b8' : '#64748b';
 
         function mkC(id, type, labels, datasets, extra) {
           var cv = document.getElementById(id); if (!cv) return;
-          if (cv._ci) { try { cv._ci.destroy(); } catch(e){} }
-          function dm(a,b){var r=Object.assign({},a);Object.keys(b||{}).forEach(function(k){r[k]=(b[k]&&typeof b[k]==='object'&&!Array.isArray(b[k]))?dm(a[k]||{},b[k]):b[k];});return r;}
-          var isR = type==='pie'||type==='doughnut';
-          var base = { responsive:true, maintainAspectRatio:false,
-            plugins:{ legend:{ labels:{ color:tc, font:{size:11}, boxWidth:12 } } },
-            scales: isR ? {} : { x:{ticks:{color:tc,font:{size:10}},grid:{color:gc}}, y:{ticks:{color:tc,font:{size:10}},grid:{color:gc}} }
+          if (cv._ci) { try { cv._ci.destroy(); } catch (e) {} }
+          function dm(a, b) { var r = Object.assign({}, a); Object.keys(b || {}).forEach(function (k) { r[k] = (b[k] && typeof b[k] === 'object' && !Array.isArray(b[k])) ? dm(a[k] || {}, b[k]) : b[k]; }); return r; }
+          var isR = type === 'pie' || type === 'doughnut';
+          var base = { responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { labels: { color: tc, font: { size: 11 }, boxWidth: 12 } } },
+            scales: isR ? {} : { x: { ticks: { color: tc, font: { size: 10 } }, grid: { color: gc } }, y: { ticks: { color: tc, font: { size: 10 } }, grid: { color: gc } } }
           };
-          cv._ci = new Chart(cv, { type:type, data:{labels:labels, datasets:datasets}, options:dm(base, extra||{}) });
+          cv._ci = new Chart(cv, { type: type, data: { labels: labels, datasets: datasets }, options: dm(base, extra || {}) });
         }
 
-        // Dept completion bar
+        // Dept completion bar (mini + big)
         if (depts.length) {
-          mkC('claChDept','bar', depts.map(function(d){return d.dept;}),
-            [{label:'%', data:depts.map(function(d){return d.completion_rate||0;}),
-              backgroundColor:depts.map(function(d){return (d.completion_rate||0)>=80?'rgba(47,158,68,.8)':(d.completion_rate||0)>=50?'rgba(245,158,11,.8)':'rgba(220,38,38,.8)';}),
-              borderRadius:5,borderSkipped:false}],
-            {plugins:{legend:{display:false}},scales:{y:{min:0,max:100}}});
-          mkC('claChDeptBig','bar', depts.map(function(d){return d.dept;}),
-            [{label:'Done',data:depts.map(function(d){return d.done||0;}),backgroundColor:'rgba(47,158,68,.8)',borderRadius:5,borderSkipped:false},
-             {label:'Pending',data:depts.map(function(d){return (d.planned||0)-(d.done||0);}),backgroundColor:'rgba(245,158,11,.5)',borderRadius:5,borderSkipped:false}],
-            {plugins:{legend:{position:'bottom'}},scales:{x:{stacked:true},y:{stacked:true}}});
+          mkC('claChDept', 'bar', depts.map(function (d) { return d.dept; }),
+            [{ label: '%', data: depts.map(function (d) { return d.completion_rate || 0; }),
+              backgroundColor: depts.map(function (d) { return (d.completion_rate||0) >= 80 ? 'rgba(47,158,68,.8)' : (d.completion_rate||0) >= 50 ? 'rgba(245,158,11,.8)' : 'rgba(220,38,38,.8)'; }),
+              borderRadius: 5, borderSkipped: false }],
+            { plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 100 } } });
+          mkC('claChDeptBig', 'bar', depts.map(function (d) { return d.dept; }),
+            [{ label: 'Done', data: depts.map(function (d) { return d.done || 0; }), backgroundColor: 'rgba(47,158,68,.8)', borderRadius: 5, borderSkipped: false },
+             { label: 'Pending', data: depts.map(function (d) { return d.pending || 0; }), backgroundColor: 'rgba(245,158,11,.5)', borderRadius: 5, borderSkipped: false }],
+            { plugins: { legend: { position: 'bottom' } }, scales: { x: { stacked: true }, y: { stacked: true } } });
         }
 
         // Done vs Pending donut
-        mkC('claChBreak','doughnut',['Done','Pending'],
-          [{data:[td, data.total_pending||0],
-            backgroundColor:['rgba(47,158,68,.85)','rgba(245,158,11,.75)'],
-            borderWidth:0,hoverOffset:10}],
-          {cutout:'60%',plugins:{legend:{position:'bottom'}}});
+        mkC('claChBreak', 'doughnut', ['Done', 'Pending'],
+          [{ data: [td, data.total_pending || 0], backgroundColor: ['rgba(47,158,68,.85)', 'rgba(245,158,11,.75)'], borderWidth: 0, hoverOffset: 10 }],
+          { cutout: '60%', plugins: { legend: { position: 'bottom' } } });
 
-        // Frequency
+        // Frequency (mini pie + big bar)
         if (freqs.length) {
-          var fColors=['rgba(112,72,232,.8)','rgba(14,165,233,.8)','rgba(47,158,68,.8)','rgba(245,158,11,.8)','rgba(220,38,38,.8)','rgba(148,163,184,.7)'];
-          mkC('claChFreq','pie', freqs.map(function(f){return f.label;}),
-            [{data:freqs.map(function(f){return f.count;}),
-              backgroundColor:freqs.map(function(_,i){return fColors[i%fColors.length];}),
-              borderWidth:0}],
-            {plugins:{legend:{position:'bottom'}}});
-          mkC('claChFreqBig','bar', freqs.map(function(f){return f.label;}),
-            [{label:'Tasks', data:freqs.map(function(f){return f.count;}),
-              backgroundColor:freqs.map(function(_,i){return fColors[i%fColors.length];}),
-              borderRadius:5,borderSkipped:false}],
-            {plugins:{legend:{display:false}}});
+          var fColors = ['rgba(112,72,232,.8)', 'rgba(14,165,233,.8)', 'rgba(47,158,68,.8)', 'rgba(245,158,11,.8)', 'rgba(220,38,38,.8)', 'rgba(148,163,184,.7)', 'rgba(13,148,136,.8)', 'rgba(217,119,6,.8)'];
+          mkC('claChFreq', 'pie', freqs.map(function (f) { return f.label; }),
+            [{ data: freqs.map(function (f) { return f.count; }), backgroundColor: freqs.map(function (_, i) { return fColors[i % fColors.length]; }), borderWidth: 0 }],
+            { plugins: { legend: { position: 'bottom' } } });
+          mkC('claChFreqBig', 'bar', freqs.map(function (f) { return f.label; }),
+            [{ label: 'Tasks', data: freqs.map(function (f) { return f.count; }), backgroundColor: freqs.map(function (_, i) { return fColors[i % fColors.length]; }), borderRadius: 5, borderSkipped: false }],
+            { plugins: { legend: { display: false } } });
         }
+
+        // On-time vs Late donut
+        mkC('claChOnTime', 'doughnut', ['On-Time', 'Late', 'Pending'],
+          [{ data: [data.on_time_done || 0, data.late_done || 0, data.total_pending || 0],
+            backgroundColor: ['rgba(47,158,68,.85)', 'rgba(245,158,11,.85)', 'rgba(148,163,184,.6)'], borderWidth: 0, hoverOffset: 10 }],
+          { cutout: '60%', plugins: { legend: { position: 'bottom' } } });
+
+        // Pending aging (mini + big)
+        var ag2 = data.pending_aging || { d0_1: 0, d2_3: 0, d4_7: 0, d8plus: 0 };
+        var agLabels = ['0-1 day', '2-3 days', '4-7 days', '8+ days'];
+        var agData = [ag2.d0_1 || 0, ag2.d2_3 || 0, ag2.d4_7 || 0, ag2.d8plus || 0];
+        var agColors = ['rgba(245,158,11,.7)', 'rgba(245,158,11,.9)', 'rgba(220,38,38,.75)', 'rgba(220,38,38,.95)'];
+        mkC('claChAgingMini', 'bar', agLabels, [{ label: 'Overdue tasks', data: agData, backgroundColor: agColors, borderRadius: 5, borderSkipped: false }],
+          { plugins: { legend: { display: false } } });
+        mkC('claChAgingBig', 'bar', agLabels, [{ label: 'Overdue tasks', data: agData, backgroundColor: agColors, borderRadius: 5, borderSkipped: false }],
+          { plugins: { legend: { display: false } } });
 
         // Daily trend line
         if (trend.length) {
-          mkC('claChTrend','line',
-            trend.map(function(t){ var p=t.date.split('-'); return p[2]+'/'+p[1]; }),
+          mkC('claChTrend', 'line',
+            trend.map(function (t) { var p = t.date.split('-'); return p[2] + '/' + p[1]; }),
             [
-              {label:'Planned', data:trend.map(function(t){return t.planned;}),
-               borderColor:'rgba(14,165,233,.9)',backgroundColor:'rgba(14,165,233,.1)',fill:true,tension:0.4,pointRadius:2},
-              {label:'Done',    data:trend.map(function(t){return t.done;}),
-               borderColor:'rgba(47,158,68,.9)',backgroundColor:'rgba(47,158,68,.1)',fill:true,tension:0.4,pointRadius:2}
+              { label: 'Planned', data: trend.map(function (t) { return t.planned; }), borderColor: 'rgba(14,165,233,.9)', backgroundColor: 'rgba(14,165,233,.1)', fill: true, tension: 0.4, pointRadius: 2 },
+              { label: 'Done', data: trend.map(function (t) { return t.done; }), borderColor: 'rgba(47,158,68,.9)', backgroundColor: 'rgba(47,158,68,.1)', fill: true, tension: 0.4, pointRadius: 2 }
             ],
-            {scales:{y:{beginAtZero:true}},plugins:{legend:{position:'bottom'}}});
+            { scales: { y: { beginAtZero: true } }, plugins: { legend: { position: 'bottom' } } });
+        }
+
+        // Day-of-week pattern
+        if (weekday.length) {
+          mkC('claChWeekday', 'bar', weekday.map(function (w) { return w.day.substring(0, 3); }),
+            [{ label: 'Completion %', data: weekday.map(function (w) { return w.completion_rate || 0; }),
+              backgroundColor: weekday.map(function (w) { return (w.completion_rate||0) >= 80 ? 'rgba(47,158,68,.8)' : (w.completion_rate||0) >= 50 ? 'rgba(245,158,11,.8)' : 'rgba(220,38,38,.8)'; }),
+              borderRadius: 5, borderSkipped: false }],
+            { plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 100 } } });
+        }
+
+        // Time-of-day pattern
+        if (hours.length) {
+          var hColors = ['rgba(245,158,11,.8)', 'rgba(14,165,233,.8)', 'rgba(112,72,232,.8)', 'rgba(13,148,136,.8)', 'rgba(71,85,105,.7)'];
+          mkC('claChHour', 'bar', hours.map(function (s) { return s.slot; }),
+            [{ label: 'Tasks completed', data: hours.map(function (s) { return s.count; }), backgroundColor: hours.map(function (_, i) { return hColors[i % hColors.length]; }), borderRadius: 5, borderSkipped: false }],
+            { plugins: { legend: { display: false } }, indexAxis: 'y' });
+        }
+
+        // Month-over-month trend
+        if (monthly.length > 1) {
+          mkC('claChMonthly', 'line', monthly.map(function (m) { return m.month; }),
+            [{ label: 'Completion %', data: monthly.map(function (m) { return m.completion_rate || 0; }), borderColor: 'rgba(47,158,68,.9)', backgroundColor: 'rgba(47,158,68,.1)', fill: true, tension: 0.3, pointRadius: 3 }],
+            { scales: { y: { min: 0, max: 100 } }, plugins: { legend: { display: false } } });
         }
       }, 80);
     }
 
     function _filterClaEmps() {
-      var q = ((document.getElementById('claEmpQ')||{}).value||'').toLowerCase().trim();
-      document.querySelectorAll('#claEmpCards .da-emp-card').forEach(function(el) {
+      var q = ((document.getElementById('claEmpQ') || {}).value || '').toLowerCase().trim();
+      document.querySelectorAll('#claEmpCards .da-emp-card').forEach(function (el) {
         el.style.display = (!q || el.textContent.toLowerCase().indexOf(q) >= 0) ? '' : 'none';
       });
     }
 
     function _exportClaCsv() {
-      if (!_D.claData || !_D.claData.by_employee) { _toast('Load analytics first', 'err'); return; }
-      var head = ['Employee','Department','Planned','Done','Pending','Completion %'];
-      var csv  = [head.join(',')].concat((_D.claData.by_employee||[]).map(function(e) {
-        return ['"'+(e.name||'')+'"','"'+(e.dept||'')+'"',e.planned||0,e.done||0,e.pending||0,(e.completion_rate||0)+'%'].join(',');
-      })).join('\n');
+      var data = _D.claData;
+      if (!data) { _toast('Load analytics first', 'err'); return; }
+      var view = (document.getElementById('claView') || {}).value || 'overview';
+      var head, rows, name;
+
+      if (view === 'task') {
+        head = ['Task', 'Department', 'Frequency', 'Planned', 'Done', 'Pending', 'Completion %'];
+        rows = (data.by_task || []).map(function (t) { return ['"' + (t.task||'') + '"', '"' + (t.dept||'') + '"', t.freq||'', t.planned||0, t.done||0, t.pending||0, (t.completion_rate||0) + '%']; });
+        name = 'checklist_by_task';
+      } else if (view === 'aging') {
+        head = ['Employee', 'Department', 'Task', 'Frequency', 'Planned Date', 'Days Overdue'];
+        rows = (data.overdue_tasks || []).map(function (o) { return ['"' + (o.name||'') + '"', '"' + (o.dept||'') + '"', '"' + (o.task||'') + '"', o.freq||'', o.planned||'', o.days_overdue||0]; });
+        name = 'checklist_overdue';
+      } else if (view === 'dept') {
+        head = ['Department', 'Employees', 'Planned', 'Done', 'Pending', 'Completion %'];
+        rows = (data.by_dept || []).map(function (d) { return ['"' + (d.dept||'') + '"', d.employees||0, d.planned||0, d.done||0, d.pending||0, (d.completion_rate||0) + '%']; });
+        name = 'checklist_by_dept';
+      } else {
+        head = ['Employee', 'Department', 'Planned', 'Done', 'Pending', 'Completion %', 'On-Time %', 'Avg Delay (days)'];
+        rows = (data.by_employee || []).map(function (e) { return ['"' + (e.name||'') + '"', '"' + (e.dept||'') + '"', e.planned||0, e.done||0, e.pending||0, (e.completion_rate||0) + '%', (e.on_time_rate||0) + '%', e.avg_lag_days||0]; });
+        name = 'checklist_by_employee';
+      }
+
+      if (!rows.length) { _toast('No data to export', 'err'); return; }
+      var csv = [head.join(',')].concat(rows.map(function (r) { return r.join(','); })).join('\n');
       var a = document.createElement('a');
-      a.href = 'data:text/csv;charset=utf-8,'+encodeURIComponent('\uFEFF'+csv);
-      a.download = 'checklist_analytics_'+(_D.claData.month||_currMonth())+'.csv'; a.click();
+      a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent('\uFEFF' + csv);
+      a.download = name + '_' + (data.from||_currMonth()) + '_to_' + (data.to||_today()) + '.csv';
+      a.click();
       _toast('Exported!', 'ok');
     }
+
+
 
 
     function _vDelAna() {
