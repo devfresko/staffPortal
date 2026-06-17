@@ -5385,7 +5385,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbyuKWwv5THRjMXk8RakwCyd9wT0Goiz8C9SAGZpl6l7B0XHf1HtVaMWiAJpUjquhEpS_g/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbzO9ML8eNanY2rUabNHoYwRiq272yq1xu6G_mdZruY48En1Egkkfw1xjPl9SfZp0FvN4Q/exec';
     var _TOKEN  = '';
 
 function _gas(fn, args, onOk, onErr) {
@@ -12713,7 +12713,7 @@ function _loadSetupTasks() {
       var dept = (document.getElementById('ptopDept') || {}).value || 'all';
       var kEl = document.getElementById('ptopKrow');
       var listEl = document.getElementById('ptopList');
-      if (kEl) kEl.innerHTML = [1, 2, 3].map(function () { return '<div class="sk sk-h6" style="border-radius:14px"></div>'; }).join('');
+      if (kEl) { kEl.className = 'da-kpi-strip'; kEl.innerHTML = [1, 2, 3, 4].map(function () { return '<div class="sk sk-h6" style="border-radius:14px"></div>'; }).join(''); }
       if (listEl) listEl.innerHTML = _skel(5, 'sk-h3');
 
       _gasX('getChecklistAnalyticsV2', [{ from: from, to: to, dept: dept, freq: 'all', empId: 'all' }], 45000, function (data) {
@@ -12723,17 +12723,18 @@ function _loadSetupTasks() {
         var total = performers.reduce(function (s, p) { return s + (p.done || 0); }, 0);
         var best = performers.length > 0 ? performers[0] : null;
 
+        if (kEl) kEl.className = 'da-kpi-strip';
         if (kEl) kEl.innerHTML = [
-          { lbl: 'Total Done', val: total, c: 'var(--P)', ico: 'fa-check-double' },
-          { lbl: 'Top Performer', val: best ? best.name.split(' ')[0] : '—', c: 'var(--G)', ico: 'fa-trophy' },
-          { lbl: 'Contributors', val: performers.length, c: 'var(--V)', ico: 'fa-users' },
-          { lbl: 'Avg Completion', val: (data.avg_completion||0)+'%', c: (data.avg_completion||0)>=80?'var(--G)':'var(--O)', ico: 'fa-percent' }
+          { lbl: 'Total Done', val: total, c: 'var(--P)', ico: 'fa-check-double', sub: performers.length + ' contributors' },
+          { lbl: 'Top Performer', val: best ? best.name.split(' ')[0] : '—', c: 'var(--G)', ico: 'fa-trophy', sub: best ? (best.completion_rate||0)+'% completion' : '—' },
+          { lbl: 'Avg Completion', val: (data.avg_completion||0)+'%', c: (data.avg_completion||0)>=80?'var(--G)':'var(--O)', ico: 'fa-percent', sub: (data.on_time_rate||0)+'% on-time' },
+          { lbl: 'Overdue Tasks', val: data.overdue_count||0, c: (data.overdue_count||0)>0?'var(--R)':'var(--G)', ico: 'fa-triangle-exclamation', sub: (data.overdue_count||0)>0?'Needs follow-up':'All clear' }
         ].map(function (k) {
-          return '<div class="kpi" style="--kc:' + k.c + '">' +
-            '<div class="kpi-ico"><i class="fas ' + k.ico + '"></i></div>' +
-            '<div class="kpi-val">' + k.val + '</div>' +
-            '<div class="kpi-lbl">' + k.lbl + '</div>' +
-            '</div>';
+          return '<div class="da-kpi">' +
+            '<div class="da-kpi-row1"><div class="da-kpi-ico" style="--kc:'+k.c+'"><i class="fas '+k.ico+'"></i></div>' +
+            '<div class="da-kpi-val" style="color:'+k.c+'">'+k.val+'</div></div>' +
+            '<div class="da-kpi-lbl">'+k.lbl+'</div>' +
+            '<div class="da-kpi-sub">'+k.sub+'</div></div>';
         }).join('');
 
         // Horizontal bar chart — top 10
@@ -12764,16 +12765,17 @@ function _loadSetupTasks() {
           }
         }, 120);
 
-        // Leaderboard table
+        // Leaderboard table — now with completion % and on-time % for depth
         if (listEl) {
           listEl.innerHTML = performers.slice(0, 15).map(function (p, i) {
             var medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1) + '.';
             var barW = performers[0].done > 0 ? Math.round(p.done / performers[0].done * 100) : 0;
+            var rC = (p.completion_rate||0) >= 80 ? 'var(--G)' : (p.completion_rate||0) >= 50 ? 'var(--O)' : 'var(--R)';
             return '<div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--bdr);cursor:pointer" onclick="_claDrillEmployee(\'' + _esc(p.emp_id) + '\')" title="Click to see task details">' +
               '<span style="font-size:15px;width:28px;text-align:center;flex-shrink:0">' + medal + '</span>' +
               '<div style="flex:1;min-width:0">' +
               '<div style="font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _esc(p.name) + '</div>' +
-              '<div style="font-size:10.5px;color:var(--tx3)">' + _esc(p.dept) + '</div>' +
+              '<div style="font-size:10.5px;color:var(--tx3)">' + _esc(p.dept) + ' &middot; <span style="color:'+rC+'">'+(p.completion_rate||0)+'% completion</span> &middot; '+(p.on_time_rate||0)+'% on-time</div>' +
               '<div class="pbar-wrap" style="margin-top:5px"><div class="pbar" style="width:' + barW + '%;background:var(--P)"></div></div>' +
               '</div>' +
               '<div style="font-size:16px;font-weight:900;color:var(--P);flex-shrink:0">' + (p.done || 0) + '</div>' +
@@ -12966,24 +12968,28 @@ function _loadSetupTasks() {
       var to   = (document.getElementById('pteamTo')   || {}).value || _today();
       var dept = (document.getElementById('pteamDept') || {}).value || 'all';
       var kEl = document.getElementById('pteamKrow');
-      if (kEl) kEl.innerHTML = [1, 2, 3, 4].map(function () { return '<div class="sk sk-h6" style="border-radius:14px"></div>'; }).join('');
+      if (kEl) { kEl.className = 'da-kpi-strip'; kEl.innerHTML = [1, 2, 3, 4, 5, 6].map(function () { return '<div class="sk sk-h6" style="border-radius:14px"></div>'; }).join(''); }
 
       _gasX('getAnalyticsSummaryV2', [{ from: from, to: to, dept: dept }], 45000, function (data) {
         _D.teamPerfData = data;
         var depts = data.dept_breakdown || [];
         var cl = data.checklist || {}, dl = data.delegation || {}, at = data.attendance || {};
+        var needsAttn = data.needs_attention || [];
 
+        if (kEl) kEl.className = 'da-kpi-strip';
         if (kEl) kEl.innerHTML = [
-          { lbl: 'Tasks Done', val: cl.done || 0, c: 'var(--G)', ico: 'fa-check' },
-          { lbl: 'Checklist Rate', val: (cl.rate || 0) + '%', c: (cl.rate || 0) >= 80 ? 'var(--G)' : 'var(--O)', ico: 'fa-percent' },
-          { lbl: 'Delegations Done', val: dl.completed || 0, c: 'var(--V)', ico: 'fa-people-arrows' },
-          { lbl: 'Presence Rate', val: (at.presence_pct || 0) + '%', c: (at.presence_pct || 0) >= 90 ? 'var(--G)' : 'var(--O)', ico: 'fa-user-clock' }
+          { lbl: 'Tasks Done', val: cl.done || 0, c: 'var(--G)', ico: 'fa-check', sub: 'of ' + (cl.planned||0) + ' planned' },
+          { lbl: 'Checklist Rate', val: (cl.rate || 0) + '%', c: (cl.rate || 0) >= 80 ? 'var(--G)' : 'var(--O)', ico: 'fa-percent', sub: (cl.on_time_rate||0)+'% on-time' },
+          { lbl: 'Delegations Done', val: dl.completed || 0, c: 'var(--V)', ico: 'fa-people-arrows', sub: 'of ' + (dl.assigned||0) + ' assigned' },
+          { lbl: 'Delegation Overdue', val: dl.overdue || 0, c: (dl.overdue||0)>0?'var(--R)':'var(--G)', ico: 'fa-triangle-exclamation', sub: (dl.overdue||0)>0?'Needs follow-up':'All clear' },
+          { lbl: 'Presence Rate', val: (at.presence_pct || 0) + '%', c: (at.presence_pct || 0) >= 90 ? 'var(--G)' : 'var(--O)', ico: 'fa-user-clock', sub: (at.late||0)+' late arrivals' },
+          { lbl: 'Needs Attention', val: needsAttn.length, c: needsAttn.length>0?'var(--O)':'var(--G)', ico: 'fa-flag', sub: needsAttn.length>0?'Employees flagged':'Team on track' }
         ].map(function (k) {
-          return '<div class="kpi" style="--kc:' + k.c + '">' +
-            '<div class="kpi-ico"><i class="fas ' + k.ico + '"></i></div>' +
-            '<div class="kpi-val">' + k.val + '</div>' +
-            '<div class="kpi-lbl">' + k.lbl + '</div>' +
-            '</div>';
+          return '<div class="da-kpi">' +
+            '<div class="da-kpi-row1"><div class="da-kpi-ico" style="--kc:'+k.c+'"><i class="fas '+k.ico+'"></i></div>' +
+            '<div class="da-kpi-val" style="color:'+k.c+'">'+k.val+'</div></div>' +
+            '<div class="da-kpi-lbl">'+k.lbl+'</div>' +
+            '<div class="da-kpi-sub">'+k.sub+'</div></div>';
         }).join('');
 
         setTimeout(function () {
@@ -13034,7 +13040,7 @@ function _loadSetupTasks() {
           }
         }, 120);
 
-        // Dept table (cross-module, clickable)
+        // Dept table (cross-module, clickable, with raw counts as subtext)
         var tblEl = document.getElementById('pteamDeptTable');
         if (tblEl && depts.length) {
           tblEl.innerHTML =
@@ -13043,20 +13049,32 @@ function _loadSetupTasks() {
             '<th style="text-align:center">Checklist</th><th style="text-align:center">Delegation</th><th style="text-align:center">Attendance</th>' +
             '</tr></thead><tbody>' +
             depts.map(function (d) {
-              function cell(rate, route) {
+              function cell(rate, route, sub) {
                 if (rate === null || rate === undefined) return '<span style="color:var(--tx3)">—</span>';
                 var c = rate >= 80 ? 'var(--G)' : rate >= 50 ? 'var(--O)' : 'var(--R)';
-                return '<span style="font-weight:900;color:'+c+';cursor:pointer" onclick="_loadV(\''+route+'\')" title="Click to view full report">'+rate+'%</span>';
+                return '<div style="cursor:pointer" onclick="_loadV(\''+route+'\')" title="Click to view full report">' +
+                  '<span style="font-weight:900;color:'+c+'">'+rate+'%</span>' +
+                  '<div style="font-size:9.5px;color:var(--tx3)">'+sub+'</div></div>';
               }
               return '<tr>' +
                 '<td style="font-weight:700">' + _esc(d.dept) + '</td>' +
                 '<td style="text-align:center">' + (d.employees || 0) + '</td>' +
-                '<td style="text-align:center">' + cell(d.checklist_rate, 'clana') + '</td>' +
-                '<td style="text-align:center">' + cell(d.delegation_rate, 'delana') + '</td>' +
-                '<td style="text-align:center">' + cell(d.attendance_rate, 'attana') + '</td>' +
+                '<td style="text-align:center">' + cell(d.checklist_rate, 'clana', d.checklist_done+'/'+d.checklist_planned) + '</td>' +
+                '<td style="text-align:center">' + cell(d.delegation_rate, 'delana', d.delegation_overdue+' overdue') + '</td>' +
+                '<td style="text-align:center">' + cell(d.attendance_rate, 'attana', d.attendance_late+' late') + '</td>' +
                 '</tr>';
             }).join('') +
             '</tbody></table></div>';
+
+          if (needsAttn.length) {
+            tblEl.innerHTML += '<div style="margin-top:16px">' +
+              '<div class="sec-title" style="margin-bottom:10px;color:var(--O)"><i class="fas fa-flag"></i> Needs Attention (' + needsAttn.length + ')</div>' +
+              needsAttn.map(function (a) {
+                return '<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--bdr);cursor:pointer" onclick="_loadEmpDetail(\''+_esc(a.emp_id)+'\')" title="Click for employee profile">' +
+                  '<div><span style="font-weight:700;font-size:13px">'+_esc(a.name)+'</span> <span style="font-size:10.5px;color:var(--tx3)">('+_esc(a.dept||'')+')</span></div>' +
+                  '<div style="font-size:10.5px;color:var(--O);text-align:right">'+a.reasons.map(_esc).join('<br>')+'</div></div>';
+              }).join('') + '</div>';
+          }
         } else if (tblEl) {
           tblEl.innerHTML = '<div class="te"><i class="fas fa-calendar-times"></i> No data for this range</div>';
         }
@@ -13881,24 +13899,32 @@ function _loadSetupTasks() {
 
       if (el) el.innerHTML = headerHtml + '<div id="edModules" style="margin-top:14px">' + _skel(3) + '</div>';
 
-      var results = {}, pending = 3;
-      function done() { pending--; if (pending === 0) _renderEmpDetailModules(results); }
-
-      _gasX('getChecklistAnalyticsV2', [{ from: from, to: to, dept: 'all', freq: 'all', empId: empId }], 30000, function (d) { results.cl = d; done(); }, function () { results.cl = null; done(); });
-      _gasX('getDelegationAnalyticsV2', [{ from: from, to: to, dept: 'all', empId: empId, giverId: 'all', status: 'all' }], 30000, function (d) { results.dl = d; done(); }, function () { results.dl = null; done(); });
-      _gasX('getAttendanceAnalyticsV2', [{ from: from, to: to, dept: 'all', empId: empId, status: 'all' }], 30000, function (d) { results.at = d; done(); }, function () { results.at = null; done(); });
+      _gasX('getEmployeeDetailV2', [empId, { from: from, to: to }], 30000, function (data) {
+        _renderEmpDetailModules({ cl: data.checklist, dl: data.delegation, at: data.attendance });
+      }, function () {
+        _renderEmpDetailModules({ cl: null, dl: null, at: null });
+      });
     }
 
-    function _empModCard(title, ico, clr, route, stats) {
-      if (!stats) return '<div class="card card-nohover card-sm" style="border-top:3px solid ' + clr + '">' +
-        '<div style="font-weight:800;font-size:12px;display:flex;align-items:center;gap:6px;margin-bottom:8px"><i class="fas ' + ico + '" style="color:' + clr + '"></i> ' + title + '</div>' +
+    function _empModCard(cfg) {
+      if (!cfg.stats) return '<div class="card card-nohover card-sm" style="border-top:3px solid ' + cfg.clr + '">' +
+        '<div style="font-weight:800;font-size:12px;display:flex;align-items:center;gap:6px;margin-bottom:8px"><i class="fas ' + cfg.ico + '" style="color:' + cfg.clr + '"></i> ' + cfg.title + '</div>' +
         '<div style="font-size:11px;color:var(--tx3);text-align:center;padding:10px">Could not load</div></div>';
-      return '<div class="card card-nohover card-sm" style="border-top:3px solid ' + clr + '">' +
-        '<div style="font-weight:800;font-size:12px;display:flex;align-items:center;gap:6px;margin-bottom:10px"><i class="fas ' + ico + '" style="color:' + clr + '"></i> ' + title + '</div>' +
-        '<div style="display:flex;justify-content:space-between;margin-bottom:10px">' +
-        stats.map(function (s) { return '<div style="text-align:center"><div style="font-size:16px;font-weight:900">' + s.v + '</div><div style="font-size:8.5px;color:var(--tx3);text-transform:uppercase;letter-spacing:.3px">' + s.l + '</div></div>'; }).join('') +
+      var rC = cfg.rate >= 80 ? 'var(--G)' : cfg.rate >= 50 ? 'var(--O)' : 'var(--R)';
+      return '<div class="card card-nohover card-sm" style="border-top:3px solid ' + cfg.clr + '">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
+        '<div style="font-weight:800;font-size:12px;display:flex;align-items:center;gap:6px"><i class="fas ' + cfg.ico + '" style="color:' + cfg.clr + '"></i> ' + cfg.title + '</div>' +
+        (cfg.rate != null ? '<div style="font-size:15px;font-weight:900;color:' + rC + '">' + cfg.rate + '%</div>' : '') +
         '</div>' +
-        '<button class="btn btn-sm btn-outline" style="width:100%;font-size:10.5px;padding:6px" onclick="_closeModal();_loadV(\'' + route + '\')">View Full Report</button>' +
+        (cfg.rate != null ? '<div class="pbar-wrap" style="margin-bottom:10px"><div class="pbar" style="width:' + cfg.rate + '%;background:' + rC + '"></div></div>' : '') +
+        '<div style="display:flex;justify-content:space-between;margin-bottom:8px">' +
+        cfg.stats.map(function (s) { return '<div style="text-align:center"><div style="font-size:16px;font-weight:900">' + s.v + '</div><div style="font-size:8.5px;color:var(--tx3);text-transform:uppercase;letter-spacing:.3px">' + s.l + '</div></div>'; }).join('') +
+        '</div>' +
+        (cfg.subStats && cfg.subStats.length ?
+          '<div style="display:flex;justify-content:space-between;padding-top:8px;margin-bottom:10px;border-top:1px solid var(--bdr)">' +
+          cfg.subStats.map(function (s) { return '<span style="font-size:9.5px;color:var(--tx3)">' + s.l + ': <b style="color:var(--tx2)">' + s.v + '</b></span>'; }).join('') +
+          '</div>' : '') +
+        '<button class="btn btn-sm btn-outline" style="width:100%;font-size:10.5px;padding:6px" onclick="_closeModal();_loadV(\'' + cfg.route + '\')">View Full Report</button>' +
         '</div>';
     }
 
@@ -13915,25 +13941,34 @@ function _loadSetupTasks() {
       var cl = results.cl, dl = results.dl, at = results.at;
 
       var h = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">';
-      h += _empModCard('Checklist', 'fa-list-check', 'var(--P)', 'clana', cl ? [
-        { l: 'Planned', v: cl.total_planned || 0 }, { l: 'Done', v: cl.total_done || 0 }, { l: 'Rate', v: (cl.avg_completion || 0) + '%' }
-      ] : null);
-      h += _empModCard('Delegation', 'fa-diagram-project', 'var(--V)', 'delana', dl ? [
-        { l: 'Assigned', v: dl.total_assigned || 0 }, { l: 'Done', v: dl.total_completed || 0 }, { l: 'Overdue', v: dl.total_overdue || 0 }
-      ] : null);
-      h += _empModCard('Attendance', 'fa-user-clock', 'var(--T)', 'attana', at ? [
-        { l: 'Present', v: at.total_present || 0 }, { l: 'Absent', v: at.total_absent || 0 }, { l: 'Late', v: at.total_late || 0 }
-      ] : null);
+      h += _empModCard({
+        title: 'Checklist', ico: 'fa-list-check', clr: 'var(--P)', route: 'clana',
+        rate: cl ? (cl.avg_completion || 0) : null,
+        stats: cl ? [{ l: 'Planned', v: cl.total_planned || 0 }, { l: 'Done', v: cl.total_done || 0 }, { l: 'Pending', v: cl.total_pending || 0 }] : null,
+        subStats: cl ? [{ l: 'On-time', v: (cl.on_time_rate || 0) + '%' }, { l: 'Avg delay', v: (cl.avg_lag_days || 0) + 'd' }] : null
+      });
+      h += _empModCard({
+        title: 'Delegation', ico: 'fa-diagram-project', clr: 'var(--V)', route: 'delana',
+        rate: dl ? (dl.completion_rate || 0) : null,
+        stats: dl ? [{ l: 'Assigned', v: dl.total_assigned || 0 }, { l: 'Done', v: dl.total_completed || 0 }, { l: 'Overdue', v: dl.total_overdue || 0 }] : null,
+        subStats: dl ? [{ l: 'On-time', v: (dl.on_time_rate || 0) + '%' }, { l: 'Avg delay', v: (dl.avg_lag_days || 0) + 'd' }] : null
+      });
+      h += _empModCard({
+        title: 'Attendance', ico: 'fa-user-clock', clr: 'var(--T)', route: 'attana',
+        rate: at ? (at.presence_pct || 0) : null,
+        stats: at ? [{ l: 'Present', v: at.total_present || 0 }, { l: 'Absent', v: at.total_absent || 0 }, { l: 'Late', v: at.total_late || 0 }] : null,
+        subStats: at ? [{ l: 'Avg hrs', v: (at.avg_hours || 0) + 'h' }] : null
+      });
       h += '</div>';
 
       h += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px">';
       h += _empActivityList('Recent Tasks', (cl && cl.employee_detail) ? cl.employee_detail.log.slice(0, 5) : [], function (r) {
         return '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:11px;padding:5px 0;border-bottom:1px solid var(--bdr)">' +
-          '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _esc(r.task) + '</span>' + _statusBadge(r.status) + '</div>';
+          '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + _esc(r.task) + '">' + _esc(r.task) + '</span>' + _statusBadge(r.status) + '</div>';
       });
       h += _empActivityList('Recent Delegations', (dl && dl.employee_detail) ? dl.employee_detail.log.slice(0, 5) : [], function (r) {
         return '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:11px;padding:5px 0;border-bottom:1px solid var(--bdr)">' +
-          '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _esc(r.task) + '</span>' + _statusBadge(r.status) + '</div>';
+          '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + _esc(r.task) + '">' + _esc(r.task) + '</span>' + _statusBadge(r.status) + '</div>';
       });
       h += _empActivityList('Recent Attendance', (at && at.employee_detail) ? at.employee_detail.log.slice(0, 5) : [], function (r) {
         return '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:11px;padding:5px 0;border-bottom:1px solid var(--bdr)">' +
@@ -14240,6 +14275,7 @@ function _loadSetupTasks() {
           '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">' +
           '<div style="font-weight:800;font-size:14px;display:flex;align-items:center;gap:8px"><i class="fas '+m.ico+'" style="color:'+m.clr+'"></i> '+m.title+'</div>' +
           '<div style="font-size:18px;font-weight:900;color:'+m.rClr+'">'+m.rate+'%</div></div>' +
+          '<div class="pbar-wrap" style="margin-bottom:12px"><div class="pbar" style="width:'+m.rate+'%;background:'+m.rClr+'"></div></div>' +
           '<div style="display:flex;justify-content:space-between;margin-bottom:12px">' +
           m.stats.map(function (s) {
             return '<div style="text-align:center"><div style="font-size:17px;font-weight:900;color:var(--tx)">'+s.v+'</div>' +
@@ -14249,6 +14285,13 @@ function _loadSetupTasks() {
           '</div>';
       }).join('') + '</div>';
 
+      // ── Combined trend chart (checklist completion % vs attendance presence %) ──
+      if ((data.trend || []).length > 1) {
+        h += '<div class="da-chart-card" style="margin-bottom:16px">' +
+          '<div class="da-chart-ttl"><i class="fas fa-chart-line" style="color:var(--T)"></i> Checklist vs Attendance Trend</div>' +
+          '<div style="height:220px"><canvas id="anaTrendChart"></canvas></div></div>';
+      }
+
       // ── Dept breakdown table (cross-module) ─────────────────────────────
       if (depts.length) {
         h += '<div class="card card-nohover card-sm" style="margin-bottom:16px">' +
@@ -14256,16 +14299,18 @@ function _loadSetupTasks() {
           '<div class="tw"><table><thead><tr><th>Department</th><th style="text-align:center">Employees</th>' +
           '<th style="text-align:center">Checklist</th><th style="text-align:center">Delegation</th><th style="text-align:center">Attendance</th></tr></thead><tbody>' +
           depts.map(function (d) {
-            function cell(rate, route) {
+            function cell(rate, route, sub) {
               if (rate === null || rate === undefined) return '<span style="color:var(--tx3)">—</span>';
               var c = rate >= 80 ? 'var(--G)' : rate >= 50 ? 'var(--O)' : 'var(--R)';
-              return '<span style="font-weight:900;color:'+c+';cursor:pointer" onclick="_loadV(\''+route+'\')" title="Click to view full report">'+rate+'%</span>';
+              return '<div style="cursor:pointer" onclick="_loadV(\''+route+'\')" title="Click to view full report">' +
+                '<span style="font-weight:900;color:'+c+'">'+rate+'%</span>' +
+                '<div style="font-size:9.5px;color:var(--tx3)">'+sub+'</div></div>';
             }
             return '<tr><td style="font-weight:800">'+_esc(d.dept)+'</td>' +
               '<td style="text-align:center;font-weight:700">'+(d.employees||0)+'</td>' +
-              '<td style="text-align:center">'+cell(d.checklist_rate, 'clana')+'</td>' +
-              '<td style="text-align:center">'+cell(d.delegation_rate, 'delana')+'</td>' +
-              '<td style="text-align:center">'+cell(d.attendance_rate, 'attana')+'</td>' +
+              '<td style="text-align:center">'+cell(d.checklist_rate, 'clana', d.checklist_done+'/'+d.checklist_planned)+'</td>' +
+              '<td style="text-align:center">'+cell(d.delegation_rate, 'delana', d.delegation_overdue+' overdue')+'</td>' +
+              '<td style="text-align:center">'+cell(d.attendance_rate, 'attana', d.attendance_late+' late')+'</td>' +
               '</tr>';
           }).join('') +
           '</tbody></table></div></div>';
@@ -14301,6 +14346,18 @@ function _loadSetupTasks() {
         }).join('') : '<div style="color:var(--G);font-size:12px;text-align:center;padding:10px"><i class="fas fa-circle-check"></i> No late arrivals</div>') + '</div>';
       h += '</div>';
 
+      // ── Needs Attention — synthesized across all 3 modules ───────────────
+      var needsAttn = data.needs_attention || [];
+      if (needsAttn.length) {
+        h += '<div class="card card-nohover card-sm" style="margin-bottom:16px">' +
+          '<div class="sec-title" style="margin-bottom:12px;color:var(--O)"><i class="fas fa-flag"></i> Needs Attention (' + needsAttn.length + ')</div>' +
+          needsAttn.map(function (a) {
+            return '<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--bdr);cursor:pointer" onclick="_loadEmpDetail(\''+_esc(a.emp_id)+'\')" title="Click for employee profile">' +
+              '<div><span style="font-weight:700;font-size:13px">'+_esc(a.name)+'</span> <span style="font-size:10.5px;color:var(--tx3)">('+_esc(a.dept||'')+')</span></div>' +
+              '<div style="font-size:10.5px;color:var(--O);text-align:right">'+a.reasons.map(_esc).join('<br>')+'</div></div>';
+          }).join('') + '</div>';
+      }
+
       root.innerHTML = h;
 
       // ── Charts ────────────────────────────────────────────────────────────
@@ -14328,6 +14385,16 @@ function _loadSetupTasks() {
               { label: 'Attendance', data: depts.map(function (d) { return d.attendance_rate || 0; }), backgroundColor: 'rgba(14,165,233,.8)', borderRadius: 5, borderSkipped: false }
             ],
             { plugins: { legend: { position: 'bottom' } }, scales: { y: { min: 0, max: 100 } } });
+        }
+
+        var trendData = data.trend || [];
+        if (trendData.length > 1) {
+          mkC('anaTrendChart', 'line', trendData.map(function (t) { var p = t.date.split('-'); return p[2]+'/'+p[1]; }),
+            [
+              { label: 'Checklist %', data: trendData.map(function (t) { return t.checklist_pct != null ? t.checklist_pct : null; }), borderColor: 'rgba(0,95,115,.9)', backgroundColor: 'rgba(0,95,115,.08)', fill: true, tension: 0.35, pointRadius: 2, spanGaps: true },
+              { label: 'Attendance %', data: trendData.map(function (t) { return t.attendance_pct != null ? t.attendance_pct : null; }), borderColor: 'rgba(14,165,233,.9)', backgroundColor: 'rgba(14,165,233,.08)', fill: true, tension: 0.35, pointRadius: 2, spanGaps: true }
+            ],
+            { scales: { y: { min: 0, max: 100 } }, plugins: { legend: { position: 'bottom' } } });
         }
 
         mkC('anaStatusChart', 'doughnut', ['Checklist', 'Delegation', 'Attendance'],
