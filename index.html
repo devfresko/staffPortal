@@ -5385,7 +5385,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbwZNwXnk5u2RuasSU3tyKVDuW8e2yCgtUlWNlDs0_HETMTFqO6UUt-hl36EemSi_QWyJA/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbwkrLTyaP_KgZLAe-Dc8leYoKvcclQopnjETM1wwoVmUQ7z-qeWTUSffjwutXe1zu0zHA/exec';
     var _TOKEN  = '';
 
 function _gas(fn, args, onOk, onErr) {
@@ -10244,6 +10244,22 @@ function _loadSetupTasks() {
           '<div class="empty-state"><i class="fas fa-lock"></i><h4>Access Restricted</h4></div>';
         return;
       }
+      // Dept/Employee dropdowns are built from _D.empDir. If it isn't cached
+      // yet (e.g. this page opened before the login bulk-load finished),
+      // fetch it now so the filters are never empty.
+      if (!_D.empDir || !_D.empDir.length) {
+        document.getElementById('content').innerHTML =
+          '<div class="mod-head"><div><div class="mod-title">Checklist Analytics</div></div></div>' + _skel(4);
+        _gas('getEmployeeDirectory', [], function (emps) {
+          _D.empDir = emps || [];
+          _vClAnaBuild();
+        }, function () { _vClAnaBuild(); }); // proceed even if this fails — dropdowns just show "All"
+        return;
+      }
+      _vClAnaBuild();
+    }
+
+    function _vClAnaBuild() {
       var defFrom = _currMonth() + '-01';
       var defTo   = _today();
       document.getElementById('content').innerHTML =
@@ -10353,7 +10369,7 @@ function _loadSetupTasks() {
       var dept = (document.getElementById('claDept')    || {}).value || 'all';
       var freq = (document.getElementById('claFreqFlt') || {}).value || 'all';
       var emp  = (document.getElementById('claEmp')     || {}).value || 'all';
-      _gas('getChecklistAnalyticsV2', [{ from: from, to: to, dept: dept, freq: freq, empId: emp }], function (data) {
+      _gasX('getChecklistAnalyticsV2', [{ from: from, to: to, dept: dept, freq: freq, empId: emp }], 45000, function (data) {
         _D.claData = data;
         _renderCla();
       }, function (e) {
