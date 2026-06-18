@@ -5385,7 +5385,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbzO9ML8eNanY2rUabNHoYwRiq272yq1xu6G_mdZruY48En1Egkkfw1xjPl9SfZp0FvN4Q/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbys93Hxdx-1BGkqwxmuOqHxHc-W1RK2l8fEIXy2F7MoZkv_C1TGpgVVTixUWZRs9NgEhA/exec';
     var _TOKEN  = '';
 
 function _gas(fn, args, onOk, onErr) {
@@ -14150,6 +14150,19 @@ function _loadSetupTasks() {
           '<div class="empty-state"><i class="fas fa-lock"></i><h4>Access Restricted</h4></div>';
         return;
       }
+      if (!_D.empDir || !_D.empDir.length) {
+        document.getElementById('content').innerHTML =
+          '<div class="mod-head"><div><div class="mod-title">Analytics Overview</div></div></div>' + _skel(6);
+        _gas('getEmployeeDirectory', [], function (emps) {
+          _D.empDir = emps || [];
+          _vAnalyticsBuild();
+        }, function () { _vAnalyticsBuild(); });
+        return;
+      }
+      _vAnalyticsBuild();
+    }
+
+    function _vAnalyticsBuild() {
       var defFrom = _currMonth() + '-01';
       var defTo   = _today();
       document.getElementById('content').innerHTML =
@@ -14252,7 +14265,7 @@ function _loadSetupTasks() {
         { lbl:'Checklist Rate',   val:(cl.rate||0)+'%',          c:clClr,      ico:'fa-chart-pie',      sub:(cl.overdue_count||0)+' overdue' },
         { lbl:'Delegations Done', val:dl.completed||0,           c:'var(--G)', ico:'fa-people-arrows',  sub:'of '+(dl.assigned||0)+' assigned' },
         { lbl:'Delegation Rate',  val:(dl.rate||0)+'%',          c:dlClr,      ico:'fa-diagram-project',sub:(dl.overdue||0)+' overdue' },
-        { lbl:'Presence Rate',    val:(at.presence_pct||0)+'%',  c:atClr,      ico:'fa-user-clock',     sub:(at.late||0)+' late arrivals' }
+        { lbl:'Presence Rate',    val:(at.presence_pct||0)+'%',  c:atClr,      ico:'fa-user-clock',     sub:(at.half_day||0)+' half-day, '+(at.late||0)+' late' }
       ].map(function (k) {
         return '<div class="da-kpi">' +
           '<div class="da-kpi-row1"><div class="da-kpi-ico" style="--kc:'+k.c+'"><i class="fas '+k.ico+'"></i></div>' +
@@ -14269,7 +14282,7 @@ function _loadSetupTasks() {
         { title:'Delegation', clr:'var(--V)', ico:'fa-diagram-project', route:'delana',
           stats:[{l:'Assigned',v:dl.assigned||0},{l:'Completed',v:dl.completed||0},{l:'Overdue',v:dl.overdue||0}], rate:dl.rate||0, rClr:dlClr },
         { title:'Attendance', clr:'var(--T)', ico:'fa-user-clock', route:'attana',
-          stats:[{l:'Present',v:at.present||0},{l:'Absent',v:at.absent||0},{l:'Late',v:at.late||0}], rate:at.presence_pct||0, rClr:atClr }
+          stats:[{l:'Present',v:at.present||0},{l:'Half Day',v:at.half_day||0},{l:'Absent',v:at.absent||0},{l:'Late',v:at.late||0}], rate:at.presence_pct||0, rClr:atClr }
       ].map(function (m) {
         return '<div class="card card-nohover card-sm" style="border-top:3px solid '+m.clr+'">' +
           '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">' +
@@ -14310,7 +14323,7 @@ function _loadSetupTasks() {
               '<td style="text-align:center;font-weight:700">'+(d.employees||0)+'</td>' +
               '<td style="text-align:center">'+cell(d.checklist_rate, 'clana', d.checklist_done+'/'+d.checklist_planned)+'</td>' +
               '<td style="text-align:center">'+cell(d.delegation_rate, 'delana', d.delegation_overdue+' overdue')+'</td>' +
-              '<td style="text-align:center">'+cell(d.attendance_rate, 'attana', d.attendance_late+' late')+'</td>' +
+              '<td style="text-align:center">'+cell(d.attendance_rate, 'attana', d.attendance_half_day+' HD, '+d.attendance_late+' late')+'</td>' +
               '</tr>';
           }).join('') +
           '</tbody></table></div></div>';
