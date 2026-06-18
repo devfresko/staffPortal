@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="Fresko Portal">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-180.png">
-  <title>Fresko Staff Portal — v3.0</title>
+  <title>Fresko Staff Portal</title>
 
   <!-- External Assets -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -628,9 +628,9 @@
       background:color-mix(in srgb, var(--kc,var(--V)) 15%, transparent);
       color:var(--kc,var(--V)); display:flex; align-items:center; justify-content:center; font-size:13px;
     }
-    .da-kpi-val { font-size:20px; font-weight:900; line-height:1; }
-    .da-kpi-lbl { font-size:10px; font-weight:800; color:var(--tx2); text-transform:uppercase; letter-spacing:.4px; }
-    .da-kpi-sub { font-size:10px; color:var(--tx3); }
+    .da-kpi-val { font-size:20px; font-weight:900; line-height:1; overflow-wrap:break-word; word-break:break-word; }
+    .da-kpi-lbl { font-size:10px; font-weight:800; color:var(--tx2); text-transform:uppercase; letter-spacing:.4px; overflow-wrap:break-word; }
+    .da-kpi-sub { font-size:10px; color:var(--tx3); overflow-wrap:break-word; word-break:break-word; }
     .da-banner {
       background:linear-gradient(135deg,var(--sur2) 0%,var(--bg) 100%);
       border:1.5px solid var(--bdr); border-radius:14px; padding:18px 20px;
@@ -654,7 +654,7 @@
     .da-chart-ttl { font-size:12px; font-weight:800; color:var(--tx2); margin-bottom:10px; display:flex; align-items:center; gap:6px; }
     .da-emp-row {
       display:flex; align-items:center; gap:12px; padding:10px 0;
-      border-bottom:1px solid var(--bdr);
+      border-bottom:1px solid var(--bdr); min-width:0;
     }
     .da-emp-row:last-child { border-bottom:none; }
     .da-emp-rank { font-size:18px; flex-shrink:0; width:28px; text-align:center; }
@@ -1496,6 +1496,7 @@
       padding: 22px;
       box-shadow: var(--shad);
       transition: box-shadow .2s, transform .2s;
+      overflow-wrap: break-word;
     }
 
     .card:hover {
@@ -1854,6 +1855,8 @@
       border-right: 1px solid var(--bdr);
       color: var(--tx);
       vertical-align: middle;
+      overflow-wrap: break-word;
+      word-break: break-word;
     }
 
     tbody td:last-child {
@@ -5385,7 +5388,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbys93Hxdx-1BGkqwxmuOqHxHc-W1RK2l8fEIXy2F7MoZkv_C1TGpgVVTixUWZRs9NgEhA/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycby97fDPtlwKDRzYHMVZXNC6ipsd9rTVI1cwBZP42uv2BNdI9jV85DcUw326xHcE0x8S-w/exec';
     var _TOKEN  = '';
 
 function _gas(fn, args, onOk, onErr) {
@@ -13529,23 +13532,26 @@ function _loadSetupTasks() {
 
     /* Status badge HTML — color-coded pill */
     function _statusBadge(status) {
-      var map = {
-        Done: 'var(--G)', Completed: 'var(--G)', Approved: 'var(--G)',
+      var colorMap = {
+        Done: 'var(--G)', Completed: 'var(--G)', Approved: 'var(--G)', P: 'var(--G)',
         Pending: 'var(--O)', Shifted: 'var(--V)', Rejected: 'var(--R)',
-        Overdue: 'var(--R)', Cancelled: 'var(--tx3)', Holiday: '#4338ca',
+        Overdue: 'var(--R)', A: 'var(--R)', Cancelled: 'var(--tx3)', Holiday: '#4338ca', H: '#4338ca',
         WO: 'var(--tx3)', HD: 'var(--O)'
       };
-      var c = map[status] || 'var(--tx2)';
-      var bg = c.replace(')', 'l)').replace('var(', 'var(--').replace('--var(--', 'var(--');
-      // simpler approach:
       var bgMap = {
-        Done: 'var(--Gl)', Completed: 'var(--Gl)', Approved: 'var(--Gl)',
+        Done: 'var(--Gl)', Completed: 'var(--Gl)', Approved: 'var(--Gl)', P: 'var(--Gl)',
         Pending: 'var(--Ol)', Shifted: 'var(--Vl)', Rejected: 'var(--Rl)',
-        Overdue: 'var(--Rl)', Cancelled: 'var(--bg)', Holiday: '#e0e7ff',
+        Overdue: 'var(--Rl)', A: 'var(--Rl)', Cancelled: 'var(--bg)', Holiday: '#e0e7ff', H: '#e0e7ff',
         WO: 'var(--bg)', HD: 'var(--Ol)'
       };
-      bg = bgMap[status] || 'var(--bg)';
-      return '<span style="display:inline-flex;align-items:center;font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:999px;background:' + bg + ';color:' + c + ';letter-spacing:.3px">' + _esc(status || '—') + '</span>';
+      // Attendance codes are stored as single letters internally (P/HD/A/WO/H)
+      // but should always display as full words — showing raw codes here was
+      // making attendance records look cryptic/wrong even when correct.
+      var labelMap = { P: 'Present', HD: 'Half Day', A: 'Absent', WO: 'Week Off', H: 'Holiday' };
+      var c  = colorMap[status] || 'var(--tx2)';
+      var bg = bgMap[status] || 'var(--bg)';
+      var label = labelMap[status] || status || '—';
+      return '<span style="display:inline-flex;align-items:center;font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:999px;background:' + bg + ';color:' + c + ';letter-spacing:.3px;white-space:nowrap">' + _esc(label) + '</span>';
     }
 
     /* Frequency badge: D → Daily, W → Weekly, M → Monthly */
@@ -14365,9 +14371,9 @@ function _loadSetupTasks() {
         h += '<div class="card card-nohover card-sm" style="margin-bottom:16px">' +
           '<div class="sec-title" style="margin-bottom:12px;color:var(--O)"><i class="fas fa-flag"></i> Needs Attention (' + needsAttn.length + ')</div>' +
           needsAttn.map(function (a) {
-            return '<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--bdr);cursor:pointer" onclick="_loadEmpDetail(\''+_esc(a.emp_id)+'\')" title="Click for employee profile">' +
-              '<div><span style="font-weight:700;font-size:13px">'+_esc(a.name)+'</span> <span style="font-size:10.5px;color:var(--tx3)">('+_esc(a.dept||'')+')</span></div>' +
-              '<div style="font-size:10.5px;color:var(--O);text-align:right">'+a.reasons.map(_esc).join('<br>')+'</div></div>';
+            return '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:7px 0;border-bottom:1px solid var(--bdr);cursor:pointer" onclick="_loadEmpDetail(\''+_esc(a.emp_id)+'\')" title="Click for employee profile">' +
+              '<div style="flex:1 1 auto;min-width:0;overflow-wrap:break-word"><span style="font-weight:700;font-size:13px">'+_esc(a.name)+'</span> <span style="font-size:10.5px;color:var(--tx3)">('+_esc(a.dept||'')+')</span></div>' +
+              '<div style="flex:1 1 auto;min-width:0;max-width:55%;font-size:10.5px;color:var(--O);text-align:right;overflow-wrap:break-word">'+a.reasons.map(_esc).join('<br>')+'</div></div>';
           }).join('') + '</div>';
       }
 
