@@ -5391,7 +5391,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbwRpOdkMN9qLvH-kPOCEWifQL4TLdiWQU8WKgtRPdA61tsH2c8jRlL6RbyvcThEbnR-vw/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbyNCG1KZlL29iqA8wqjngWwFNnTxVMa5jUN37MTYAWUY6p0fRP3JjZExL7I6TKwjgrtzw/exec';
     var _TOKEN  = '';
 
 function _gas(fn, args, onOk, onErr) {
@@ -11782,9 +11782,10 @@ function _loadSetupTasks() {
           '<div class="sec-title" style="margin-bottom:12px"><i class="fas fa-user" style="color:var(--P)"></i> '+_esc(empDetail.name)+' &mdash; Daily Log <span style="color:var(--tx3);font-weight:600">('+_esc(empDetail.dept)+')</span></div>' +
           '<div class="tw"><table><thead><tr><th>Date</th><th>Status</th><th>Punctuality</th><th>Check In</th><th>Check Out</th><th>Hours</th></tr></thead><tbody>' +
           (empDetail.log.length ? empDetail.log.map(function (r) {
+            var punct = _lateBadge(r.is_late, r.status, r.office_in_used);
             return '<tr><td style="font-weight:700">'+_fmtDateShort(r.date)+'</td>' +
               '<td>'+_statusBadge(r.status)+'</td>' +
-              '<td>'+(_lateBadge(r.is_late, r.status) || '<span style="color:var(--tx3)">—</span>')+'</td>' +
+              '<td>'+(punct ? punct+'<div style="font-size:9px;color:var(--tx3);margin-top:2px">vs '+_esc(r.office_in_used||'—')+'</div>' : '<span style="color:var(--tx3)">—</span>')+'</td>' +
               '<td>'+_esc(r.check_in||'—')+'</td>' +
               '<td>'+_esc(r.check_out||'—')+'</td>' +
               '<td style="color:var(--tx3)">'+(r.total_hours||'—')+'</td></tr>';
@@ -12014,7 +12015,7 @@ function _loadSetupTasks() {
         [
           { label: 'Date', render: function (r) { return _fmtDateShort(r.date); } },
           { label: 'Status', render: function (r) { return _statusBadge(r.status); } },
-          { label: 'Punctuality', render: function (r) { return _lateBadge(r.is_late, r.status) || '<span style="color:var(--tx3)">—</span>'; } },
+          { label: 'Punctuality', render: function (r) { return _lateBadge(r.is_late, r.status, r.office_in_used) || '<span style="color:var(--tx3)">—</span>'; } },
           { label: 'Check In', key: 'check_in' },
           { label: 'Check Out', key: 'check_out' },
           { label: 'Hours', key: 'total_hours' }
@@ -12037,7 +12038,7 @@ function _loadSetupTasks() {
           { label: 'Employee', key: 'name' },
           { label: 'Date', render: function (r) { return _fmtDateShort(r.date); } },
           { label: 'Status', render: function (r) { return _statusBadge(r.status); } },
-          { label: 'Punctuality', render: function (r) { return _lateBadge(r.is_late, r.status) || '<span style="color:var(--tx3)">—</span>'; } },
+          { label: 'Punctuality', render: function (r) { return _lateBadge(r.is_late, r.status, r.office_in_used) || '<span style="color:var(--tx3)">—</span>'; } },
           { label: 'Check In', key: 'check_in' }
         ],
         rows.sort(function (a, b) { return (b.date || '').localeCompare(a.date || ''); })
@@ -13563,12 +13564,15 @@ function _loadSetupTasks() {
     // Late/On Time badge — companion to _statusBadge for attendance rows.
     // Only meaningful for days actually worked (Present/Half Day); for
     // Absent/Week Off/Holiday rows there's no check-in to judge, so this
-    // renders nothing.
-    function _lateBadge(isLate, status) {
+    // renders nothing. officeIn (optional) shows up as a tooltip so it's
+    // obvious exactly what time this row was compared against — if that's
+    // wrong, the fix is in the Doer List's Office IN column, not the code.
+    function _lateBadge(isLate, status, officeIn) {
       if (status !== 'P' && status !== 'HD') return '';
+      var tip = officeIn ? ' title="Compared against Office IN: ' + _esc(officeIn) + '"' : '';
       return isLate
-        ? '<span style="display:inline-flex;align-items:center;gap:3px;font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:999px;background:var(--Ol);color:var(--O);letter-spacing:.3px;white-space:nowrap"><i class="fas fa-clock" style="font-size:9px"></i>Late</span>'
-        : '<span style="display:inline-flex;align-items:center;font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:999px;background:var(--Gl);color:var(--G);letter-spacing:.3px;white-space:nowrap">On Time</span>';
+        ? '<span' + tip + ' style="display:inline-flex;align-items:center;gap:3px;font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:999px;background:var(--Ol);color:var(--O);letter-spacing:.3px;white-space:nowrap"><i class="fas fa-clock" style="font-size:9px"></i>Late</span>'
+        : '<span' + tip + ' style="display:inline-flex;align-items:center;font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:999px;background:var(--Gl);color:var(--G);letter-spacing:.3px;white-space:nowrap">On Time</span>';
     }
 
     /* Frequency badge: D → Daily, W → Weekly, M → Monthly */
@@ -13995,7 +13999,7 @@ function _loadSetupTasks() {
       });
       h += _empActivityList('Recent Attendance', (at && at.employee_detail) ? at.employee_detail.log.slice(0, 5) : [], function (r) {
         return '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:11px;padding:5px 0;border-bottom:1px solid var(--bdr)">' +
-          '<span>' + _fmtDateShort(r.date) + '</span><div style="display:flex;gap:5px;align-items:center">' + (_lateBadge(r.is_late, r.status)) + _statusBadge(r.status) + '</div></div>';
+          '<span>' + _fmtDateShort(r.date) + '</span><div style="display:flex;gap:5px;align-items:center">' + (_lateBadge(r.is_late, r.status, r.office_in_used)) + _statusBadge(r.status) + '</div></div>';
       });
       h += '</div>';
 
