@@ -5391,7 +5391,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbyNCG1KZlL29iqA8wqjngWwFNnTxVMa5jUN37MTYAWUY6p0fRP3JjZExL7I6TKwjgrtzw/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbxQXO0Ws-npJQwX_tvcpGOAmRWS0tjKUyd9KgkN0vXXkbmBfDh0xD0pNcrNdG0YC5afQw/exec';
     var _TOKEN  = '';
 
 function _gas(fn, args, onOk, onErr) {
@@ -11783,12 +11783,13 @@ function _loadSetupTasks() {
           '<div class="tw"><table><thead><tr><th>Date</th><th>Status</th><th>Punctuality</th><th>Check In</th><th>Check Out</th><th>Hours</th></tr></thead><tbody>' +
           (empDetail.log.length ? empDetail.log.map(function (r) {
             var punct = _lateBadge(r.is_late, r.status, r.office_in_used);
+            var hdDiag = (r.full_day_thresh_hrs != null) ? '<div style="font-size:9px;color:var(--tx3);margin-top:2px">'+r.parsed_hours+'h vs '+r.full_day_thresh_hrs+'h needed</div>' : '';
             return '<tr><td style="font-weight:700">'+_fmtDateShort(r.date)+'</td>' +
               '<td>'+_statusBadge(r.status)+'</td>' +
               '<td>'+(punct ? punct+'<div style="font-size:9px;color:var(--tx3);margin-top:2px">vs '+_esc(r.office_in_used||'—')+'</div>' : '<span style="color:var(--tx3)">—</span>')+'</td>' +
               '<td>'+_esc(r.check_in||'—')+'</td>' +
               '<td>'+_esc(r.check_out||'—')+'</td>' +
-              '<td style="color:var(--tx3)">'+(r.total_hours||'—')+'</td></tr>';
+              '<td style="color:var(--tx3)">'+(r.total_hours||'—')+hdDiag+'</td></tr>';
           }).join('') : '<tr><td colspan="6" style="text-align:center;color:var(--tx3);padding:16px">No attendance records in this range</td></tr>') +
           '</tbody></table></div></div>';
       }
