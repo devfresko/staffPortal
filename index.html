@@ -5391,7 +5391,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbxQXO0Ws-npJQwX_tvcpGOAmRWS0tjKUyd9KgkN0vXXkbmBfDh0xD0pNcrNdG0YC5afQw/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbzCAz0Q4WQr29Rjlbq6OzekaBy9NwC5j6KOR_ak1MPxAA_2d5j6j-E5Lg4naA3KVJWZkg/exec';
     var _TOKEN  = '';
 
 function _gas(fn, args, onOk, onErr) {
@@ -11606,7 +11606,7 @@ function _loadSetupTasks() {
       document.getElementById('content').innerHTML =
         '<div class="mod-head">' +
         '<div><div class="mod-title">Attendance Analytics</div>' +
-        '<div class="mod-sub">Presence rates, late arrivals, work hours &amp; department trends</div></div>' +
+        '<div class="mod-sub">Presence rates, late arrivals, work hours &amp; department trends <span style="color:var(--tx3);font-size:10px">&middot; build 2026-06-19c</span></div></div>' +
         '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
 
         '<select id="attPreset" class="ana-sel" onchange="_attApplyPreset()">' +
