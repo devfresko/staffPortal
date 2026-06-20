@@ -4855,11 +4855,8 @@
         <!-- Manager section — hidden for staff -->
         <div class="nv-section" id="mgrNav" style="display:none">
           <div class="nv-section-label">Manager</div>
-          <div class="nv" id="nv-analytics" onclick="_loadV('analytics')">
-            <i class="fas fa-chart-bar"></i> Analytics
-          </div>
-          <div class="nv" id="nv-perf" onclick="_loadV('perf')">
-            <i class="fas fa-trophy"></i> Performance
+          <div class="nv" id="nv-em" onclick="_loadV('em')">
+            <i class="fas fa-table-cells-large"></i> EM Dashboard
           </div>
           <div class="nv" id="nv-empdir" onclick="_loadV('empdir')">
             <i class="fas fa-address-book"></i> Employee Directory
@@ -5391,7 +5388,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbyykNFI4rUc459qNwg8PWA36hkOXDm5vPwgRneDrKahVWpTXf6kXVwKvshyJMY2jcK4Xg/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbx6ek7lkm5MT0X3lSkdB35kNqpyqLmNly5l8IcDtxurqtHzwyS0Ll6iZ3RMrLJLO6nDCA/exec';
     var _TOKEN  = '';
 
 function _gas(fn, args, onOk, onErr) {
@@ -5556,8 +5553,7 @@ function _gasX(fn, args, timeout, onOk, onErr) {
       { title: 'Leave Management', route: 'leave', ico: 'fa-umbrella-beach', meta: 'Request leave, balance, approvals', cat: 'Navigation', mgr: false },
       { title: 'Holiday Calendar', route: 'holcal', ico: 'fa-calendar-days', meta: 'Company holidays', cat: 'Navigation', mgr: false },
       { title: 'My Profile', route: 'profile', ico: 'fa-circle-user', meta: 'Profile & password', cat: 'Navigation', mgr: false },
-      { title: 'Analytics', route: 'analytics', ico: 'fa-chart-bar', meta: 'Performance insights', cat: 'Manager', mgr: true },
-      { title: 'Performance Reports', route: 'perf', ico: 'fa-trophy', meta: 'Rankings & leaderboard', cat: 'Manager', mgr: true },
+      { title: 'EM Dashboard', route: 'em', ico: 'fa-table-cells-large', meta: 'Checklist + Delegation + Attendance — all doers in one view', cat: 'Manager', mgr: true },
       { title: 'Employee Directory', route: 'empdir', ico: 'fa-address-book', meta: 'Team member profiles', cat: 'Manager', mgr: true },
       { title: 'Checklist Analytics', route: 'clana', ico: 'fa-list-check', meta: 'Task completion, frequency breakdown, top performers', cat: 'Manager', mgr: true },
       { title: 'Delegation Analytics', route: 'delana', ico: 'fa-diagram-project', meta: 'Delegation stats', cat: 'Manager', mgr: true },
@@ -5838,8 +5834,7 @@ function _gasX(fn, args, timeout, onOk, onErr) {
         leave: _vLeave,
         holcal: _vHolCal,
         profile: _vProfile,
-        analytics: _vAnalytics,
-        perf: _vPerf,
+        em: _vEM,
         empdir: _vEmpDir,
         clana:  _vClAna,
         delana: _vDelAna,
@@ -8580,7 +8575,7 @@ function _loadSetupTasks() {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); _openGS(); return; }
       // Alt+Number shortcuts for quick navigation
       if (e.altKey && !e.ctrlKey && !e.metaKey) {
-        var numMap = { '1': 'dash', '2': 'check', '3': 'deleg', '4': 'attend', '5': 'holcal', '6': 'profile', '7': 'analytics', '8': 'perf', '9': 'empdir' };
+        var numMap = { '1': 'dash', '2': 'check', '3': 'deleg', '4': 'attend', '5': 'holcal', '6': 'profile', '7': 'em', '9': 'empdir' };
         if (numMap[e.key]) { e.preventDefault(); _loadV(numMap[e.key]); }
       }
       // ? → Show keyboard shortcuts help
@@ -12595,8 +12590,9 @@ function _loadSetupTasks() {
         arega: _loadRegApprovals, amust: _loadMustTab, aana: _loadAttAnalytics,
         // legacy aliases kept for safety
         amyatt: _loadMyAtt, amstr: _loadMustTab,
-        // Performance
-        ptop: _loadTopPerformers, pind: _loadIndivPerf, pteam: _loadTeamPerf,
+        // Performance Reports module removed — pteam loader kept as a
+        // harmless no-op stub since nothing currently routes to it.
+        pteam: _loadTeamPerf,
         // Leave management
         lreq: _loadMyLeaves, lbal: _loadLeaveBalance, lcal: _loadLeaveCalView, lsumm: _loadLeaveSummTab, lapprv: _loadLeaveApprovals
       };
@@ -12880,337 +12876,99 @@ function _loadSetupTasks() {
     }());
 
     /* ══════════════════════════════════════════════════════════════════════
-       PERFORMANCE REPORTS MODULE
-       Manager + individual employee views.
-       Sub-tabs: Top Performers (mgr) · Individual Report · Team Overview.
+       EM DASHBOARD — combined Checklist + Delegation + Attendance view
+       across all doers. One Plan/Actual pair per module, an overall
+       progress bar, and a recent-days completion heatmap, with date
+       preset/custom-range, department, employee and sort filters.
+       Reuses _gasX/_mkTabs/_mkPanes/.da-kpi/.pbar-wrap/.tw patterns already
+       used elsewhere in the app — no other module's code is touched here.
     ══════════════════════════════════════════════════════════════════════ */
+    function _vEM() {
+      if (!_isManager()) {
+        document.getElementById('content').innerHTML =
+          '<div class="empty-state"><i class="fas fa-lock"></i><h4>Access Restricted</h4></div>';
+        return;
+      }
+      if (!_D.empDir || !_D.empDir.length) {
+        document.getElementById('content').innerHTML =
+          '<div class="mod-head"><div><div class="mod-title">EM Dashboard</div></div></div>' + _skel(6);
+        _gas('getEmployeeDirectory', [], function (emps) {
+          _D.empDir = emps || [];
+          _vEMBuild();
+        }, function () { _vEMBuild(); });
+        return;
+      }
+      _vEMBuild();
+    }
 
-    /* Constants used across the performance module */
-    var PERF_PERIOD_OPTS = [
-      { label: 'Last 7 Days', from: _daysAgo(7), to: _today() },
-      { label: 'Last 14 Days', from: _daysAgo(14), to: _today() },
-      { label: 'Last 30 Days', from: _daysAgo(30), to: _today() },
-      { label: 'Last 60 Days', from: _daysAgo(60), to: _today() },
-      { label: 'Last 90 Days', from: _daysAgo(90), to: _today() }
-    ];
-
-    function _vPerf() {
-      var at = _ST || (_isManager() ? 'ptop' : 'pind');
-      var tabs = _isManager()
-        ? [
-          { id: 'ptop', lbl: '<i class="fas fa-trophy"></i> Top Performers' },
-          { id: 'pind', lbl: '<i class="fas fa-user-chart"></i> Individual' },
-          { id: 'pteam', lbl: '<i class="fas fa-users"></i> Team Overview' }
-        ]
-        : [{ id: 'pind', lbl: '<i class="fas fa-user-chart"></i> My Performance' }];
+    function _vEMBuild() {
+      var at = _ST || 'emsumm';
+      var tabs = [
+        { id: 'emsumm', lbl: '<i class="fas fa-table-cells-large"></i> Summary' },
+        { id: 'emcl',   lbl: '<i class="fas fa-list-check"></i> Checklist' },
+        { id: 'emdl',   lbl: '<i class="fas fa-diagram-project"></i> Delegation' },
+        { id: 'emat',   lbl: '<i class="fas fa-user-clock"></i> Attendance' }
+      ];
+      var defFrom = _currMonth() + '-01';
+      var defTo   = _today();
 
       document.getElementById('content').innerHTML =
         '<div class="mod-head">' +
-        '<div>' +
-        '<div class="mod-title">Performance Reports</div>' +
-        '<div class="mod-sub">Task completion rates, trends and top performers</div>' +
-        '</div>' +
-        '' +
-        '</div>' +
-        _mkTabs(tabs, at) +
-        _mkPanes(tabs, at, [
-          (_isManager() ? _perfTopPane() : ''),
-          _perfIndPane(),
-          (_isManager() ? _perfTeamPane() : '')
-        ]);
+        '<div><div class="mod-title">EM Dashboard</div>' +
+        '<div class="mod-sub">Checklist + Delegation + Attendance — all doers in one view</div></div>' +
+        '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
 
-      _switchTab(at);
-    }
-
-    function _perfTopPane() {
-      var defFrom = _currMonth() + '-01';
-      var defTo   = _today();
-      return '<div class="fbar" style="flex-wrap:wrap;gap:8px">' +
-        '<select id="ptopPreset" class="ana-sel" onchange="_ptopApplyPreset()">' +
-        '<option value="month">This Month</option>' +
-        '<option value="last30">Last 30 Days</option>' +
-        '<option value="last90">Last 90 Days</option>' +
-        '<option value="quarter">This Quarter</option>' +
-        '<option value="custom">Custom Range</option>' +
-        '</select>' +
-        '<input type="date" id="ptopFrom" class="ana-sel" value="'+defFrom+'" onchange="_ptopMarkCustom();_loadTopPerformers()">' +
-        '<span style="color:var(--tx3);font-size:12px">to</span>' +
-        '<input type="date" id="ptopTo" class="ana-sel" value="'+defTo+'" onchange="_ptopMarkCustom();_loadTopPerformers()">' +
-        '<select id="ptopDept" class="ana-sel" onchange="_loadTopPerformers()"><option value="all">All Departments</option>' + _getDeptOptions() + '</select>' +
-        '<div class="fbar-spacer"></div>' +
-        '<button class="btn btn-sm" onclick="_loadTopPerformers()"><i class="fas fa-rotate-right"></i> Refresh</button>' +
-        '<button class="btn btn-sm" onclick="_exportPerf()"><i class="fas fa-file-export"></i> Export</button>' +
-        '</div>' +
-        '<div id="ptopKrow" class="krow"></div>' +
-        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">' +
-        '<div class="chart-wrap">' +
-        '<div class="chart-head"><div class="chart-title">Tasks Done — Top 10</div><div class="chart-sub">Horizontal bar chart</div></div>' +
-        '<div class="chart-inner-lg"><canvas id="chartTopPerf"></canvas></div>' +
-        '</div>' +
-        '<div class="card card-nohover"><div class="sec-title" style="margin-bottom:12px"><i class="fas fa-ranking-star" style="color:var(--P)"></i> Leaderboard <span style="font-size:10px;color:var(--tx3);font-weight:600">(click a row for details)</span></div>' +
-        '<div id="ptopList"></div></div>' +
-        '</div>';
-    }
-
-    function _ptopMarkCustom() {
-      var p = document.getElementById('ptopPreset');
-      if (p) p.value = 'custom';
-    }
-
-    function _ptopApplyPreset() {
-      var p = (document.getElementById('ptopPreset') || {}).value || 'month';
-      if (p === 'custom') return;
-      var t = new Date();
-      function iso(d) { return d.toISOString().slice(0, 10); }
-      var from, to = iso(t);
-      if (p === 'last30') from = _daysAgo(30);
-      else if (p === 'last90') from = _daysAgo(90);
-      else if (p === 'quarter') from = iso(new Date(t.getFullYear(), Math.floor(t.getMonth() / 3) * 3, 1));
-      else from = iso(t).slice(0, 8) + '01';
-      document.getElementById('ptopFrom').value = from;
-      document.getElementById('ptopTo').value = to;
-      _loadTopPerformers();
-    }
-
-    function _loadTopPerformers() {
-      var from = (document.getElementById('ptopFrom') || {}).value || (_currMonth() + '-01');
-      var to   = (document.getElementById('ptopTo')   || {}).value || _today();
-      var dept = (document.getElementById('ptopDept') || {}).value || 'all';
-      var kEl = document.getElementById('ptopKrow');
-      var listEl = document.getElementById('ptopList');
-      if (kEl) { kEl.className = 'da-kpi-strip'; kEl.innerHTML = [1, 2, 3, 4].map(function () { return '<div class="sk sk-h6" style="border-radius:14px"></div>'; }).join(''); }
-      if (listEl) listEl.innerHTML = _skel(5, 'sk-h3');
-
-      _gasX('getChecklistAnalyticsV2', [{ from: from, to: to, dept: dept, freq: 'all', empId: 'all' }], 45000, function (data) {
-        _D.claData = data; // shared with _claDrillEmployee for click-to-drill
-        var performers = (data.by_employee || []).slice().sort(function (a, b) { return (b.done || 0) - (a.done || 0); });
-        _D.topPerformers = performers;
-        var total = performers.reduce(function (s, p) { return s + (p.done || 0); }, 0);
-        var best = performers.length > 0 ? performers[0] : null;
-
-        if (kEl) kEl.className = 'da-kpi-strip';
-        if (kEl) kEl.innerHTML = [
-          { lbl: 'Total Done', val: total, c: 'var(--P)', ico: 'fa-check-double', sub: performers.length + ' contributors' },
-          { lbl: 'Top Performer', val: best ? best.name.split(' ')[0] : '—', c: 'var(--G)', ico: 'fa-trophy', sub: best ? (best.completion_rate||0)+'% completion' : '—' },
-          { lbl: 'Avg Completion', val: (data.avg_completion||0)+'%', c: (data.avg_completion||0)>=80?'var(--G)':'var(--O)', ico: 'fa-percent', sub: (data.on_time_rate||0)+'% on-time' },
-          { lbl: 'Overdue Tasks', val: data.overdue_count||0, c: (data.overdue_count||0)>0?'var(--R)':'var(--G)', ico: 'fa-triangle-exclamation', sub: (data.overdue_count||0)>0?'Needs follow-up':'All clear' }
-        ].map(function (k) {
-          return '<div class="da-kpi">' +
-            '<div class="da-kpi-row1"><div class="da-kpi-ico" style="--kc:'+k.c+'"><i class="fas '+k.ico+'"></i></div>' +
-            '<div class="da-kpi-val" style="color:'+k.c+'">'+k.val+'</div></div>' +
-            '<div class="da-kpi-lbl">'+k.lbl+'</div>' +
-            '<div class="da-kpi-sub">'+k.sub+'</div></div>';
-        }).join('');
-
-        // Horizontal bar chart — top 10
-        setTimeout(function () {
-          var cEl = document.getElementById('chartTopPerf');
-          if (cEl && performers.length) {
-            var top10 = performers.slice(0, 10);
-            if (_charts['topperf']) _charts['topperf'].destroy();
-            _charts['topperf'] = new Chart(cEl.getContext('2d'), {
-              type: 'bar',
-              data: {
-                labels: top10.map(function (p) { return p.name.split(' ')[0]; }),
-                datasets: [{
-                  label: 'Tasks Done',
-                  data: top10.map(function (p) { return p.done; }),
-                  backgroundColor: 'rgba(0,95,115,.8)', borderRadius: 6, borderSkipped: false
-                }]
-              },
-              options: {
-                indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                  x: { beginAtZero: true, ticks: { color: '#94a3b8', font: { size: 11 } }, grid: { color: 'rgba(0,0,0,.05)' } },
-                  y: { ticks: { color: '#94a3b8', font: { size: 11 } }, grid: { display: false } }
-                }
-              }
-            });
-          }
-        }, 120);
-
-        // Leaderboard table — now with completion % and on-time % for depth
-        if (listEl) {
-          listEl.innerHTML = performers.slice(0, 15).map(function (p, i) {
-            var medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1) + '.';
-            var barW = performers[0].done > 0 ? Math.round(p.done / performers[0].done * 100) : 0;
-            var rC = (p.completion_rate||0) >= 80 ? 'var(--G)' : (p.completion_rate||0) >= 50 ? 'var(--O)' : 'var(--R)';
-            return '<div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--bdr);cursor:pointer" onclick="_claDrillEmployee(\'' + _esc(p.emp_id) + '\')" title="Click to see task details">' +
-              '<span style="font-size:15px;width:28px;text-align:center;flex-shrink:0">' + medal + '</span>' +
-              '<div style="flex:1;min-width:0">' +
-              '<div style="font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _esc(p.name) + '</div>' +
-              '<div style="font-size:10.5px;color:var(--tx3)">' + _esc(p.dept) + ' &middot; <span style="color:'+rC+'">'+(p.completion_rate||0)+'% completion</span> &middot; '+(p.on_time_rate||0)+'% on-time</div>' +
-              '<div class="pbar-wrap" style="margin-top:5px"><div class="pbar" style="width:' + barW + '%;background:var(--P)"></div></div>' +
-              '</div>' +
-              '<div style="font-size:16px;font-weight:900;color:var(--P);flex-shrink:0">' + (p.done || 0) + '</div>' +
-              '</div>';
-          }).join('');
-        }
-      }, function (e) {
-        if (kEl) kEl.innerHTML = '<div class="te" style="grid-column:1/-1">Error: ' + _esc(e.message) + '</div>';
-      });
-    }
-
-    function _perfIndPane() {
-      return '<div class="fbar">' +
-        (_isManager()
-          ? '<label>Employee:</label><select id="pindEmp"><option value="">— My Performance —</option>' + (_D.empDir||[]).map(function(e){return '<option value="'+_esc(e.emp_id)+'">'+_esc(e.name)+'</option>';}).join('') + '</select>'
-          : '') +
-        '<label>From:</label><input type="date" id="pindFrom" value="' + _daysAgo(30) + '">' +
-        '<label>To:</label><input type="date" id="pindTo" value="' + _today() + '">' +
-        '<button class="btn btn-sm" onclick="_loadIndivPerf()"><i class="fas fa-search"></i> Load</button>' +
-        
-        '</div>' +
-        '<div class="krow" id="pindKrow"></div>' +
-        '<div class="chart-wrap" style="margin-top:16px">' +
-        '<div class="chart-head"><div class="chart-title">Daily Tasks Done</div><div class="chart-sub">Bar chart for selected date range</div></div>' +
-        '<div class="chart-inner-lg"><canvas id="chartIndPerf"></canvas></div>' +
-        '</div>' +
-        '<div id="pindTable" style="margin-top:16px"></div>';
-    }
-
-    function _loadIndivPerf() {
-      var empEl = document.getElementById('pindEmp');
-      var fromEl = document.getElementById('pindFrom');
-      var toEl = document.getElementById('pindTo');
-      var empId = empEl ? empEl.value : '';
-      var from = fromEl ? fromEl.value : _daysAgo(30);
-      var to = toEl ? toEl.value : _today();
-      var kEl = document.getElementById('pindKrow');
-      var tblEl = document.getElementById('pindTable');
-      if (kEl) kEl.innerHTML = [1, 2, 3, 4].map(function () { return '<div class="sk sk-h6" style="border-radius:14px"></div>'; }).join('');
-      if (tblEl) tblEl.innerHTML = _skel(3);
-
-      _gas('getPerformanceReport', [empId || _U.emp_code, from, to], function (data) {
-        _D.indivPerfData = data;
-        if (kEl) kEl.innerHTML = [
-          { lbl: 'Tasks Done', val: data.total_done || 0, c: 'var(--G)', ico: 'fa-check-circle' },
-          { lbl: 'Tasks Logged', val: data.total_planned || 0, c: 'var(--P)', ico: 'fa-list' },
-          { lbl: 'Completion %', val: (data.completion_pct || 0) + '%', c: (data.completion_pct || 0) >= 80 ? 'var(--G)' : 'var(--O)', ico: 'fa-percent' },
-          { lbl: 'Task Templates', val: data.total_tasks_setup || 0, c: 'var(--V)', ico: 'fa-tasks' }
-        ].map(function (k) {
-          return '<div class="kpi" style="--kc:' + k.c + '">' +
-            '<div class="kpi-ico"><i class="fas ' + k.ico + '"></i></div>' +
-            '<div class="kpi-val">' + k.val + '</div>' +
-            '<div class="kpi-lbl">' + k.lbl + '</div>' +
-            '</div>';
-        }).join('');
-
-        // Daily trend chart
-        setTimeout(function () {
-          var cEl = document.getElementById('chartIndPerf');
-          var trend = (data.daily_trend || []).slice(-30);
-          if (cEl && trend.length) {
-            if (_charts['indperf']) _charts['indperf'].destroy();
-            _charts['indperf'] = new Chart(cEl.getContext('2d'), {
-              type: 'bar',
-              data: {
-                labels: trend.map(function (d) { return d.date.slice(5); }),
-                datasets: [{
-                  label: 'Done', data: trend.map(function (d) { return d.done; }),
-                  backgroundColor: trend.map(function (d) { return d.done > 0 ? 'rgba(0,95,115,.8)' : 'rgba(148,163,184,.2)'; }),
-                  borderRadius: 5, borderSkipped: false
-                }]
-              },
-              options: {
-                responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                  y: { beginAtZero: true, ticks: { stepSize: 1, color: '#94a3b8', font: { size: 11 } }, grid: { color: 'rgba(0,0,0,.05)' } },
-                  x: { ticks: { color: '#94a3b8', font: { size: 11 }, maxTicksLimit: 14 }, grid: { display: false } }
-                }
-              }
-            });
-          }
-        }, 120);
-
-        // Summary text card
-        if (tblEl) {
-          tblEl.innerHTML =
-            '<div class="card card-nohover card-sm" style="display:flex;align-items:center;gap:24px;flex-wrap:wrap">' +
-            _taskSummaryCard(data.total_done || 0, data.total_planned || 0, 'Tasks in Period', 'var(--P)') +
-            '<div style="flex:1;min-width:180px">' +
-            '<div style="font-size:14px;font-weight:800;margin-bottom:8px">Period Summary</div>' +
-            '<div style="font-size:12.5px;color:var(--tx2);line-height:1.8">' +
-            '<i class="fas fa-calendar-range" style="color:var(--P);width:18px"></i> ' + _fmtDate(data.from) + ' – ' + _fmtDate(data.to) + '<br>' +
-            '<i class="fas fa-check-circle" style="color:var(--G);width:18px"></i> ' + (data.total_done || 0) + ' tasks done<br>' +
-            '<i class="fas fa-hourglass" style="color:var(--O);width:18px"></i> ' + Math.max(0, (data.total_planned || 0) - (data.total_done || 0)) + ' tasks pending<br>' +
-            '<i class="fas fa-percent" style="color:var(--V);width:18px"></i> ' + (data.completion_pct || 0) + '% completion rate' +
-            '</div>' +
-            '</div>' +
-            '</div>';
-        }
-      }, function (e) {
-        if (kEl) kEl.innerHTML = '<div class="te" style="grid-column:1/-1">Error: ' + _esc(e.message) + '</div>';
-      });
-
-      // Load employee dropdown if manager
-      if (_isManager() && empEl && empEl.options.length <= 1) {
-        _gas('getDoerList', [], function (doers) {
-          (doers || []).forEach(function (d) {
-            var opt = document.createElement('option');
-            opt.value = d.emp_id; opt.textContent = d.name + ' (' + d.department + ')';
-            if (empEl) empEl.appendChild(opt);
-          });
-        }, function () { });
-      }
-    }
-
-    function _exportIndivPerf() {
-      var data = _D.indivPerfData;
-      if (!data || !data.daily_trend) { _toast('No performance data to export', 'err'); return; }
-      var rows = [['Date', 'Tasks Done']];
-      data.daily_trend.forEach(function (d) { rows.push([d.date, d.done]); });
-      _downloadCSV('performance_' + (data.from || _daysAgo(30)) + '_to_' + (data.to || _today()) + '.csv', rows);
-      _toast('Performance data exported!', 'ok');
-    }
-
-    function _perfTeamPane() {
-      var defFrom = _currMonth() + '-01';
-      var defTo   = _today();
-      return '<div class="fbar" style="flex-wrap:wrap;gap:8px">' +
-        '<select id="pteamPreset" class="ana-sel" onchange="_pteamApplyPreset()">' +
+        '<select id="emPreset" class="ana-sel" onchange="_emApplyPreset()">' +
         '<option value="month">This Month</option>' +
         '<option value="lastmonth">Last Month</option>' +
         '<option value="quarter">This Quarter</option>' +
         '<option value="year">This Year</option>' +
         '<option value="custom">Custom Range</option>' +
         '</select>' +
-        '<input type="date" id="pteamFrom" class="ana-sel" value="'+defFrom+'" onchange="_pteamMarkCustom();_loadTeamPerfFull()">' +
+        '<input type="date" id="emFrom" class="ana-sel" value="'+defFrom+'" onchange="_emMarkCustom();_loadEM()">' +
         '<span style="color:var(--tx3);font-size:12px">to</span>' +
-        '<input type="date" id="pteamTo" class="ana-sel" value="'+defTo+'" onchange="_pteamMarkCustom();_loadTeamPerfFull()">' +
-        '<select id="pteamDept" class="ana-sel" onchange="_loadTeamPerfFull()"><option value="all">All Departments</option>' + _getDeptOptions() + '</select>' +
-        '<div class="fbar-spacer"></div>' +
-        '<button class="btn btn-sm" onclick="_loadTeamPerfFull()"><i class="fas fa-search"></i> Load</button>' +
-        '<button class="btn btn-sm" onclick="_exportTeamPerf()"><i class="fas fa-file-export"></i> Export</button>' +
-        '</div>' +
-        '<div class="krow" id="pteamKrow">' +
-        [1, 2, 3, 4].map(function () { return '<div class="sk sk-h6" style="border-radius:14px"></div>'; }).join('') +
-        '</div>' +
-        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">' +
-        '<div class="chart-wrap">' +
-        '<div class="chart-head"><div class="chart-title">Completion by Department</div><div class="chart-sub">Checklist / Delegation / Attendance</div></div>' +
-        '<div class="chart-inner-md"><canvas id="chartTeamDept"></canvas></div>' +
-        '</div>' +
-        '<div class="chart-wrap">' +
-        '<div class="chart-head"><div class="chart-title">Module Comparison</div><div class="chart-sub">Overall rate by module</div></div>' +
-        '<div class="chart-inner-md"><canvas id="chartTeamStatus"></canvas></div>' +
-        '</div>' +
-        '</div>' +
-        '<div class="card card-nohover" style="margin-top:16px">' +
-        '<div class="sec-title" style="margin-bottom:14px"><i class="fas fa-building" style="color:var(--P)"></i> Department Summary <span style="font-size:10px;color:var(--tx3);font-weight:600">(click a % to view full report)</span></div>' +
-        '<div id="pteamDeptTable"></div>' +
-        '</div>';
+        '<input type="date" id="emTo" class="ana-sel" value="'+defTo+'" onchange="_emMarkCustom();_loadEM()">' +
+
+        '<select id="emDept" class="ana-sel" onchange="_loadEM()">' +
+        '<option value="all">All Departments</option>' +
+        _getDeptOptions() +
+        '</select>' +
+
+        '<select id="emEmp" class="ana-sel" onchange="_loadEM()">' +
+        '<option value="all">All Employees</option>' +
+        _getEmpOptions() +
+        '</select>' +
+
+        '<select id="emSort" class="ana-sel" onchange="_renderEM()">' +
+        '<option value="name">Sort: Name</option>' +
+        '<option value="prog_desc">Sort: Progress High&rarr;Low</option>' +
+        '<option value="prog_asc">Sort: Progress Low&rarr;High</option>' +
+        '<option value="dept">Sort: Department</option>' +
+        '</select>' +
+
+        '<button class="btn btn-sm" onclick="_loadEM()"><i class="fas fa-rotate-right"></i> Refresh</button>' +
+        '<button class="btn btn-sm" onclick="_exportEM()"><i class="fas fa-file-export"></i> Export</button>' +
+        '</div></div>' +
+
+        _mkTabs(tabs, at) +
+        _mkPanes(tabs, at, [
+          '<div id="emRoot">' + _skel(6) + '</div>',
+          '<div id="emClRoot">' + _skel(4) + '</div>',
+          '<div id="emDlRoot">' + _skel(4) + '</div>',
+          '<div id="emAtRoot">' + _skel(4) + '</div>'
+        ]);
+
+      _switchTab(at);
+      _loadEM();
     }
 
-    function _pteamMarkCustom() {
-      var p = document.getElementById('pteamPreset');
+    function _emMarkCustom() {
+      var p = document.getElementById('emPreset');
       if (p) p.value = 'custom';
     }
 
-    function _pteamApplyPreset() {
-      var p = (document.getElementById('pteamPreset') || {}).value || 'month';
+    function _emApplyPreset() {
+      var p = (document.getElementById('emPreset') || {}).value || 'month';
       if (p === 'custom') return;
       var t = new Date();
       function iso(d) { return d.toISOString().slice(0, 10); }
@@ -13223,152 +12981,177 @@ function _loadSetupTasks() {
       else if (p === 'quarter') { from = iso(new Date(t.getFullYear(), Math.floor(t.getMonth() / 3) * 3, 1)); }
       else if (p === 'year') { from = t.getFullYear() + '-01-01'; }
       else { from = iso(t).slice(0, 8) + '01'; }
-      document.getElementById('pteamFrom').value = from;
-      document.getElementById('pteamTo').value = to;
-      _loadTeamPerfFull();
+      document.getElementById('emFrom').value = from;
+      document.getElementById('emTo').value = to;
+      _loadEM();
     }
 
-    function _loadTeamPerfFull() {
-      var from = (document.getElementById('pteamFrom') || {}).value || (_currMonth() + '-01');
-      var to   = (document.getElementById('pteamTo')   || {}).value || _today();
-      var dept = (document.getElementById('pteamDept') || {}).value || 'all';
-      var kEl = document.getElementById('pteamKrow');
-      if (kEl) { kEl.className = 'da-kpi-strip'; kEl.innerHTML = [1, 2, 3, 4, 5, 6].map(function () { return '<div class="sk sk-h6" style="border-radius:14px"></div>'; }).join(''); }
+    function _loadEM() {
+      var root = document.getElementById('emRoot');
+      if (root) root.innerHTML = _skel(6);
+      var from = (document.getElementById('emFrom') || {}).value || (_currMonth() + '-01');
+      var to   = (document.getElementById('emTo')   || {}).value || _today();
+      var dept = (document.getElementById('emDept') || {}).value || 'all';
+      var emp  = (document.getElementById('emEmp')  || {}).value || 'all';
 
-      _gasX('getAnalyticsSummaryV2', [{ from: from, to: to, dept: dept }], 45000, function (data) {
-        _D.teamPerfData = data;
-        var depts = data.dept_breakdown || [];
-        var cl = data.checklist || {}, dl = data.delegation || {}, at = data.attendance || {};
-        var needsAttn = data.needs_attention || [];
-
-        if (kEl) kEl.className = 'da-kpi-strip';
-        if (kEl) kEl.innerHTML = [
-          { lbl: 'Tasks Done', val: cl.done || 0, c: 'var(--G)', ico: 'fa-check', sub: 'of ' + (cl.planned||0) + ' planned' },
-          { lbl: 'Checklist Rate', val: (cl.rate || 0) + '%', c: (cl.rate || 0) >= 80 ? 'var(--G)' : 'var(--O)', ico: 'fa-percent', sub: (cl.on_time_rate||0)+'% on-time' },
-          { lbl: 'Delegations Done', val: dl.completed || 0, c: 'var(--V)', ico: 'fa-people-arrows', sub: 'of ' + (dl.assigned||0) + ' assigned' },
-          { lbl: 'Delegation Overdue', val: dl.overdue || 0, c: (dl.overdue||0)>0?'var(--R)':'var(--G)', ico: 'fa-triangle-exclamation', sub: (dl.overdue||0)>0?'Needs follow-up':'All clear' },
-          { lbl: 'Presence Rate', val: (at.presence_pct || 0) + '%', c: (at.presence_pct || 0) >= 90 ? 'var(--G)' : 'var(--O)', ico: 'fa-user-clock', sub: (at.late||0)+' late arrivals' },
-          { lbl: 'Needs Attention', val: needsAttn.length, c: needsAttn.length>0?'var(--O)':'var(--G)', ico: 'fa-flag', sub: needsAttn.length>0?'Employees flagged':'Team on track' }
-        ].map(function (k) {
-          return '<div class="da-kpi">' +
-            '<div class="da-kpi-row1"><div class="da-kpi-ico" style="--kc:'+k.c+'"><i class="fas '+k.ico+'"></i></div>' +
-            '<div class="da-kpi-val" style="color:'+k.c+'">'+k.val+'</div></div>' +
-            '<div class="da-kpi-lbl">'+k.lbl+'</div>' +
-            '<div class="da-kpi-sub">'+k.sub+'</div></div>';
-        }).join('');
-
-        setTimeout(function () {
-          // Dept comparison chart (3 modules)
-          var dcEl = document.getElementById('chartTeamDept');
-          if (dcEl && depts.length) {
-            if (_charts['teamdept']) _charts['teamdept'].destroy();
-            _charts['teamdept'] = new Chart(dcEl.getContext('2d'), {
-              type: 'bar',
-              data: {
-                labels: depts.map(function (d) { return d.dept; }),
-                datasets: [
-                  { label: 'Checklist', data: depts.map(function (d) { return d.checklist_rate || 0; }), backgroundColor: 'rgba(0,95,115,.8)', borderRadius: 5, borderSkipped: false },
-                  { label: 'Delegation', data: depts.map(function (d) { return d.delegation_rate || 0; }), backgroundColor: 'rgba(112,72,232,.8)', borderRadius: 5, borderSkipped: false },
-                  { label: 'Attendance', data: depts.map(function (d) { return d.attendance_rate || 0; }), backgroundColor: 'rgba(14,165,233,.8)', borderRadius: 5, borderSkipped: false }
-                ]
-              },
-              options: {
-                responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 11 } } } },
-                scales: {
-                  y: { beginAtZero: true, max: 100, ticks: { color: '#94a3b8', font: { size: 11 } }, grid: { color: 'rgba(0,0,0,.05)' } },
-                  x: { ticks: { color: '#94a3b8', font: { size: 11 } }, grid: { display: false } }
-                }
-              }
-            });
-          }
-
-          // Module comparison pie
-          var spEl = document.getElementById('chartTeamStatus');
-          if (spEl) {
-            if (_charts['teamstatus']) _charts['teamstatus'].destroy();
-            _charts['teamstatus'] = new Chart(spEl.getContext('2d'), {
-              type: 'doughnut',
-              data: {
-                labels: ['Checklist', 'Delegation', 'Attendance'],
-                datasets: [{
-                  data: [cl.rate || 0, dl.rate || 0, at.presence_pct || 0],
-                  backgroundColor: ['rgba(0,95,115,.85)', 'rgba(112,72,232,.85)', 'rgba(14,165,233,.85)'],
-                  borderWidth: 0, hoverOffset: 10
-                }]
-              },
-              options: {
-                responsive: true, maintainAspectRatio: false, cutout: '60%',
-                plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', padding: 14, font: { size: 11 } } } }
-              }
-            });
-          }
-        }, 120);
-
-        // Dept table (cross-module, clickable, with raw counts as subtext)
-        var tblEl = document.getElementById('pteamDeptTable');
-        if (tblEl && depts.length) {
-          tblEl.innerHTML =
-            '<div class="tw"><table><thead><tr>' +
-            '<th>Department</th><th style="text-align:center">Employees</th>' +
-            '<th style="text-align:center">Checklist</th><th style="text-align:center">Delegation</th><th style="text-align:center">Attendance</th>' +
-            '</tr></thead><tbody>' +
-            depts.map(function (d) {
-              function cell(rate, route, sub) {
-                if (rate === null || rate === undefined) return '<span style="color:var(--tx3)">—</span>';
-                var c = rate >= 80 ? 'var(--G)' : rate >= 50 ? 'var(--O)' : 'var(--R)';
-                return '<div style="cursor:pointer" onclick="_loadV(\''+route+'\')" title="Click to view full report">' +
-                  '<span style="font-weight:900;color:'+c+'">'+rate+'%</span>' +
-                  '<div style="font-size:9.5px;color:var(--tx3)">'+sub+'</div></div>';
-              }
-              return '<tr>' +
-                '<td style="font-weight:700">' + _esc(d.dept) + '</td>' +
-                '<td style="text-align:center">' + (d.employees || 0) + '</td>' +
-                '<td style="text-align:center">' + cell(d.checklist_rate, 'clana', d.checklist_done+'/'+d.checklist_planned) + '</td>' +
-                '<td style="text-align:center">' + cell(d.delegation_rate, 'delana', d.delegation_overdue+' overdue') + '</td>' +
-                '<td style="text-align:center">' + cell(d.attendance_rate, 'attana', d.attendance_late+' late') + '</td>' +
-                '</tr>';
-            }).join('') +
-            '</tbody></table></div>';
-
-          if (needsAttn.length) {
-            tblEl.innerHTML += '<div style="margin-top:16px">' +
-              '<div class="sec-title" style="margin-bottom:10px;color:var(--O)"><i class="fas fa-flag"></i> Needs Attention (' + needsAttn.length + ')</div>' +
-              needsAttn.map(function (a) {
-                return '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:7px 0;border-bottom:1px solid var(--bdr);cursor:pointer" onclick="_loadEmpDetail(\''+_esc(a.emp_id)+'\')" title="Click for employee profile">' +
-                  '<div style="flex:1 1 auto;min-width:0;overflow-wrap:break-word"><span style="font-weight:700;font-size:13px">'+_esc(a.name)+'</span> <span style="font-size:10.5px;color:var(--tx3)">('+_esc(a.dept||'')+')</span></div>' +
-                  '<div style="flex:1 1 auto;min-width:0;max-width:55%;font-size:10.5px;color:var(--O);text-align:right;overflow-wrap:break-word">'+a.reasons.map(_esc).join('<br>')+'</div></div>';
-              }).join('') + '</div>';
-          }
-        } else if (tblEl) {
-          tblEl.innerHTML = '<div class="te"><i class="fas fa-calendar-times"></i> No data for this range</div>';
-        }
+      _gasX('getEMDashboard', [{ from: from, to: to, dept: dept, empId: emp }], 45000, function (data) {
+        _D.emData = data;
+        _renderEM();
       }, function (e) {
-        if (kEl) kEl.innerHTML = '<div class="te" style="grid-column:1/-1">Error: ' + _esc(e.message) + '</div>';
+        if (root) root.innerHTML =
+          '<div class="te"><i class="fas fa-exclamation-triangle"></i> ' + _esc(e.message) +
+          '<br><br><button class="btn btn-sm" onclick="_loadEM()"><i class="fas fa-rotate-right"></i> Retry</button></div>';
       });
     }
 
-    function _exportPerf() {
-      var data = _D.topPerformers || _D.indivPerfData;
-      if (!data) { _toast('No performance data loaded yet', 'warn'); return; }
-      if (Array.isArray(data)) {
-        var rows = [['Rank', 'Employee', 'Department', 'Tasks Done']];
-        data.forEach(function (p, i) { rows.push([i + 1, p.name, p.dept, p.done]); });
-        _downloadCSV('top_performers_' + _today() + '.csv', rows);
-      } else {
-        _exportIndivPerf();
-      }
+    function _emSortedDoers() {
+      var data = _D.emData;
+      if (!data || !data.doers) return [];
+      var doers = data.doers.slice();
+      var sort = (document.getElementById('emSort') || {}).value || 'name';
+      if (sort === 'prog_desc') doers.sort(function (a, b) { return b.progress - a.progress; });
+      else if (sort === 'prog_asc') doers.sort(function (a, b) { return a.progress - b.progress; });
+      else if (sort === 'dept') doers.sort(function (a, b) { return a.dept.localeCompare(b.dept) || a.name.localeCompare(b.name); });
+      else doers.sort(function (a, b) { return a.name.localeCompare(b.name); });
+      return doers;
     }
 
-    function _exportTeamPerf() {
-      var data = _D.teamPerfData;
-      if (!data || !data.dept_breakdown) { _toast('Load team data first', 'warn'); return; }
-      var rows = [['Department', 'Employees', 'Checklist %', 'Delegation %', 'Attendance %']];
-      data.dept_breakdown.forEach(function (d) {
-        rows.push([d.dept, d.employees, d.checklist_rate==null?'':d.checklist_rate, d.delegation_rate==null?'':d.delegation_rate, d.attendance_rate==null?'':d.attendance_rate]);
+    function _emProgColor(pct) {
+      return pct >= 80 ? 'var(--G)' : pct >= 50 ? 'var(--O)' : 'var(--R)';
+    }
+
+    function _emAvatar(name) {
+      return '<div style="display:flex;align-items:center;gap:8px">' +
+        '<div class="da-emp-avatar" style="background:var(--Pl);color:var(--P)">' + _esc((name||'?').charAt(0).toUpperCase()) + '</div>' +
+        '<div style="font-weight:700">' + _esc(name) + '</div></div>';
+    }
+
+    function _emKpiStrip(cards) {
+      return '<div class="da-kpi-strip">' + cards.map(function (k) {
+        return '<div class="da-kpi">' +
+          '<div class="da-kpi-row1"><div class="da-kpi-ico" style="--kc:' + k.c + '"><i class="fas ' + k.ico + '"></i></div>' +
+          '<div class="da-kpi-val" style="color:' + k.c + '">' + k.val + '</div></div>' +
+          '<div class="da-kpi-lbl">' + k.lbl + '</div>' +
+          '<div class="da-kpi-sub">' + k.sub + '</div></div>';
+      }).join('') + '</div>';
+    }
+
+    function _renderEM() {
+      var data = _D.emData;
+      if (!data) { _loadEM(); return; }
+      _renderEMSummary(data);
+      _renderEMModule('cl', data);
+      _renderEMModule('dl', data);
+      _renderEMModule('at', data);
+    }
+
+    function _renderEMSummary(data) {
+      var root = document.getElementById('emRoot');
+      if (!root) return;
+      var t = data.totals;
+      var doers = _emSortedDoers();
+      var heatDates = data.heat_dates || [];
+
+      var h = '<div style="font-size:12px;color:var(--tx3);font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">' +
+        '<i class="fas fa-calendar-week"></i> ' + _fmtDate(data.from) + ' &rarr; ' + _fmtDate(data.to) +
+        (data.filters && data.filters.dept !== 'all' ? ' &middot; <span style="color:var(--P)">' + _esc(data.filters.dept) + '</span>' : '') +
+        '</div>';
+
+      h += _emKpiStrip([
+        { lbl: 'Total Plan',      val: t.total_plan,        c: 'var(--P)',                 ico: 'fa-clipboard-list',  sub: 'Checklist + Delegation + Attendance' },
+        { lbl: 'Total Actual',    val: t.total_actual,      c: 'var(--G)',                 ico: 'fa-circle-check',    sub: t.overall_pct + '% complete' },
+        { lbl: 'Checklist Plan',  val: t.cl_plan,           c: 'var(--V)',                 ico: 'fa-list-check',      sub: t.cl_actual + ' done &middot; ' + (t.cl_plan - t.cl_actual) + ' pending' },
+        { lbl: 'Delegation Plan', val: t.dl_plan,           c: 'var(--T)',                 ico: 'fa-diagram-project', sub: t.dl_actual + ' done &middot; ' + (t.dl_plan - t.dl_actual) + ' pending' },
+        { lbl: 'Attendance Plan', val: t.at_plan,           c: 'var(--O)',                 ico: 'fa-user-clock',      sub: t.at_actual + ' present &middot; ' + (t.at_plan - t.at_actual) + ' absent' },
+        { lbl: 'Overall %',       val: t.overall_pct + '%', c: _emProgColor(t.overall_pct), ico: 'fa-chart-pie',       sub: 'Completion rate' }
+      ]);
+
+      h += '<div class="card card-nohover" style="margin-top:16px">' +
+        '<div class="sec-title" style="margin-bottom:12px"><i class="fas fa-users" style="color:var(--P)"></i> All Doers &mdash; Checklist + Delegation + Attendance' +
+        '<span style="font-size:10px;color:var(--tx3);font-weight:600;margin-left:8px">Heatmap shows last ' + heatDates.length + ' days</span></div>' +
+        '<div class="tw"><table><thead><tr>' +
+        '<th>#</th><th>Doer</th>' +
+        '<th style="text-align:center">CL Plan</th><th style="text-align:center">CL Actual</th>' +
+        '<th style="text-align:center">DL Plan</th><th style="text-align:center">DL Actual</th>' +
+        '<th style="text-align:center">Att Plan</th><th style="text-align:center">Att Actual</th>' +
+        '<th>Progress</th>' +
+        heatDates.map(function (dt) { return '<th style="text-align:center;font-size:10px">' + _esc(_fmtDateShort(dt)) + '</th>'; }).join('') +
+        '</tr></thead><tbody>' +
+        doers.map(function (e, i) {
+          var c2 = _emProgColor(e.progress);
+          return '<tr>' +
+            '<td style="color:var(--tx3)">' + (i + 1) + '</td>' +
+            '<td>' + _emAvatar(e.name) + '<div style="font-size:10px;color:var(--tx3);margin-left:40px">' + _esc(e.dept) + '</div></td>' +
+            '<td style="text-align:center">' + e.cl_plan + '</td><td style="text-align:center;color:var(--G);font-weight:700">' + e.cl_actual + '</td>' +
+            '<td style="text-align:center">' + e.dl_plan + '</td><td style="text-align:center;color:var(--G);font-weight:700">' + e.dl_actual + '</td>' +
+            '<td style="text-align:center">' + e.at_plan + '</td><td style="text-align:center;color:var(--G);font-weight:700">' + e.at_actual + '</td>' +
+            '<td><div style="display:flex;align-items:center;gap:6px"><div class="pbar-wrap" style="width:60px"><div class="pbar" style="width:' + e.progress + '%;background:' + c2 + '"></div></div><span style="font-size:11px;font-weight:800;color:' + c2 + '">' + e.progress + '%</span></div></td>' +
+            e.heat.map(function (hd) {
+              var clr = hd.label === '-' ? 'var(--tx3)' : hd.label === 'OK' ? 'var(--G)' : 'var(--O)';
+              var bg  = hd.label === '-' ? 'var(--sur2)' : hd.label === 'OK' ? 'var(--Gl)' : 'var(--Ol)';
+              return '<td style="text-align:center"><span style="display:inline-block;padding:2px 6px;border-radius:5px;font-size:10px;font-weight:700;background:' + bg + ';color:' + clr + '">' + _esc(hd.label) + '</span></td>';
+            }).join('') +
+            '</tr>';
+        }).join('') +
+        '</tbody></table></div>' +
+        (doers.length === 0 ? '<div class="empty-state" style="padding:24px"><i class="fas fa-inbox"></i><p>No doers match these filters.</p></div>' : '') +
+        '</div>';
+
+      root.innerHTML = h;
+    }
+
+    function _renderEMModule(mod, data) {
+      var rootId = mod === 'cl' ? 'emClRoot' : mod === 'dl' ? 'emDlRoot' : 'emAtRoot';
+      var root = document.getElementById(rootId);
+      if (!root) return;
+      var planKey = mod + '_plan', actKey = mod + '_actual';
+      var title = mod === 'cl' ? 'Checklist' : mod === 'dl' ? 'Delegation' : 'Attendance';
+      var ico   = mod === 'cl' ? 'fa-list-check' : mod === 'dl' ? 'fa-diagram-project' : 'fa-user-clock';
+      var doers = _emSortedDoers();
+
+      var totalPlan = doers.reduce(function (s, e) { return s + e[planKey]; }, 0);
+      var totalAct  = doers.reduce(function (s, e) { return s + e[actKey]; }, 0);
+      var pct = totalPlan > 0 ? Math.round((totalAct / totalPlan) * 100) : 100;
+
+      var h = _emKpiStrip([
+        { lbl: title + ' Plan',   val: totalPlan, c: 'var(--P)',        ico: ico,                sub: 'Total in selected range' },
+        { lbl: title + ' Actual', val: totalAct,  c: 'var(--G)',        ico: 'fa-circle-check',  sub: (mod === 'at' ? 'Present days' : 'Completed') },
+        { lbl: 'Rate',            val: pct + '%', c: _emProgColor(pct), ico: 'fa-chart-pie',     sub: 'Completion rate' }
+      ]);
+
+      h += '<div class="card card-nohover" style="margin-top:16px">' +
+        '<div class="sec-title" style="margin-bottom:12px"><i class="fas ' + ico + '" style="color:var(--P)"></i> ' + title + ' &mdash; by Doer</div>' +
+        '<div class="tw"><table><thead><tr><th>#</th><th>Doer</th><th style="text-align:center">Plan</th><th style="text-align:center">Actual</th><th style="text-align:center">' + (mod === 'at' ? 'Absent' : 'Pending') + '</th><th>Progress</th></tr></thead><tbody>' +
+        doers.map(function (e, i) {
+          var plan = e[planKey], act = e[actKey];
+          var p = plan > 0 ? Math.round((act / plan) * 100) : 100;
+          var c2 = _emProgColor(p);
+          return '<tr>' +
+            '<td style="color:var(--tx3)">' + (i + 1) + '</td>' +
+            '<td>' + _emAvatar(e.name) + '<div style="font-size:10px;color:var(--tx3);margin-left:40px">' + _esc(e.dept) + '</div></td>' +
+            '<td style="text-align:center">' + plan + '</td>' +
+            '<td style="text-align:center;color:var(--G);font-weight:700">' + act + '</td>' +
+            '<td style="text-align:center;color:var(--R);font-weight:700">' + (plan - act) + '</td>' +
+            '<td><div style="display:flex;align-items:center;gap:6px"><div class="pbar-wrap" style="width:60px"><div class="pbar" style="width:' + p + '%;background:' + c2 + '"></div></div><span style="font-size:11px;font-weight:800;color:' + c2 + '">' + p + '%</span></div></td>' +
+            '</tr>';
+        }).join('') +
+        '</tbody></table></div>' +
+        (doers.length === 0 ? '<div class="empty-state" style="padding:24px"><i class="fas fa-inbox"></i><p>No doers match these filters.</p></div>' : '') +
+        '</div>';
+
+      root.innerHTML = h;
+    }
+
+    function _exportEM() {
+      var data = _D.emData;
+      if (!data) { _toast('Load data first', 'warn'); return; }
+      var doers = _emSortedDoers();
+      var rows = [['#', 'Doer', 'Department', 'Checklist Plan', 'Checklist Actual', 'Delegation Plan', 'Delegation Actual', 'Attendance Plan', 'Attendance Actual', 'Total Plan', 'Total Actual', 'Progress %']];
+      doers.forEach(function (e, i) {
+        rows.push([i + 1, e.name, e.dept, e.cl_plan, e.cl_actual, e.dl_plan, e.dl_actual, e.at_plan, e.at_actual, e.total_plan, e.total_actual, e.progress]);
       });
-      _downloadCSV('team_performance_' + (data.from||_currMonth()) + '_to_' + (data.to||_today()) + '.csv', rows);
-      _toast('Team performance exported!', 'ok');
+      _downloadCSV('em_dashboard_' + (data.from || _currMonth()) + '_to_' + (data.to || _today()) + '.csv', rows);
+      _toast('Exported!', 'ok');
     }
 
     /* ══════════════════════════════════════════════════════════════════════
@@ -14134,7 +13917,7 @@ function _loadSetupTasks() {
         var foot = document.getElementById('mFoot');
         if (foot) foot.innerHTML =
           '<button class="btn btn-outline" onclick="_closeModal()"><i class="fas fa-times"></i> Close</button>' +
-          '<button class="btn" onclick="_closeModal();_loadV(\'perf\',\'pind\');setTimeout(function(){var s=document.getElementById(\'pindEmp\');if(s){s.value=\''+empId+'\';_loadIndivPerf();}},600)"><i class="fas fa-chart-bar"></i> Performance Report</button>';
+          '<button class="btn" onclick="_closeModal();_loadV(\'em\');setTimeout(function(){var s=document.getElementById(\'emEmp\');if(s){s.value=\''+empId+'\';_loadEM();}},600)"><i class="fas fa-chart-bar"></i> Performance Report</button>';
       }, 30);
 
       _loadEmpDetailData(empId, _currMonth() + '-01', _today(), 'month');
@@ -14422,316 +14205,6 @@ function _loadSetupTasks() {
       }, function (e) { _toast('Error: ' + e.message, 'err'); });
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // ANALYTICS OVERVIEW — Organization-wide performance command centre
-    // Combines: Checklist, Delegations, Attendance in one snapshot
-    // ═══════════════════════════════════════════════════════════════════════
-    function _vAnalytics() {
-      if (!_isManager()) {
-        document.getElementById('content').innerHTML =
-          '<div class="empty-state"><i class="fas fa-lock"></i><h4>Access Restricted</h4></div>';
-        return;
-      }
-      if (!_D.empDir || !_D.empDir.length) {
-        document.getElementById('content').innerHTML =
-          '<div class="mod-head"><div><div class="mod-title">Analytics Overview</div></div></div>' + _skel(6);
-        _gas('getEmployeeDirectory', [], function (emps) {
-          _D.empDir = emps || [];
-          _vAnalyticsBuild();
-        }, function () { _vAnalyticsBuild(); });
-        return;
-      }
-      _vAnalyticsBuild();
-    }
-
-    function _vAnalyticsBuild() {
-      var defFrom = _currMonth() + '-01';
-      var defTo   = _today();
-      document.getElementById('content').innerHTML =
-        '<div class="mod-head">' +
-        '<div><div class="mod-title">Analytics Overview</div>' +
-        '<div class="mod-sub">Organisation-wide performance across Checklist, Delegation &amp; Attendance</div></div>' +
-        '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
-
-        '<select id="anaPreset" class="ana-sel" onchange="_anaApplyPreset()">' +
-        '<option value="month">This Month</option>' +
-        '<option value="lastmonth">Last Month</option>' +
-        '<option value="quarter">This Quarter</option>' +
-        '<option value="year">This Year</option>' +
-        '<option value="custom">Custom Range</option>' +
-        '</select>' +
-        '<input type="date" id="anaFrom" class="ana-sel" value="'+defFrom+'" onchange="_anaMarkCustom();_loadAnalytics()">' +
-        '<span style="color:var(--tx3);font-size:12px">to</span>' +
-        '<input type="date" id="anaTo" class="ana-sel" value="'+defTo+'" onchange="_anaMarkCustom();_loadAnalytics()">' +
-
-        '<select id="anaDept" class="ana-sel" onchange="_loadAnalytics()">' +
-        '<option value="all">All Departments</option>' +
-        _getDeptOptions() +
-        '</select>' +
-
-        '<button class="btn btn-sm" onclick="_loadAnalytics()"><i class="fas fa-rotate-right"></i> Refresh</button>' +
-        '<button class="btn btn-sm" onclick="_exportAnalytics()"><i class="fas fa-file-export"></i> Export</button>' +
-        '</div></div>' +
-        '<div id="anaRoot">' + _skel(6) + '</div>';
-
-      _loadAnalytics();
-    }
-
-    function _anaMarkCustom() {
-      var p = document.getElementById('anaPreset');
-      if (p) p.value = 'custom';
-    }
-
-    function _anaApplyPreset() {
-      var p = (document.getElementById('anaPreset') || {}).value || 'month';
-      if (p === 'custom') return;
-      var t = new Date();
-      function iso(d) { return d.toISOString().slice(0, 10); }
-      var from, to = iso(t);
-      if (p === 'lastmonth') {
-        var lm = new Date(t.getFullYear(), t.getMonth() - 1, 1);
-        var lmEnd = new Date(t.getFullYear(), t.getMonth(), 0);
-        from = iso(lm); to = iso(lmEnd);
-      }
-      else if (p === 'quarter') { from = iso(new Date(t.getFullYear(), Math.floor(t.getMonth() / 3) * 3, 1)); }
-      else if (p === 'year') { from = t.getFullYear() + '-01-01'; }
-      else { from = iso(t).slice(0, 8) + '01'; }
-      document.getElementById('anaFrom').value = from;
-      document.getElementById('anaTo').value = to;
-      _loadAnalytics();
-    }
-
-    function _loadAnalytics() {
-      var root = document.getElementById('anaRoot');
-      if (root) root.innerHTML = _skel(6);
-      var from = (document.getElementById('anaFrom') || {}).value || (_currMonth() + '-01');
-      var to   = (document.getElementById('anaTo')   || {}).value || _today();
-      var dept = (document.getElementById('anaDept') || {}).value || 'all';
-
-      _gasX('getAnalyticsSummaryV2', [{ from: from, to: to, dept: dept }], 45000, function (data) {
-        _D.analyticsData = data;
-        _renderAnalytics();
-      }, function (e) {
-        if (root) root.innerHTML =
-          '<div class="te"><i class="fas fa-exclamation-triangle"></i> ' + _esc(e.message) +
-          '<br><br><button class="btn btn-sm" onclick="_loadAnalytics()"><i class="fas fa-rotate-right"></i> Retry</button></div>';
-      });
-    }
-
-    function _renderAnalytics() {
-      var data = _D.analyticsData;
-      if (!data) { _loadAnalytics(); return; }
-      var root = document.getElementById('anaRoot');
-      if (!root) return;
-
-      var cl = data.checklist  || {};
-      var dl = data.delegation || {};
-      var at = data.attendance || {};
-      var depts = data.dept_breakdown || [];
-
-      var h = '';
-
-      h += '<div style="font-size:12px;color:var(--tx3);font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">' +
-        '<i class="fas fa-calendar-week"></i> ' + _fmtDate(data.from) + ' &rarr; ' + _fmtDate(data.to) +
-        (data.filters && data.filters.dept !== 'all' ? ' &middot; <span style="color:var(--P)">' + _esc(data.filters.dept) + '</span>' : '') +
-        '</div>';
-
-      // ── Composite KPI strip ───────────────────────────────────────────────
-      var clClr = (cl.rate||0) >= 80 ? 'var(--G)' : (cl.rate||0) >= 50 ? 'var(--O)' : 'var(--R)';
-      var dlClr = (dl.rate||0) >= 80 ? 'var(--G)' : (dl.rate||0) >= 50 ? 'var(--O)' : 'var(--R)';
-      var atClr = (at.presence_pct||0) >= 90 ? 'var(--G)' : (at.presence_pct||0) >= 75 ? 'var(--O)' : 'var(--R)';
-
-      h += '<div class="da-kpi-strip">' + [
-        { lbl:'Employees',        val:data.total_employees||0,   c:'var(--P)', ico:'fa-users',          sub:'In this range' },
-        { lbl:'Tasks Done',       val:cl.done||0,                c:'var(--G)', ico:'fa-list-check',     sub:'of '+(cl.planned||0)+' planned' },
-        { lbl:'Checklist Rate',   val:(cl.rate||0)+'%',          c:clClr,      ico:'fa-chart-pie',      sub:(cl.overdue_count||0)+' overdue' },
-        { lbl:'Delegations Done', val:dl.completed||0,           c:'var(--G)', ico:'fa-people-arrows',  sub:'of '+(dl.assigned||0)+' assigned' },
-        { lbl:'Delegation Rate',  val:(dl.rate||0)+'%',          c:dlClr,      ico:'fa-diagram-project',sub:(dl.overdue||0)+' overdue' },
-        { lbl:'Presence Rate',    val:(at.presence_pct||0)+'%',  c:atClr,      ico:'fa-user-clock',     sub:(at.half_day||0)+' half-day, '+(at.late||0)+' late' }
-      ].map(function (k) {
-        return '<div class="da-kpi">' +
-          '<div class="da-kpi-row1"><div class="da-kpi-ico" style="--kc:'+k.c+'"><i class="fas '+k.ico+'"></i></div>' +
-          '<div class="da-kpi-val" style="color:'+k.c+'">'+k.val+'</div></div>' +
-          '<div class="da-kpi-lbl">'+k.lbl+'</div>' +
-          '<div class="da-kpi-sub">'+k.sub+'</div></div>';
-      }).join('') + '</div>';
-
-      // ── Module summary cards ────────────────────────────────────────────
-      h += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:16px 0">';
-      h += [
-        { title:'Checklist', clr:'var(--P)', ico:'fa-list-check', route:'clana',
-          stats:[{l:'Planned',v:cl.planned||0},{l:'Done',v:cl.done||0},{l:'Pending',v:cl.pending||0}], rate:cl.rate||0, rClr:clClr },
-        { title:'Delegation', clr:'var(--V)', ico:'fa-diagram-project', route:'delana',
-          stats:[{l:'Assigned',v:dl.assigned||0},{l:'Completed',v:dl.completed||0},{l:'Overdue',v:dl.overdue||0}], rate:dl.rate||0, rClr:dlClr },
-        { title:'Attendance', clr:'var(--T)', ico:'fa-user-clock', route:'attana',
-          stats:[{l:'Present',v:at.present||0},{l:'Half Day',v:at.half_day||0},{l:'Absent',v:at.absent||0},{l:'Late',v:at.late||0}], rate:at.presence_pct||0, rClr:atClr }
-      ].map(function (m) {
-        return '<div class="card card-nohover card-sm" style="border-top:3px solid '+m.clr+'">' +
-          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">' +
-          '<div style="font-weight:800;font-size:14px;display:flex;align-items:center;gap:8px"><i class="fas '+m.ico+'" style="color:'+m.clr+'"></i> '+m.title+'</div>' +
-          '<div style="font-size:18px;font-weight:900;color:'+m.rClr+'">'+m.rate+'%</div></div>' +
-          '<div class="pbar-wrap" style="margin-bottom:12px"><div class="pbar" style="width:'+m.rate+'%;background:'+m.rClr+'"></div></div>' +
-          '<div style="display:flex;justify-content:space-between;margin-bottom:12px">' +
-          m.stats.map(function (s) {
-            return '<div style="text-align:center"><div style="font-size:17px;font-weight:900;color:var(--tx)">'+s.v+'</div>' +
-              '<div style="font-size:9px;color:var(--tx3);text-transform:uppercase;letter-spacing:.4px">'+s.l+'</div></div>';
-          }).join('') + '</div>' +
-          '<button class="btn btn-sm btn-outline" style="width:100%" onclick="_loadV(\''+m.route+'\')">View Full Report <i class="fas fa-arrow-right"></i></button>' +
-          '</div>';
-      }).join('') + '</div>';
-
-      // ── Combined trend chart (checklist completion % vs attendance presence %) ──
-      if ((data.trend || []).length > 1) {
-        h += '<div class="da-chart-card" style="margin-bottom:16px">' +
-          '<div class="da-chart-ttl"><i class="fas fa-chart-line" style="color:var(--T)"></i> Checklist vs Attendance Trend</div>' +
-          '<div style="height:220px"><canvas id="anaTrendChart"></canvas></div></div>';
-      }
-
-      // ── Dept breakdown table (cross-module) ─────────────────────────────
-      if (depts.length) {
-        h += '<div class="card card-nohover card-sm" style="margin-bottom:16px">' +
-          '<div class="sec-title" style="margin-bottom:12px"><i class="fas fa-building" style="color:var(--P)"></i> Department Breakdown</div>' +
-          '<div class="tw"><table><thead><tr><th>Department</th><th style="text-align:center">Employees</th>' +
-          '<th style="text-align:center">Checklist</th><th style="text-align:center">Delegation</th><th style="text-align:center">Attendance</th></tr></thead><tbody>' +
-          depts.map(function (d) {
-            function cell(rate, route, sub) {
-              if (rate === null || rate === undefined) return '<span style="color:var(--tx3)">—</span>';
-              var c = rate >= 80 ? 'var(--G)' : rate >= 50 ? 'var(--O)' : 'var(--R)';
-              return '<div style="cursor:pointer" onclick="_loadV(\''+route+'\')" title="Click to view full report">' +
-                '<span style="font-weight:900;color:'+c+'">'+rate+'%</span>' +
-                '<div style="font-size:9.5px;color:var(--tx3)">'+sub+'</div></div>';
-            }
-            return '<tr><td style="font-weight:800">'+_esc(d.dept)+'</td>' +
-              '<td style="text-align:center;font-weight:700">'+(d.employees||0)+'</td>' +
-              '<td style="text-align:center">'+cell(d.checklist_rate, 'clana', d.checklist_done+'/'+d.checklist_planned)+'</td>' +
-              '<td style="text-align:center">'+cell(d.delegation_rate, 'delana', d.delegation_overdue+' overdue')+'</td>' +
-              '<td style="text-align:center">'+cell(d.attendance_rate, 'attana', d.attendance_half_day+' HD, '+d.attendance_late+' late')+'</td>' +
-              '</tr>';
-          }).join('') +
-          '</tbody></table></div></div>';
-      } else {
-        h += '<div class="te" style="margin:16px 0"><i class="fas fa-calendar-times"></i> No data for this range</div>';
-      }
-
-      // ── Quick-glance lists ───────────────────────────────────────────────
-      var top5 = data.checklist_top5 || [];
-      var dlOv = data.delegation_overdue_top5 || [];
-      var atLate = data.attendance_late_top5 || [];
-      h += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px">';
-      h += '<div class="card card-nohover card-sm">' +
-        '<div class="sec-title" style="margin-bottom:12px;color:var(--G)"><i class="fas fa-trophy"></i> Top Checklist Performers</div>' +
-        (top5.length ? top5.map(function (e) {
-          return '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--bdr);font-size:12.5px">' +
-            '<span style="font-weight:700">'+_esc(e.name)+'</span>' +
-            '<span style="font-weight:900;color:var(--G)">'+(e.completion_rate||0)+'%</span></div>';
-        }).join('') : '<div style="color:var(--tx3);font-size:12px;text-align:center;padding:10px">No data</div>') + '</div>';
-      h += '<div class="card card-nohover card-sm">' +
-        '<div class="sec-title" style="margin-bottom:12px;color:var(--R)"><i class="fas fa-triangle-exclamation"></i> Most Overdue Delegations</div>' +
-        (dlOv.length ? dlOv.map(function (o) {
-          return '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--bdr);font-size:12.5px">' +
-            '<span style="font-weight:700">'+_esc(o.name)+'</span>' +
-            '<span style="font-weight:900;color:var(--R)">'+o.days_overdue+'d</span></div>';
-        }).join('') : '<div style="color:var(--G);font-size:12px;text-align:center;padding:10px"><i class="fas fa-circle-check"></i> All caught up</div>') + '</div>';
-      h += '<div class="card card-nohover card-sm">' +
-        '<div class="sec-title" style="margin-bottom:12px;color:var(--O)"><i class="fas fa-clock"></i> Most Late Arrivals</div>' +
-        (atLate.length ? atLate.map(function (e) {
-          return '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--bdr);font-size:12.5px">' +
-            '<span style="font-weight:700">'+_esc(e.name)+'</span>' +
-            '<span style="font-weight:900;color:var(--O)">'+e.late+'x</span></div>';
-        }).join('') : '<div style="color:var(--G);font-size:12px;text-align:center;padding:10px"><i class="fas fa-circle-check"></i> No late arrivals</div>') + '</div>';
-      h += '</div>';
-
-      // ── Needs Attention — synthesized across all 3 modules ───────────────
-      var needsAttn = data.needs_attention || [];
-      if (needsAttn.length) {
-        h += '<div class="card card-nohover card-sm" style="margin-bottom:16px">' +
-          '<div class="sec-title" style="margin-bottom:12px;color:var(--O)"><i class="fas fa-flag"></i> Needs Attention (' + needsAttn.length + ')</div>' +
-          needsAttn.map(function (a) {
-            return '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:7px 0;border-bottom:1px solid var(--bdr);cursor:pointer" onclick="_loadEmpDetail(\''+_esc(a.emp_id)+'\')" title="Click for employee profile">' +
-              '<div style="flex:1 1 auto;min-width:0;overflow-wrap:break-word"><span style="font-weight:700;font-size:13px">'+_esc(a.name)+'</span> <span style="font-size:10.5px;color:var(--tx3)">('+_esc(a.dept||'')+')</span></div>' +
-              '<div style="flex:1 1 auto;min-width:0;max-width:55%;font-size:10.5px;color:var(--O);text-align:right;overflow-wrap:break-word">'+a.reasons.map(_esc).join('<br>')+'</div></div>';
-          }).join('') + '</div>';
-      }
-
-      root.innerHTML = h;
-
-      // ── Charts ────────────────────────────────────────────────────────────
-      _whenChart(function () {
-        var isDk = document.body.classList.contains('dark');
-        var gc = isDk ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', tc = isDk ? '#94a3b8' : '#64748b';
-
-        function mkC(id, type, labels, datasets, extra) {
-          var cv = document.getElementById(id); if (!cv) return;
-          if (cv._ci) { try { cv._ci.destroy(); } catch (e) {} }
-          function dm(a, b) { var r = Object.assign({}, a); Object.keys(b || {}).forEach(function (k) { r[k] = (b[k] && typeof b[k] === 'object' && !Array.isArray(b[k])) ? dm(a[k] || {}, b[k]) : b[k]; }); return r; }
-          var isR = type === 'pie' || type === 'doughnut';
-          var base = { responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { labels: { color: tc, font: { size: 11 }, boxWidth: 12 } } },
-            scales: isR ? {} : { x: { ticks: { color: tc, font: { size: 10 } }, grid: { color: gc } }, y: { ticks: { color: tc, font: { size: 10 } }, grid: { color: gc } } }
-          };
-          cv._ci = new Chart(cv, { type: type, data: { labels: labels, datasets: datasets }, options: dm(base, extra || {}) });
-        }
-
-        if (depts.length) {
-          mkC('anaDeptChart', 'bar', depts.map(function (d) { return d.dept; }),
-            [
-              { label: 'Checklist', data: depts.map(function (d) { return d.checklist_rate || 0; }), backgroundColor: 'rgba(0,95,115,.8)', borderRadius: 5, borderSkipped: false },
-              { label: 'Delegation', data: depts.map(function (d) { return d.delegation_rate || 0; }), backgroundColor: 'rgba(112,72,232,.8)', borderRadius: 5, borderSkipped: false },
-              { label: 'Attendance', data: depts.map(function (d) { return d.attendance_rate || 0; }), backgroundColor: 'rgba(14,165,233,.8)', borderRadius: 5, borderSkipped: false }
-            ],
-            { plugins: { legend: { position: 'bottom' } }, scales: { y: { min: 0, max: 100 } } });
-        }
-
-        var trendData = data.trend || [];
-        if (trendData.length > 1) {
-          mkC('anaTrendChart', 'line', trendData.map(function (t) { var p = t.date.split('-'); return p[2]+'/'+p[1]; }),
-            [
-              { label: 'Checklist %', data: trendData.map(function (t) { return t.checklist_pct != null ? t.checklist_pct : null; }), borderColor: 'rgba(0,95,115,.9)', backgroundColor: 'rgba(0,95,115,.08)', fill: true, tension: 0.35, pointRadius: 2, spanGaps: true },
-              { label: 'Attendance %', data: trendData.map(function (t) { return t.attendance_pct != null ? t.attendance_pct : null; }), borderColor: 'rgba(14,165,233,.9)', backgroundColor: 'rgba(14,165,233,.08)', fill: true, tension: 0.35, pointRadius: 2, spanGaps: true }
-            ],
-            { scales: { y: { min: 0, max: 100 } }, plugins: { legend: { position: 'bottom' } } });
-        }
-
-        mkC('anaStatusChart', 'doughnut', ['Checklist', 'Delegation', 'Attendance'],
-          [{ data: [cl.rate || 0, dl.rate || 0, at.presence_pct || 0],
-            backgroundColor: ['rgba(0,95,115,.85)', 'rgba(112,72,232,.85)', 'rgba(14,165,233,.85)'], borderWidth: 0, hoverOffset: 10 }],
-          { cutout: '60%', plugins: { legend: { position: 'bottom' } } });
-
-        var overallRate = Math.round(((cl.rate||0) + (dl.rate||0) + (at.presence_pct||0)) / 3);
-        var ovClr = overallRate >= 80 ? 'var(--G)' : overallRate >= 60 ? 'var(--O)' : 'var(--R)';
-        mkC('anaCompChart', 'doughnut', ['Average', 'Remaining'],
-          [{ data: [overallRate, 100 - overallRate], backgroundColor: [ovClr, 'rgba(148,163,184,.2)'], borderWidth: 0 }],
-          { cutout: '68%', plugins: { legend: { display: false } } });
-        setTimeout(function () {
-          var cv = document.getElementById('anaCompChart');
-          if (!cv) return;
-          var p = cv.parentElement;
-          var existing = p.querySelector('.ana-comp-overlay');
-          if (existing) existing.remove();
-          var ov = document.createElement('div');
-          ov.className = 'ana-comp-overlay';
-          ov.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none';
-          ov.innerHTML = '<div style="font-size:22px;font-weight:900;color:'+ovClr+'">'+overallRate+'%</div><div style="font-size:10px;color:var(--tx3);font-weight:700">AVERAGE</div>';
-          p.style.position = 'relative';
-          p.appendChild(ov);
-        }, 100);
-      }, 80);
-    }
-
-    function _exportAnalytics() {
-      var data = _D.analyticsData;
-      if (!data || !data.dept_breakdown) { _toast('Load analytics first', 'err'); return; }
-      var head = ['Department', 'Employees', 'Checklist %', 'Delegation %', 'Attendance %'];
-      var csv = [head.join(',')].concat(data.dept_breakdown.map(function (d) {
-        return ['"' + (d.dept||'') + '"', d.employees||0, (d.checklist_rate==null?'':d.checklist_rate)+'%', (d.delegation_rate==null?'':d.delegation_rate)+'%', (d.attendance_rate==null?'':d.attendance_rate)+'%'].join(',');
-      })).join('\n');
-      var a = document.createElement('a');
-      a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent('\uFEFF' + csv);
-      a.download = 'analytics_overview_' + (data.from||_currMonth()) + '_to_' + (data.to||_today()) + '.csv';
-      a.click();
-      _toast('Exported!', 'ok');
-    }
-
     /* ══════════════════════════════════════════════════════════════════════
        TOAST NOTIFICATION SYSTEM
        Shows temporary messages at the bottom of the screen.
@@ -14869,8 +14342,7 @@ function _deactivateTask(uid) {
       ];
       if (_isManager && _isManager()) {
         items = items.concat([
-          {ico:'fa-chart-bar',       lbl:'Analytics',  key:'analytics'},
-          {ico:'fa-trophy',          lbl:'Performance',key:'perf'},
+          {ico:'fa-table-cells-large', lbl:'EM Dashboard',key:'em'},
           {ico:'fa-address-book',    lbl:'Directory',  key:'empdir'},
           {ico:'fa-list-check',      lbl:'CL Analytics',key:'clana'},
           {ico:'fa-diagram-project', lbl:'Deleg Ana.',  key:'delana'},
