@@ -5872,6 +5872,58 @@ function _gasX(fn, args, timeout, onOk, onErr) {
     var _gpsMsg = '';
     var _gpsRetries = 0;
 
+    // Best-effort attempt to jump straight to the device's location
+    // settings. Only Android supports this (via an intent: URL — iOS and
+    // desktop browsers have no equivalent and will simply ignore it, which
+    // is why this is always paired with the guide modal below as the
+    // reliable fallback rather than relying on this alone.
+    function _tryOpenLocationSettings() {
+      var ua = navigator.userAgent || '';
+      if (/Android/i.test(ua)) {
+        try { window.location.href = 'intent:#Intent;action=android.settings.LOCATION_SOURCE_SETTINGS;end'; }
+        catch (e) {}
+      }
+    }
+
+    // Shows clear, platform-specific steps to turn location on, since most
+    // browsers (iOS Safari, desktop) can't be sent straight to the OS
+    // settings screen the way Android sometimes can.
+    function _showLocationGuide() {
+      _tryOpenLocationSettings();
+      var ua = navigator.userAgent || '';
+      var steps;
+      if (/Android/i.test(ua)) {
+        steps = [
+          'Swipe down from the top of your screen to open Quick Settings',
+          'Tap and hold the <b>Location</b> icon (or tap the arrow next to it)',
+          'Turn <b>Location</b> ON',
+          'Come back here and tap <b>Retry</b> below'
+        ];
+      } else if (/iPhone|iPad|iPod/i.test(ua)) {
+        steps = [
+          'Open the <b>Settings</b> app',
+          'Go to <b>Privacy &amp; Security → Location Services</b> and turn it ON',
+          'Scroll down, find your browser (Safari/Chrome) and set it to <b>While Using the App</b>',
+          'Come back here and tap <b>Retry</b> below'
+        ];
+      } else {
+        steps = [
+          'Click the location/lock icon in your browser\'s address bar',
+          'Set <b>Location</b> permission to <b>Allow</b> for this site',
+          'Reload the page and tap <b>Retry</b> below'
+        ];
+      }
+      _openModal(
+        '<i class="fas fa-location-dot" style="color:var(--P)"></i> Turn On Location',
+        '<div style="font-size:13px;color:var(--tx2);margin-bottom:10px">Attendance can only be marked from a registered office location, so location access needs to be on.</div>' +
+        '<ol style="margin:0;padding-left:20px;line-height:1.9;font-size:13.5px">' +
+        steps.map(function (s) { return '<li>' + s + '</li>'; }).join('') +
+        '</ol>',
+        function () { _closeModal(); _initGpsGate(); },
+        '<i class="fas fa-rotate-right"></i> Retry'
+      );
+    }
+
     function _initGpsGate() {
       // AppConfig loads asynchronously at login — if it hasn't arrived yet,
       // do NOT default to "GPS off" (that would let anyone through during
@@ -5901,7 +5953,7 @@ function _gasX(fn, args, timeout, onOk, onErr) {
           _gas('validateGpsForAttendance', [pos.coords.latitude, pos.coords.longitude], function (res) {
             if (res && res.allowed) {
               _gpsState = 'ok';
-              _gpsMsg = res.nearest_location ? ('At ' + res.nearest_location) : '';
+              _gpsMsg = res.nearest_location ? ('At ' + res.nearest_location + (res.distance_km ? ' (' + res.distance_km + ' away)' : '')) : '';
             } else {
               _gpsState = 'blocked';
               _gpsMsg = (res && res.message) || 'You are not within a registered attendance location.';
@@ -5971,8 +6023,9 @@ function _gasX(fn, args, timeout, onOk, onErr) {
       btn.disabled = true;
       gpsEl.style.display = '';
       gpsEl.style.color = 'var(--R)';
+      var retryAction = _gpsState === 'error' ? '_showLocationGuide()' : '_initGpsGate()';
       gpsEl.innerHTML = '<i class="fas fa-location-dot"></i> Cannot mark attendance — ' + _esc(_gpsMsg) +
-        ' <a href="#" onclick="_initGpsGate();return false;" style="color:var(--P);font-weight:700">Retry</a>';
+        ' <a href="#" onclick="' + retryAction + ';return false;" style="color:var(--P);font-weight:700">Retry</a>';
     }
 
     function _loadPunchStatus() {
