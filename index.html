@@ -5862,14 +5862,30 @@ function _gasX(fn, args, timeout, onOk, onErr) {
     // GPS gating state — checked proactively once the punch card loads, so
     // the button reflects reality (can I actually mark attendance right
     // now?) instead of only failing after the user taps it.
-    // 'disabled' = GPS_ATTENDANCE off, no gating needed | 'checking' = in
-    // progress | 'ok' = within a registered location | 'blocked' = GPS
-    // worked but user is too far | 'error' = location unavailable/denied.
-    var _gpsState = 'disabled';
+    // 'unchecked' = not yet determined (treated as BLOCKING, never as
+    // permissive — we never assume GPS is fine just because we haven't
+    // checked yet) | 'disabled' = AppConfig confirms GPS_ATTENDANCE is Off,
+    // no gating needed | 'checking' = a check is in progress | 'ok' =
+    // confirmed within a registered location | 'blocked' = GPS worked but
+    // user is too far | 'error' = location unavailable/denied/unsupported.
+    var _gpsState = 'unchecked';
     var _gpsMsg = '';
+    var _gpsRetries = 0;
 
     function _initGpsGate() {
-      var gpsEnabled = _D.appConfig && (_D.appConfig.GPS_ATTENDANCE||'').toLowerCase() === 'yes';
+      // AppConfig loads asynchronously at login — if it hasn't arrived yet,
+      // do NOT default to "GPS off" (that would let anyone through during
+      // the load window). Wait briefly and retry instead.
+      if (!_D.appConfig) {
+        _gpsState = 'checking'; _gpsMsg = 'Verifying location…';
+        _applyGpsGate();
+        if (_gpsRetries < 20) { _gpsRetries++; setTimeout(_initGpsGate, 300); }
+        else { _gpsState = 'error'; _gpsMsg = 'Could not load location settings.'; _applyGpsGate(); }
+        return;
+      }
+      _gpsRetries = 0;
+
+      var gpsEnabled = (_D.appConfig.GPS_ATTENDANCE||'').toLowerCase() === 'yes';
       if (!gpsEnabled) { _gpsState = 'disabled'; _gpsMsg = ''; _applyGpsGate(); return; }
 
       _gpsState = 'checking'; _gpsMsg = 'Checking your location…';
@@ -5892,10 +5908,12 @@ function _gasX(fn, args, timeout, onOk, onErr) {
             }
             _applyGpsGate();
           }, function () {
-            // If the validity check itself fails, don't hard-block the
-            // user purely because of a network blip — let the click-time
-            // server-side check (which always re-validates) be the judge.
-            _gpsState = 'ok'; _gpsMsg = '';
+            // The validation call itself failed (network blip) — this is
+            // exactly the kind of uncertainty that should block, not allow.
+            // The "Retry" link lets the user re-check once connectivity
+            // is back, and the click-time server-side check is always the
+            // final authority regardless.
+            _gpsState = 'error'; _gpsMsg = 'Could not verify your location. Check connection and retry.';
             _applyGpsGate();
           });
         },
@@ -5912,8 +5930,11 @@ function _gasX(fn, args, timeout, onOk, onErr) {
       );
     }
 
-    // Combines the GPS gate with whatever _renderPunchCard already decided
-    // for the button, and overrides it when location blocks the action.
+    // Combines the GPS gate with the current punch state to decide the
+    // button's final enabled/disabled state — this is the ONLY place that
+    // sets btn.disabled for the not_checked_in/checked_in cases, so there's
+    // a single source of truth instead of _renderPunchCard pre-enabling it
+    // and this function "correcting" it after a delay.
     function _applyGpsGate() {
       var btn = document.getElementById('dashPunchBtn');
       var gpsEl = document.getElementById('dashPunchGps');
@@ -5925,24 +5946,28 @@ function _gasX(fn, args, timeout, onOk, onErr) {
       if (btn.innerHTML.indexOf('Checking...') !== -1) return;
 
       if (_gpsState === 'disabled') {
+        btn.disabled = false;
         gpsEl.style.display = 'none';
         return;
       }
-      if (_gpsState === 'checking') {
-        btn.disabled = true;
-        gpsEl.style.display = '';
-        gpsEl.style.color = 'var(--tx3)';
-        gpsEl.innerHTML = '<i class="fas fa-location-crosshairs fa-beat"></i> ' + _esc(_gpsMsg);
-        return;
-      }
       if (_gpsState === 'ok') {
+        btn.disabled = false;
         gpsEl.style.display = _gpsMsg ? '' : 'none';
         gpsEl.style.color = 'var(--G)';
         gpsEl.innerHTML = '<i class="fas fa-location-dot"></i> ' + _esc(_gpsMsg);
-        return; // button keeps whatever _renderPunchCard already set
+        return;
+      }
+      if (_gpsState === 'checking' || _gpsState === 'unchecked') {
+        btn.disabled = true;
+        gpsEl.style.display = '';
+        gpsEl.style.color = 'var(--tx3)';
+        gpsEl.innerHTML = '<i class="fas fa-location-crosshairs fa-beat"></i> ' + _esc(_gpsMsg || 'Verifying location…');
+        return;
       }
       // 'blocked' or 'error' — hard-gate the button, this is the actual fix:
-      // attendance can only be marked from a registered location.
+      // attendance can only be marked from a registered location, and any
+      // uncertainty (denied permission, GPS off, network failure) blocks
+      // by default rather than letting the action through.
       btn.disabled = true;
       gpsEl.style.display = '';
       gpsEl.style.color = 'var(--R)';
@@ -5996,14 +6021,12 @@ function _gasX(fn, args, timeout, onOk, onErr) {
         tm.innerHTML  = '';
         btn.className = 'btn-checkin checkin-in';
         btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Check IN';
-        btn.disabled  = false;
 
       } else if (status === 'checked_in') {
         st.innerHTML  = '<span style="color:var(--G)"><i class="fas fa-circle-check"></i> Checked In</span>';
         tm.innerHTML  = '<div class="att-punch-time-item"><i class="fas fa-sign-in-alt" style="color:var(--G)"></i>&nbsp;In:&nbsp;<b>' + _esc(_fmtAttTime(res.check_in, res.check_in_ts)) + '</b></div>';
         btn.className = 'btn-checkin checkin-out';
         btn.innerHTML = '<i class="fas fa-sign-out-alt"></i> Check OUT';
-        btn.disabled  = false;
 
       } else if (status === 'checked_out') {
         st.innerHTML  = '<span style="color:var(--P)"><i class="fas fa-circle-check"></i> Checked Out</span>';
@@ -6028,6 +6051,10 @@ function _gasX(fn, args, timeout, onOk, onErr) {
           _toast('✓ Checked in at ' + (res.check_in || ''), 'ok');
           _addNtf('Check IN at ' + (res.check_in || ''), 'fa-sign-in-alt', 'var(--Gl)', 'var(--G)');
           _renderPunchCard({ status: 'checked_in', check_in: res.check_in, check_in_ts: res.timestamp || '' });
+          // Re-verify location for the upcoming check-out action — the
+          // 'ok' reading from check-in time could be hours stale by the
+          // time this person actually checks out.
+          _gpsState = 'unchecked'; _initGpsGate();
         } else {
           var errMsg = (res && res.error) ? res.error : 'Unknown error';
           // GPS_BLOCKED message — show nicely
