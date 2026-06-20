@@ -5391,7 +5391,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbzO40NNoBkFGd2xwC-70Gvdf2E0YxugrMyki7SV6wkgT_ofoNh-1Q6DXMBL6PCuaauJ0g/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbyykNFI4rUc459qNwg8PWA36hkOXDm5vPwgRneDrKahVWpTXf6kXVwKvshyJMY2jcK4Xg/exec';
     var _TOKEN  = '';
 
 function _gas(fn, args, onOk, onErr) {
@@ -5859,6 +5859,97 @@ function _gasX(fn, args, timeout, onOk, onErr) {
     ══════════════════════════════════════════════════════════ */
     var _punchState = 'not_checked_in'; // 'not_checked_in' | 'checked_in' | 'checked_out'
 
+    // GPS gating state — checked proactively once the punch card loads, so
+    // the button reflects reality (can I actually mark attendance right
+    // now?) instead of only failing after the user taps it.
+    // 'disabled' = GPS_ATTENDANCE off, no gating needed | 'checking' = in
+    // progress | 'ok' = within a registered location | 'blocked' = GPS
+    // worked but user is too far | 'error' = location unavailable/denied.
+    var _gpsState = 'disabled';
+    var _gpsMsg = '';
+
+    function _initGpsGate() {
+      var gpsEnabled = _D.appConfig && (_D.appConfig.GPS_ATTENDANCE||'').toLowerCase() === 'yes';
+      if (!gpsEnabled) { _gpsState = 'disabled'; _gpsMsg = ''; _applyGpsGate(); return; }
+
+      _gpsState = 'checking'; _gpsMsg = 'Checking your location…';
+      _applyGpsGate();
+
+      if (!navigator.geolocation) {
+        _gpsState = 'error'; _gpsMsg = 'GPS not supported on this device/browser.';
+        _applyGpsGate();
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        function (pos) {
+          _gas('validateGpsForAttendance', [pos.coords.latitude, pos.coords.longitude], function (res) {
+            if (res && res.allowed) {
+              _gpsState = 'ok';
+              _gpsMsg = res.nearest_location ? ('At ' + res.nearest_location) : '';
+            } else {
+              _gpsState = 'blocked';
+              _gpsMsg = (res && res.message) || 'You are not within a registered attendance location.';
+            }
+            _applyGpsGate();
+          }, function () {
+            // If the validity check itself fails, don't hard-block the
+            // user purely because of a network blip — let the click-time
+            // server-side check (which always re-validates) be the judge.
+            _gpsState = 'ok'; _gpsMsg = '';
+            _applyGpsGate();
+          });
+        },
+        function (err) {
+          var msgs = {
+            1: 'Location permission denied. Allow location access to mark attendance.',
+            2: 'Location unavailable. Move to an open area and retry.',
+            3: 'Location request timed out. Retry.'
+          };
+          _gpsState = 'error'; _gpsMsg = msgs[err.code] || 'Location error.';
+          _applyGpsGate();
+        },
+        { timeout: 12000, maximumAge: 0, enableHighAccuracy: true }
+      );
+    }
+
+    // Combines the GPS gate with whatever _renderPunchCard already decided
+    // for the button, and overrides it when location blocks the action.
+    function _applyGpsGate() {
+      var btn = document.getElementById('dashPunchBtn');
+      var gpsEl = document.getElementById('dashPunchGps');
+      if (!btn || !gpsEl) return;
+
+      // Already checked out today — nothing left to gate, hide GPS message.
+      if (_punchState === 'checked_out') { gpsEl.style.display = 'none'; return; }
+      // Still figuring out check-in/check-out status — let that settle first.
+      if (btn.innerHTML.indexOf('Checking...') !== -1) return;
+
+      if (_gpsState === 'disabled') {
+        gpsEl.style.display = 'none';
+        return;
+      }
+      if (_gpsState === 'checking') {
+        btn.disabled = true;
+        gpsEl.style.display = '';
+        gpsEl.style.color = 'var(--tx3)';
+        gpsEl.innerHTML = '<i class="fas fa-location-crosshairs fa-beat"></i> ' + _esc(_gpsMsg);
+        return;
+      }
+      if (_gpsState === 'ok') {
+        gpsEl.style.display = _gpsMsg ? '' : 'none';
+        gpsEl.style.color = 'var(--G)';
+        gpsEl.innerHTML = '<i class="fas fa-location-dot"></i> ' + _esc(_gpsMsg);
+        return; // button keeps whatever _renderPunchCard already set
+      }
+      // 'blocked' or 'error' — hard-gate the button, this is the actual fix:
+      // attendance can only be marked from a registered location.
+      btn.disabled = true;
+      gpsEl.style.display = '';
+      gpsEl.style.color = 'var(--R)';
+      gpsEl.innerHTML = '<i class="fas fa-location-dot"></i> Cannot mark attendance — ' + _esc(_gpsMsg) +
+        ' <a href="#" onclick="_initGpsGate();return false;" style="color:var(--P);font-weight:700">Retry</a>';
+    }
+
     function _loadPunchStatus() {
       // Use cached data if available
       if (_D.todayAtt) {
@@ -5924,6 +6015,8 @@ function _gasX(fn, args, timeout, onOk, onErr) {
         btn.innerHTML = '<i class="fas fa-check-double"></i> Checked Out Today';
         btn.disabled  = true;
       }
+
+      _applyGpsGate();
     }
 
     // GPS-aware check-in call — payload can be {ts,lat,lng} or plain timestamp string
@@ -5959,6 +6052,40 @@ function _gasX(fn, args, timeout, onOk, onErr) {
       });
     }
 
+    // GPS-aware check-out call — mirrors _doCheckInCall's GPS_BLOCKED
+    // handling, since recordCheckOut now enforces the same server-side
+    // location check (previously it didn't check location at all).
+    function _doCheckOutCall(btn, payload) {
+      btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Processing...';
+      _gas('recordCheckOut', [payload], function (res) {
+        if (res && res.success) {
+          _punchState = 'checked_out';
+          _toast('✓ Checked out at ' + (res.check_out || '') + (res.total_hours ? ' · ' + res.total_hours : ''), 'ok');
+          _addNtf('Check OUT at ' + (res.check_out || ''), 'fa-sign-out-alt', 'var(--Ol)', 'var(--O)');
+          _renderPunchCard({ status: 'checked_out', check_in: res.check_in || '', check_out: res.check_out || '', check_in_ts: '', check_out_ts: res.timestamp || '', total_hours: res.total_hours || '' });
+        } else {
+          var errMsg = (res && res.error) ? res.error : 'Unknown error';
+          if (errMsg.indexOf('GPS_BLOCKED:') === 0) {
+            errMsg = errMsg.replace('GPS_BLOCKED:', '');
+            _toast('📍 ' + errMsg, 'err');
+          } else {
+            _toast('Check-out failed: ' + errMsg, 'err');
+          }
+          btn.disabled  = false;
+          btn.innerHTML = '<i class="fas fa-sign-out-alt"></i> Check OUT';
+        }
+      }, function (e) {
+        var msg = e.message || '';
+        if (msg.indexOf('GPS_BLOCKED:') === 0) {
+          _toast('📍 ' + msg.replace('GPS_BLOCKED:', ''), 'err');
+        } else {
+          _toast('Check-out failed: ' + msg, 'err');
+        }
+        btn.disabled  = false;
+        btn.innerHTML = '<i class="fas fa-sign-out-alt"></i> Check OUT';
+      });
+    }
+
     function _doPunch() {
       var btn = document.getElementById('dashPunchBtn');
       if (!btn) return;
@@ -5967,66 +6094,53 @@ function _gasX(fn, args, timeout, onOk, onErr) {
       var deviceTs = new Date().toISOString();
 
       if (_punchState === 'not_checked_in') {
-        btn.disabled  = true;
-        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Getting location...';
-
-        // ── GPS check: only if AppConfig.GPS_ATTENDANCE = Yes ────────────────
-        var gpsEnabled = _D.appConfig && (_D.appConfig.GPS_ATTENDANCE||'').toLowerCase() === 'yes';
-        if (gpsEnabled) {
-          // GPS required — MUST get location, no bypass
-          if (!navigator.geolocation) {
-            _toast('📍 GPS not supported on this device/browser.', 'err');
-            btn.disabled  = false;
-            btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Check IN';
-            return;
-          }
-          btn.innerHTML = '<i class="fas fa-location-dot fa-beat"></i> Getting location...';
-          navigator.geolocation.getCurrentPosition(
-            function(pos) {
-              btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Processing...';
-              var payload = { ts: deviceTs, lat: pos.coords.latitude, lng: pos.coords.longitude };
-              _doCheckInCall(btn, payload);
-            },
-            function(err) {
-              // GPS required but denied — HARD BLOCK
-              var msgs = {
-                1: '📍 Location permission denied. Please allow location access to check in.',
-                2: '📍 Location unavailable. Please try again.',
-                3: '📍 Location request timed out. Please try again.'
-              };
-              _toast(msgs[err.code] || '📍 Location error. Check-in blocked.', 'err');
-              btn.disabled  = false;
-              btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Check IN';
-              // Do NOT call _doCheckInCall — GPS is mandatory
-            },
-            { timeout: 12000, maximumAge: 0, enableHighAccuracy: true }
-          );
-        } else {
-          // GPS not required
-          _doCheckInCall(btn, deviceTs);
-        }
+        _withGpsLocation(btn, 'Check IN', 'fa-sign-in-alt', deviceTs, function (payload) {
+          _doCheckInCall(btn, payload);
+        });
 
       } else if (_punchState === 'checked_in') {
-        btn.disabled  = true;
-        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Processing...';
-        _gas('recordCheckOut', [deviceTs], function(res) {
-          if (res && res.success) {
-            _punchState = 'checked_out';
-            _toast('✓ Checked out at ' + (res.check_out || '') + (res.total_hours ? ' · ' + res.total_hours : ''), 'ok');
-            _addNtf('Check OUT at ' + (res.check_out || ''), 'fa-sign-out-alt', 'var(--Ol)', 'var(--O)');
-            // Directly render — no need to re-call GAS
-            _renderPunchCard({ status: 'checked_out', check_in: res.check_in || '', check_out: res.check_out || '', check_in_ts: '', check_out_ts: res.timestamp || '', total_hours: res.total_hours || '' });
-          } else {
-            _toast('Check-out failed: ' + (res && res.error ? res.error : 'Unknown error'), 'err');
-            btn.disabled  = false;
-            btn.innerHTML = '<i class="fas fa-sign-out-alt"></i> Check OUT';
-          }
-        }, function(e) {
-          _toast('Check-out failed: ' + e.message, 'err');
-          btn.disabled  = false;
-          btn.innerHTML = '<i class="fas fa-sign-out-alt"></i> Check OUT';
+        _withGpsLocation(btn, 'Check OUT', 'fa-sign-out-alt', deviceTs, function (payload) {
+          _doCheckOutCall(btn, payload);
         });
       }
+    }
+
+    // Shared GPS-fetch wrapper for both check-in and check-out — only calls
+    // onReady() once we actually have a location (or GPS isn't required by
+    // AppConfig), with the same "Getting location..." UX and hard-block
+    // behaviour either way, so check-in and check-out are never out of sync.
+    function _withGpsLocation(btn, label, icon, deviceTs, onReady) {
+      btn.disabled  = true;
+      btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Getting location...';
+
+      var gpsEnabled = _D.appConfig && (_D.appConfig.GPS_ATTENDANCE||'').toLowerCase() === 'yes';
+      if (!gpsEnabled) { onReady(deviceTs); return; }
+
+      if (!navigator.geolocation) {
+        _toast('📍 GPS not supported on this device/browser.', 'err');
+        btn.disabled  = false;
+        btn.innerHTML = '<i class="fas ' + icon + '"></i> ' + label;
+        return;
+      }
+      btn.innerHTML = '<i class="fas fa-location-dot fa-beat"></i> Getting location...';
+      navigator.geolocation.getCurrentPosition(
+        function (pos) {
+          btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Processing...';
+          onReady({ ts: deviceTs, lat: pos.coords.latitude, lng: pos.coords.longitude });
+        },
+        function (err) {
+          // GPS required but denied/unavailable — HARD BLOCK, do NOT call onReady
+          var msgs = {
+            1: '📍 Location permission denied. Please allow location access to ' + label.toLowerCase() + '.',
+            2: '📍 Location unavailable. Please try again.',
+            3: '📍 Location request timed out. Please try again.'
+          };
+          _toast(msgs[err.code] || '📍 Location error. ' + label + ' blocked.', 'err');
+          btn.disabled  = false;
+          btn.innerHTML = '<i class="fas ' + icon + '"></i> ' + label;
+        },
+        { timeout: 12000, maximumAge: 0, enableHighAccuracy: true }
+      );
     }
 
     /* ══════════════════════════════════════════════════════════
@@ -6083,6 +6197,7 @@ function _gasX(fn, args, timeout, onOk, onErr) {
         '<div class="att-punch-title"><i class="fas fa-fingerprint" style="color:var(--P);margin-right:6px"></i>Today\'s Attendance</div>' +
         '<div class="att-punch-status" id="dashPunchStatus">Checking status...</div>' +
         '<div class="att-punch-times" id="dashPunchTimes"></div>' +
+        '<div id="dashPunchGps" style="display:none;font-size:11.5px;margin-top:6px;font-weight:600"></div>' +
         '</div>' +
         '<button class="btn-checkin" id="dashPunchBtn" onclick="_doPunch()" disabled>' +
         '<i class="fas fa-circle-notch ci-spinner"></i> Checking...' +
@@ -6137,6 +6252,7 @@ function _gasX(fn, args, timeout, onOk, onErr) {
 
       /* ── Load Dashboard Data ── */
       _loadPunchStatus(); // Load Check-In/Out status
+      _initGpsGate();     // Proactively check location so the button reflects reality before any click
       _gas('getDashboardStats', [], function (s) {
         // Subtitle
         var d = new Date();
