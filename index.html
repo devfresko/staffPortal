@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="Fresko Portal">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-180.png">
-  <title>Fresko Staff Portal</title>
+  <title>Fresko Staff Portal — v3.0</title>
 
   <!-- External Assets -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -5764,7 +5764,13 @@ function _gasX(fn, args, timeout, onOk, onErr) {
         _updateMobNav && _updateMobNav('home');
 
       }, function() {
-        // Fallback: load dashboard anyway
+        // Fallback: getAllData itself failed/timed out. Still fetch
+        // appConfig separately (lightweight, dedicated call) before
+        // loading the dashboard — otherwise _D.appConfig never gets set on
+        // this path, which is exactly what made the GPS gate wait forever
+        // and show "Could not load location settings" even when location
+        // itself was working fine.
+        _gas('getAllAppConfigForFrontend', [], function(cfg) { _D.appConfig = cfg || {}; }, function() {});
         _loadV('dash');
         _updateMobNav && _updateMobNav('home');
       });
@@ -5948,12 +5954,25 @@ function _gasX(fn, args, timeout, onOk, onErr) {
     function _initGpsGate() {
       // AppConfig loads asynchronously at login — if it hasn't arrived yet,
       // do NOT default to "GPS off" (that would let anyone through during
-      // the load window). Wait briefly and retry instead.
+      // the load window). Give the normal bulk load a short head start,
+      // then fetch it directly via the dedicated lightweight call rather
+      // than waiting indefinitely on the heavy getAllData call to finish.
       if (!_D.appConfig) {
         _gpsState = 'checking'; _gpsMsg = 'Verifying location…';
         _applyGpsGate();
-        if (_gpsRetries < 20) { _gpsRetries++; setTimeout(_initGpsGate, 300); }
-        else { _gpsState = 'error'; _gpsErrCode = null; _gpsMsg = 'Could not load location settings.'; _applyGpsGate(); }
+        if (_gpsRetries < 5) {
+          _gpsRetries++; setTimeout(_initGpsGate, 300);
+        } else {
+          _gas('getAllAppConfigForFrontend', [], function (cfg) {
+            _D.appConfig = cfg || {};
+            _gpsRetries = 0;
+            _initGpsGate();
+          }, function () {
+            _gpsState = 'error'; _gpsErrCode = null;
+            _gpsMsg = 'Could not load location settings. Check connection and retry.';
+            _applyGpsGate();
+          });
+        }
         return;
       }
       _gpsRetries = 0;
@@ -6065,15 +6084,18 @@ function _gasX(fn, args, timeout, onOk, onErr) {
     }
 
     function _loadPunchStatus() {
-      // Use cached data if available
+      // Show cached data instantly if available (avoids a blank "Checking
+      // status..." flash on mobile), but ALWAYS fetch fresh data right
+      // after — attendance status/timing changes through the day, so
+      // relying solely on the cached value showed stale info indefinitely
+      // until the user manually reloaded.
       if (_D.todayAtt) {
         _punchState = _D.todayAtt.status || 'not_checked_in';
         _renderPunchCard(_D.todayAtt);
-        return;
+      } else {
+        _punchState = 'not_checked_in';
+        _renderPunchCard({ status: 'not_checked_in' });
       }
-      // Fallback: fetch fresh
-      _punchState = 'not_checked_in';
-      _renderPunchCard({ status: 'not_checked_in' });
       _gas('getTodayAttendanceStatus', [], function(res) {
         _D.todayAtt = res;
         _punchState = res.status || 'not_checked_in';
