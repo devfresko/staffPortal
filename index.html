@@ -5388,7 +5388,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbwz8z7wfZjCQTHTn4EHwzKDvY_M19XZNXjt0Ig_LzCP1--57a3A1zRlyoB4LrNKwrec7g/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbw-Mg0yodD-2rW4tGt9NL7iQxMIEHvHgHRrer37GvIfvILJ515ga93_W2K2CG4vgCL80Q/exec';
     var _TOKEN  = '';
 
 function _gas(fn, args, onOk, onErr) {
@@ -12946,15 +12946,21 @@ function _loadSetupTasks() {
         '<input type="text" id="emSearch" class="ana-sel" placeholder="🔍 Search doer..." oninput="_renderEM()" style="min-width:170px">' +
         '<select id="emBand" class="ana-sel" onchange="_renderEM()">' +
         '<option value="all">All Performance</option>' +
-        '<option value="good">🟢 Good (&le;20% pending)</option>' +
-        '<option value="warn">🟡 Warning (21-50% pending)</option>' +
-        '<option value="crit">🔴 Critical (&gt;50% pending)</option>' +
+        '<option value="good">🟢 Good (-20% to 0%)</option>' +
+        '<option value="warn">🟡 Warning (-50% to -21%)</option>' +
+        '<option value="crit">🔴 Critical (below -50%)</option>' +
         '</select>' +
         '<select id="emSort" class="ana-sel" onchange="_renderEM()">' +
         '<option value="name">Sort: Name</option>' +
-        '<option value="pend_desc">Sort: Pending High&rarr;Low</option>' +
-        '<option value="pend_asc">Sort: Pending Low&rarr;High</option>' +
+        '<option value="score_asc">Sort: Worst Score First</option>' +
+        '<option value="score_desc">Sort: Best Score First</option>' +
         '<option value="dept">Sort: Department</option>' +
+        '</select>' +
+        '<select id="emTopN" class="ana-sel" onchange="_renderEM()">' +
+        '<option value="all">Show: All</option>' +
+        '<option value="10">Show: Top 10</option>' +
+        '<option value="25">Show: Top 25</option>' +
+        '<option value="50">Show: Top 50</option>' +
         '</select>' +
         '<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--tx2);cursor:pointer;white-space:nowrap">' +
         '<input type="checkbox" id="emHideZero" onchange="_renderEM()"> Hide zero-activity</label>' +
@@ -13034,17 +13040,28 @@ function _loadSetupTasks() {
       });
     }
 
-    // Pending % — the inverse of completion: how much of this doer's
-    // planned work is NOT yet done. Shown everywhere instead of a
-    // "% complete" figure, per explicit request.
-    function _emPending(e) { return 100 - e.progress; }
+    // Score: 0 = fully done (good), -100 = nothing done (bad). Negative
+    // numbers read as "how far short of 100% complete" — e.g. -35 means
+    // 35% of planned work is still outstanding. A doer who somehow exceeds
+    // their plan shows a positive score (ahead of target).
+    function _emScore(e) { return e.progress - 100; }
 
-    function _emPendColor(pend) {
-      return pend <= 20 ? 'var(--G)' : pend <= 50 ? 'var(--O)' : 'var(--R)';
+    function _emScoreColor(score) {
+      return score >= -20 ? 'var(--G)' : score >= -50 ? 'var(--O)' : 'var(--R)';
     }
 
-    function _emBandOf(pend) {
-      return pend <= 20 ? 'good' : pend <= 50 ? 'warn' : 'crit';
+    function _emScoreBand(score) {
+      return score >= -20 ? 'good' : score >= -50 ? 'warn' : 'crit';
+    }
+
+    function _emScoreLabel(score) {
+      return (score > 0 ? '+' : '') + score + '%';
+    }
+
+    // Visual bar fill — represents the shortfall magnitude (0 when score is
+    // 0 or positive/no shortfall, up to 100 as score approaches -100).
+    function _emBarWidth(score) {
+      return Math.min(100, Math.max(0, -score));
     }
 
     function _emFilteredDoers() {
@@ -13056,16 +13073,20 @@ function _loadSetupTasks() {
       if (q) doers = doers.filter(function (e) { return (e.name || '').toLowerCase().indexOf(q) !== -1; });
 
       var band = (document.getElementById('emBand') || {}).value || 'all';
-      if (band !== 'all') doers = doers.filter(function (e) { return _emBandOf(_emPending(e)) === band; });
+      if (band !== 'all') doers = doers.filter(function (e) { return _emScoreBand(_emScore(e)) === band; });
 
       var hideZero = (document.getElementById('emHideZero') || {}).checked;
       if (hideZero) doers = doers.filter(function (e) { return e.total_plan > 0; });
 
       var sort = (document.getElementById('emSort') || {}).value || 'name';
-      if (sort === 'pend_desc') doers.sort(function (a, b) { return _emPending(b) - _emPending(a); });
-      else if (sort === 'pend_asc') doers.sort(function (a, b) { return _emPending(a) - _emPending(b); });
+      if (sort === 'score_asc') doers.sort(function (a, b) { return _emScore(a) - _emScore(b); });        // worst first
+      else if (sort === 'score_desc') doers.sort(function (a, b) { return _emScore(b) - _emScore(a); });  // best first
       else if (sort === 'dept') doers.sort(function (a, b) { return a.dept.localeCompare(b.dept) || a.name.localeCompare(b.name); });
       else doers.sort(function (a, b) { return a.name.localeCompare(b.name); });
+
+      var topN = (document.getElementById('emTopN') || {}).value || 'all';
+      if (topN !== 'all') doers = doers.slice(0, parseInt(topN, 10));
+
       return doers;
     }
 
@@ -13106,7 +13127,7 @@ function _loadSetupTasks() {
       var t = data.totals;
       var doers = _emFilteredDoers();
       var heatDates = data.heat_dates || [];
-      var pendTotal = 100 - t.overall_pct;
+      var scoreTotal = t.overall_pct - 100;
 
       var h = '<div style="font-size:12px;color:var(--tx3);font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">' +
         '<i class="fas fa-calendar-week"></i> ' + _fmtDate(data.from) + ' &rarr; ' + _fmtDate(data.to) +
@@ -13115,12 +13136,12 @@ function _loadSetupTasks() {
         '</div>';
 
       h += _emKpiStrip([
-        { lbl: 'Total Plan',      val: t.total_plan,    c: 'var(--P)',               ico: 'fa-clipboard-list',       sub: 'Checklist + Delegation + Attendance' },
-        { lbl: 'Total Actual',    val: t.total_actual,  c: 'var(--G)',               ico: 'fa-circle-check',         sub: t.overall_pct + '% done' },
-        { lbl: 'Checklist Plan',  val: t.cl_plan,       c: 'var(--V)',               ico: 'fa-list-check',           sub: (t.cl_plan - t.cl_actual) + ' pending of ' + t.cl_plan },
-        { lbl: 'Delegation Plan', val: t.dl_plan,       c: 'var(--T)',               ico: 'fa-diagram-project',      sub: (t.dl_plan - t.dl_actual) + ' pending of ' + t.dl_plan },
-        { lbl: 'Attendance Plan', val: t.at_plan,       c: 'var(--O)',               ico: 'fa-user-clock',           sub: (t.at_plan - t.at_actual) + ' absent of ' + t.at_plan },
-        { lbl: 'Pending %',       val: pendTotal + '%', c: _emPendColor(pendTotal),  ico: 'fa-triangle-exclamation', sub: 'Work not yet done' }
+        { lbl: 'Total Plan',      val: t.total_plan,    c: 'var(--P)',                ico: 'fa-clipboard-list',       sub: 'Checklist + Delegation + Attendance' },
+        { lbl: 'Total Actual',    val: t.total_actual,  c: 'var(--G)',                ico: 'fa-circle-check',         sub: t.overall_pct + '% done' },
+        { lbl: 'Checklist Plan',  val: t.cl_plan,       c: 'var(--V)',                ico: 'fa-list-check',           sub: (t.cl_plan - t.cl_actual) + ' pending of ' + t.cl_plan },
+        { lbl: 'Delegation Plan', val: t.dl_plan,       c: 'var(--T)',                ico: 'fa-diagram-project',      sub: (t.dl_plan - t.dl_actual) + ' pending of ' + t.dl_plan },
+        { lbl: 'Attendance Plan', val: t.at_plan,       c: 'var(--O)',                ico: 'fa-user-clock',           sub: (t.at_plan - t.at_actual) + ' absent of ' + t.at_plan },
+        { lbl: 'Score',           val: _emScoreLabel(scoreTotal), c: _emScoreColor(scoreTotal), ico: 'fa-gauge-high', sub: '0% = fully done' }
       ]);
 
       if (doers.length === 0) {
@@ -13132,8 +13153,8 @@ function _loadSetupTasks() {
       if (_emView === 'cards') {
         h += '<div class="da-emp-cards" style="margin-top:16px">' +
           doers.map(function (e) {
-            var pend = _emPending(e);
-            var c2 = _emPendColor(pend);
+            var score = _emScore(e);
+            var c2 = _emScoreColor(score);
             return '<div class="card card-nohover" style="cursor:pointer" onclick="_emShowDoerDetail(\'' + _esc(e.emp_id) + '\')">' +
               _emAvatar(e) +
               '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;font-size:11px;text-align:center;margin:12px 0">' +
@@ -13141,7 +13162,7 @@ function _loadSetupTasks() {
               '<div><div style="color:var(--tx3)">Delegation</div><div style="font-weight:800">' + e.dl_actual + '/' + e.dl_plan + '</div></div>' +
               '<div><div style="color:var(--tx3)">Attendance</div><div style="font-weight:800">' + e.at_actual + '/' + e.at_plan + '</div></div>' +
               '</div>' +
-              '<div style="display:flex;align-items:center;gap:6px"><div class="pbar-wrap" style="flex:1"><div class="pbar" style="width:' + pend + '%;background:' + c2 + '"></div></div><span style="font-size:11px;font-weight:800;color:' + c2 + ';white-space:nowrap">' + pend + '% pending</span></div>' +
+              '<div style="display:flex;align-items:center;gap:6px"><div class="pbar-wrap" style="flex:1"><div class="pbar" style="width:' + _emBarWidth(score) + '%;background:' + c2 + '"></div></div><span style="font-size:11px;font-weight:800;color:' + c2 + ';white-space:nowrap">' + _emScoreLabel(score) + '</span></div>' +
               '</div>';
           }).join('') +
           '</div>';
@@ -13151,25 +13172,25 @@ function _loadSetupTasks() {
 
       h += '<div class="card card-nohover" style="margin-top:16px">' +
         '<div class="sec-title" style="margin-bottom:12px"><i class="fas fa-users" style="color:var(--P)"></i> All Doers &mdash; Checklist + Delegation + Attendance' +
-        '<span style="font-size:10px;color:var(--tx3);font-weight:600;margin-left:8px">Heatmap: last ' + heatDates.length + ' days &middot; click a doer for details</span></div>' +
+        '<span style="font-size:10px;color:var(--tx3);font-weight:600;margin-left:8px">Heatmap: last ' + heatDates.length + ' days &middot; 0% = fully done, -100% = nothing done &middot; click a doer for details</span></div>' +
         '<div class="tw"><table><thead><tr>' +
         '<th>#</th><th style="min-width:160px">Doer</th>' +
         '<th style="text-align:center">CL Plan</th><th style="text-align:center">CL Actual</th>' +
         '<th style="text-align:center">DL Plan</th><th style="text-align:center">DL Actual</th>' +
         '<th style="text-align:center">Att Plan</th><th style="text-align:center">Att Actual</th>' +
-        '<th>Pending %</th>' +
+        '<th>Score</th>' +
         heatDates.map(function (dt) { return '<th style="text-align:center;font-size:10px">' + _esc(_fmtDateShort(dt)) + '</th>'; }).join('') +
         '</tr></thead><tbody>' +
         doers.map(function (e, i) {
-          var pend = _emPending(e);
-          var c2 = _emPendColor(pend);
+          var score = _emScore(e);
+          var c2 = _emScoreColor(score);
           return '<tr style="cursor:pointer" onclick="_emShowDoerDetail(\'' + _esc(e.emp_id) + '\')">' +
             '<td style="color:var(--tx3)">' + (i + 1) + '</td>' +
             '<td>' + _emAvatar(e) + '</td>' +
             '<td style="text-align:center">' + e.cl_plan + '</td><td style="text-align:center;color:var(--G);font-weight:700">' + e.cl_actual + '</td>' +
             '<td style="text-align:center">' + e.dl_plan + '</td><td style="text-align:center;color:var(--G);font-weight:700">' + e.dl_actual + '</td>' +
             '<td style="text-align:center">' + e.at_plan + '</td><td style="text-align:center;color:var(--G);font-weight:700">' + e.at_actual + '</td>' +
-            '<td><div style="display:flex;align-items:center;gap:6px"><div class="pbar-wrap" style="width:60px"><div class="pbar" style="width:' + pend + '%;background:' + c2 + '"></div></div><span style="font-size:11px;font-weight:800;color:' + c2 + '">' + pend + '%</span></div></td>' +
+            '<td><div style="display:flex;align-items:center;gap:6px"><div class="pbar-wrap" style="width:60px"><div class="pbar" style="width:' + _emBarWidth(score) + '%;background:' + c2 + '"></div></div><span style="font-size:11px;font-weight:800;color:' + c2 + '">' + _emScoreLabel(score) + '</span></div></td>' +
             e.heat.map(function (hd) {
               var clr = hd.label === '-' ? 'var(--tx3)' : hd.label === 'OK' ? 'var(--G)' : 'var(--O)';
               var bg  = hd.label === '-' ? 'var(--sur2)' : hd.label === 'OK' ? 'var(--Gl)' : 'var(--Ol)';
@@ -13195,29 +13216,29 @@ function _loadSetupTasks() {
       var totalPlan = doers.reduce(function (s, e) { return s + e[planKey]; }, 0);
       var totalAct  = doers.reduce(function (s, e) { return s + e[actKey]; }, 0);
       var pct = totalPlan > 0 ? Math.round((totalAct / totalPlan) * 100) : 100;
-      var pend = 100 - pct;
+      var score = pct - 100;
 
       var h = _emKpiStrip([
-        { lbl: title + ' Plan',   val: totalPlan,  c: 'var(--P)',         ico: ico,                        sub: 'Total in selected range' },
-        { lbl: title + ' Actual', val: totalAct,   c: 'var(--G)',         ico: 'fa-circle-check',          sub: (mod === 'at' ? 'Present days' : 'Completed') },
-        { lbl: 'Pending %',       val: pend + '%', c: _emPendColor(pend), ico: 'fa-triangle-exclamation',  sub: 'Not yet done' }
+        { lbl: title + ' Plan',   val: totalPlan,  c: 'var(--P)',          ico: ico,                sub: 'Total in selected range' },
+        { lbl: title + ' Actual', val: totalAct,   c: 'var(--G)',          ico: 'fa-circle-check',  sub: (mod === 'at' ? 'Present days' : 'Completed') },
+        { lbl: 'Score',           val: _emScoreLabel(score), c: _emScoreColor(score), ico: 'fa-gauge-high', sub: '0% = fully done' }
       ]);
 
       h += '<div class="card card-nohover" style="margin-top:16px">' +
-        '<div class="sec-title" style="margin-bottom:12px"><i class="fas ' + ico + '" style="color:var(--P)"></i> ' + title + ' &mdash; by Doer <span style="font-size:10px;color:var(--tx3);font-weight:600;margin-left:6px">click a doer for details</span></div>' +
-        '<div class="tw"><table><thead><tr><th>#</th><th style="min-width:160px">Doer</th><th style="text-align:center">Plan</th><th style="text-align:center">Actual</th><th style="text-align:center">' + (mod === 'at' ? 'Absent' : 'Pending') + '</th><th>Pending %</th></tr></thead><tbody>' +
+        '<div class="sec-title" style="margin-bottom:12px"><i class="fas ' + ico + '" style="color:var(--P)"></i> ' + title + ' &mdash; by Doer <span style="font-size:10px;color:var(--tx3);font-weight:600;margin-left:6px">click a doer for the task list</span></div>' +
+        '<div class="tw"><table><thead><tr><th>#</th><th style="min-width:160px">Doer</th><th style="text-align:center">Plan</th><th style="text-align:center">Actual</th><th style="text-align:center">' + (mod === 'at' ? 'Absent' : 'Pending') + '</th><th>Score</th></tr></thead><tbody>' +
         doers.map(function (e, i) {
           var plan = e[planKey], act = e[actKey];
           var p = plan > 0 ? Math.round((act / plan) * 100) : 100;
-          var pe = 100 - p;
-          var c2 = _emPendColor(pe);
-          return '<tr style="cursor:pointer" onclick="_emShowDoerDetail(\'' + _esc(e.emp_id) + '\')">' +
+          var sc = p - 100;
+          var c2 = _emScoreColor(sc);
+          return '<tr style="cursor:pointer" onclick="_emShowModuleDetail(\'' + _esc(e.emp_id) + '\',\'' + mod + '\')">' +
             '<td style="color:var(--tx3)">' + (i + 1) + '</td>' +
             '<td>' + _emAvatar(e) + '</td>' +
             '<td style="text-align:center">' + plan + '</td>' +
             '<td style="text-align:center;color:var(--G);font-weight:700">' + act + '</td>' +
             '<td style="text-align:center;color:var(--R);font-weight:700">' + (plan - act) + '</td>' +
-            '<td><div style="display:flex;align-items:center;gap:6px"><div class="pbar-wrap" style="width:60px"><div class="pbar" style="width:' + pe + '%;background:' + c2 + '"></div></div><span style="font-size:11px;font-weight:800;color:' + c2 + '">' + pe + '%</span></div></td>' +
+            '<td><div style="display:flex;align-items:center;gap:6px"><div class="pbar-wrap" style="width:60px"><div class="pbar" style="width:' + _emBarWidth(sc) + '%;background:' + c2 + '"></div></div><span style="font-size:11px;font-weight:800;color:' + c2 + '">' + _emScoreLabel(sc) + '</span></div></td>' +
             '</tr>';
         }).join('') +
         '</tbody></table></div>' +
@@ -13237,21 +13258,21 @@ function _loadSetupTasks() {
       for (var i = 0; i < data.doers.length; i++) { if (data.doers[i].emp_id === empId) { e = data.doers[i]; break; } }
       if (!e) return;
 
-      var pendCl = e.cl_plan > 0 ? Math.round(((e.cl_plan - e.cl_actual) / e.cl_plan) * 100) : 0;
-      var pendDl = e.dl_plan > 0 ? Math.round(((e.dl_plan - e.dl_actual) / e.dl_plan) * 100) : 0;
-      var pendAt = e.at_plan > 0 ? Math.round(((e.at_plan - e.at_actual) / e.at_plan) * 100) : 0;
-      var pendTotal = _emPending(e);
+      var scCl = e.cl_plan > 0 ? Math.round((e.cl_actual / e.cl_plan) * 100) - 100 : 0;
+      var scDl = e.dl_plan > 0 ? Math.round((e.dl_actual / e.dl_plan) * 100) - 100 : 0;
+      var scAt = e.at_plan > 0 ? Math.round((e.at_actual / e.at_plan) * 100) - 100 : 0;
+      var scTotal = _emScore(e);
 
-      function row(lbl, ico, plan, act, pend, color) {
-        return '<div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg);border:1px solid var(--bdr);border-radius:8px;margin-bottom:8px">' +
+      function row(lbl, ico, plan, act, score, color, modKey) {
+        return '<div onclick="_emShowModuleDetail(\'' + _esc(empId) + '\',\'' + modKey + '\')" style="cursor:pointer;display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg);border:1px solid var(--bdr);border-radius:8px;margin-bottom:8px">' +
           '<div class="da-kpi-ico" style="--kc:' + color + '"><i class="fas ' + ico + '"></i></div>' +
           '<div style="flex:1;min-width:0">' +
-          '<div style="font-weight:700;font-size:13px;white-space:normal;word-break:break-word">' + lbl + '</div>' +
-          '<div style="font-size:11px;color:var(--tx3);white-space:normal;word-break:break-word">' + act + ' done of ' + plan + ' &middot; ' + (plan - act) + ' pending</div>' +
+          '<div style="font-weight:700;font-size:13px;white-space:normal;word-break:break-word">' + lbl + ' <i class="fas fa-chevron-right" style="font-size:9px;color:var(--tx3)"></i></div>' +
+          '<div style="font-size:11px;color:var(--tx3);white-space:normal;word-break:break-word">' + act + ' done of ' + plan + ' &middot; ' + (plan - act) + ' pending &middot; tap for task list</div>' +
           '</div>' +
           '<div style="text-align:right;flex-shrink:0">' +
-          '<div style="font-weight:900;font-size:15px;color:' + _emPendColor(pend) + '">' + pend + '%</div>' +
-          '<div style="font-size:9px;color:var(--tx3);white-space:nowrap">pending</div>' +
+          '<div style="font-weight:900;font-size:15px;color:' + _emScoreColor(score) + '">' + _emScoreLabel(score) + '</div>' +
+          '<div style="font-size:9px;color:var(--tx3);white-space:nowrap">score</div>' +
           '</div></div>';
       }
 
@@ -13265,13 +13286,13 @@ function _loadSetupTasks() {
         '<div style="font-size:12px;color:var(--tx3);white-space:normal;word-break:break-word;overflow-wrap:break-word">' + _esc(e.dept) + '</div>' +
         '</div>' +
         '<div style="text-align:center;flex-shrink:0">' +
-        '<div style="font-weight:900;font-size:20px;color:' + _emPendColor(pendTotal) + '">' + pendTotal + '%</div>' +
-        '<div style="font-size:9px;color:var(--tx3);white-space:nowrap">overall pending</div>' +
+        '<div style="font-weight:900;font-size:20px;color:' + _emScoreColor(scTotal) + '">' + _emScoreLabel(scTotal) + '</div>' +
+        '<div style="font-size:9px;color:var(--tx3);white-space:nowrap">overall score</div>' +
         '</div></div>' +
 
-        row('Checklist', 'fa-list-check', e.cl_plan, e.cl_actual, pendCl, 'var(--V)') +
-        row('Delegation', 'fa-diagram-project', e.dl_plan, e.dl_actual, pendDl, 'var(--T)') +
-        row('Attendance', 'fa-user-clock', e.at_plan, e.at_actual, pendAt, 'var(--O)') +
+        row('Checklist', 'fa-list-check', e.cl_plan, e.cl_actual, scCl, 'var(--V)', 'cl') +
+        row('Delegation', 'fa-diagram-project', e.dl_plan, e.dl_actual, scDl, 'var(--T)', 'dl') +
+        row('Attendance', 'fa-user-clock', e.at_plan, e.at_actual, scAt, 'var(--O)', 'at') +
 
         '<div style="margin-top:16px">' +
         '<div style="font-weight:700;font-size:12px;color:var(--tx2);margin-bottom:8px"><i class="fas fa-calendar-days"></i> Daily Activity (last ' + e.heat.length + ' days)</div>' +
@@ -13293,13 +13314,90 @@ function _loadSetupTasks() {
       }, 30);
     }
 
+    // Drill-down popup: the actual task/delegation/attendance records behind
+    // one doer's module summary, each showing the date it happened on.
+    // Fetched on demand (not part of the main dashboard load).
+    function _emShowModuleDetail(empId, module) {
+      var modal = document.getElementById('modal');
+      if (modal) modal.className = 'modal-box wide';
+      _openModal('<i class="fas fa-circle-notch fa-spin"></i> Loading...', _skel(3), null, null, true);
+      setTimeout(function () {
+        var foot = document.getElementById('mFoot');
+        if (foot) foot.innerHTML = '<button class="btn btn-outline" onclick="_emShowDoerDetail(\'' + _esc(empId) + '\')"><i class="fas fa-arrow-left"></i> Back</button>' +
+          '<button class="btn" onclick="_closeModal()"><i class="fas fa-times"></i> Close</button>';
+      }, 30);
+
+      var from = (document.getElementById('emFrom') || {}).value || (_currMonth() + '-01');
+      var to   = (document.getElementById('emTo')   || {}).value || _today();
+
+      _gas('getEMDoerDetail', [{ empId: empId, module: module, from: from, to: to }], function (res) {
+        _emRenderModuleDetail(res);
+      }, function (e) {
+        var bEl = document.getElementById('mBody');
+        if (bEl) bEl.innerHTML = '<div class="te"><i class="fas fa-exclamation-triangle"></i> ' + _esc(e.message) + '</div>';
+      });
+    }
+
+    function _emRenderModuleDetail(res) {
+      var titleMap = { cl: 'Checklist', dl: 'Delegation', at: 'Attendance' };
+      var icoMap   = { cl: 'fa-list-check', dl: 'fa-diagram-project', at: 'fa-user-clock' };
+      var title = titleMap[res.module] || 'Details';
+      var ico   = icoMap[res.module] || 'fa-circle-info';
+
+      var tEl = document.getElementById('mTitle');
+      if (tEl) tEl.innerHTML = '<i class="fas ' + ico + '" style="color:var(--P)"></i> ' + _esc(res.name) + ' &mdash; ' + title;
+
+      var body = '<div style="font-size:11px;color:var(--tx3);margin-bottom:14px">' +
+        _fmtDate(res.from) + ' &rarr; ' + _fmtDate(res.to) + ' &middot; ' + res.items.length + ' record' + (res.items.length === 1 ? '' : 's') +
+        '</div>';
+
+      if (!res.items.length) {
+        body += '<div class="empty-state" style="padding:20px"><i class="fas fa-inbox"></i><p>No records in this range.</p></div>';
+      } else if (res.module === 'at') {
+        body += '<div style="display:flex;flex-direction:column;gap:6px">' +
+          res.items.map(function (it) {
+            var clr = it.done ? 'var(--G)' : (it.status === 'A' ? 'var(--R)' : 'var(--O)');
+            var bg  = it.done ? 'var(--Gl)' : (it.status === 'A' ? 'var(--Rl)' : 'var(--Ol)');
+            return '<div style="display:flex;align-items:center;gap:10px;padding:9px 10px;background:var(--bg);border:1px solid var(--bdr);border-radius:8px;flex-wrap:wrap">' +
+              '<div style="min-width:90px;font-size:12px;font-weight:700">' + _esc(_fmtDateShort(it.date)) + '</div>' +
+              '<div style="flex:1;min-width:0;font-size:11px;color:var(--tx3);white-space:normal;word-break:break-word">' +
+              (it.check_in ? 'In: ' + _esc(it.check_in) : '') + (it.check_out ? ' &middot; Out: ' + _esc(it.check_out) : '') + (it.hours ? ' &middot; ' + _esc(String(it.hours)) : '') +
+              '</div>' +
+              '<span style="padding:3px 8px;border-radius:6px;font-size:10px;font-weight:800;background:' + bg + ';color:' + clr + ';white-space:nowrap">' + _esc(it.status) + '</span>' +
+              '</div>';
+          }).join('') +
+          '</div>';
+      } else {
+        body += '<div style="display:flex;flex-direction:column;gap:6px">' +
+          res.items.map(function (it) {
+            var clr = it.done ? 'var(--G)' : 'var(--O)';
+            var bg  = it.done ? 'var(--Gl)' : 'var(--Ol)';
+            var dateLabel = res.module === 'dl'
+              ? ('Due: ' + _esc(_fmtDateShort(it.due)) + (it.date && it.date !== it.due ? ' &middot; Assigned: ' + _esc(_fmtDateShort(it.date)) : ''))
+              : ('Planned: ' + _esc(_fmtDateShort(it.date)) + (it.actual ? ' &middot; Done on: ' + _esc(_fmtDateShort(it.actual)) : ''));
+            var extra = res.module === 'dl' ? ('By: ' + _esc(it.by || '—')) : ('Freq: ' + _esc(it.freq || 'D'));
+            return '<div style="padding:10px;background:var(--bg);border:1px solid var(--bdr);border-radius:8px">' +
+              '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap">' +
+              '<div style="font-weight:700;font-size:12.5px;white-space:normal;word-break:break-word;overflow-wrap:break-word;flex:1;min-width:120px">' + _esc(it.task) + '</div>' +
+              '<span style="padding:3px 8px;border-radius:6px;font-size:10px;font-weight:800;background:' + bg + ';color:' + clr + ';white-space:nowrap;flex-shrink:0">' + _esc(it.status) + '</span>' +
+              '</div>' +
+              '<div style="font-size:10.5px;color:var(--tx3);margin-top:4px;white-space:normal;word-break:break-word">' + dateLabel + ' &middot; ' + extra + '</div>' +
+              '</div>';
+          }).join('') +
+          '</div>';
+      }
+
+      var bEl = document.getElementById('mBody');
+      if (bEl) bEl.innerHTML = body;
+    }
+
     function _exportEM() {
       var data = _D.emData;
       if (!data) { _toast('Load data first', 'warn'); return; }
       var doers = _emFilteredDoers();
-      var rows = [['#', 'Doer', 'Department', 'Checklist Plan', 'Checklist Actual', 'Delegation Plan', 'Delegation Actual', 'Attendance Plan', 'Attendance Actual', 'Total Plan', 'Total Actual', 'Pending %']];
+      var rows = [['#', 'Doer', 'Department', 'Checklist Plan', 'Checklist Actual', 'Delegation Plan', 'Delegation Actual', 'Attendance Plan', 'Attendance Actual', 'Total Plan', 'Total Actual', 'Score %']];
       doers.forEach(function (e, i) {
-        rows.push([i + 1, e.name, e.dept, e.cl_plan, e.cl_actual, e.dl_plan, e.dl_actual, e.at_plan, e.at_actual, e.total_plan, e.total_actual, _emPending(e)]);
+        rows.push([i + 1, e.name, e.dept, e.cl_plan, e.cl_actual, e.dl_plan, e.dl_actual, e.at_plan, e.at_actual, e.total_plan, e.total_actual, _emScore(e)]);
       });
       _downloadCSV('em_dashboard_' + (data.from || _currMonth()) + '_to_' + (data.to || _today()) + '.csv', rows);
       _toast('Exported!', 'ok');
