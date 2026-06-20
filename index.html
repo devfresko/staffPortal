@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="Fresko Portal">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-180.png">
-  <title>Fresko Staff Portal — v3.0</title>
+  <title>Fresko Staff Portal</title>
 
   <!-- External Assets -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -5887,8 +5887,27 @@ function _gasX(fn, args, timeout, onOk, onErr) {
 
     // Shows clear, platform-specific steps to turn location on, since most
     // browsers (iOS Safari, desktop) can't be sent straight to the OS
-    // settings screen the way Android sometimes can.
+    // settings screen the way Android sometimes can. Only shows the
+    // "enable permission" steps when permission was actually denied —
+    // otherwise (location allowed, but the fix just failed/timed out) it
+    // shows accurate troubleshooting instead of telling the user to redo
+    // something they've already done.
     function _showLocationGuide() {
+      if (_gpsErrCode !== 1) {
+        _openModal(
+          '<i class="fas fa-location-dot" style="color:var(--P)"></i> Couldn\'t Get Your Location',
+          '<div style="font-size:13px;color:var(--tx2);margin-bottom:10px">Location permission looks fine — the device just couldn\'t get a location fix this time. This is common on desktops/laptops without GPS. Try:</div>' +
+          '<ol style="margin:0;padding-left:20px;line-height:1.9;font-size:13.5px">' +
+          '<li>Make sure you\'re connected to WiFi or mobile internet</li>' +
+          '<li>If on a desktop/laptop, try using your phone instead — it has GPS</li>' +
+          '<li>Move near a window or step outside, then tap <b>Retry</b> below</li>' +
+          '</ol>',
+          function () { _closeModal(); _initGpsGate(); },
+          '<i class="fas fa-rotate-right"></i> Retry'
+        );
+        return;
+      }
+
       _tryOpenLocationSettings();
       var ua = navigator.userAgent || '';
       var steps;
@@ -5924,6 +5943,8 @@ function _gasX(fn, args, timeout, onOk, onErr) {
       );
     }
 
+    var _gpsErrCode = null; // last geolocation error code, drives which guide (if any) makes sense
+
     function _initGpsGate() {
       // AppConfig loads asynchronously at login — if it hasn't arrived yet,
       // do NOT default to "GPS off" (that would let anyone through during
@@ -5932,7 +5953,7 @@ function _gasX(fn, args, timeout, onOk, onErr) {
         _gpsState = 'checking'; _gpsMsg = 'Verifying location…';
         _applyGpsGate();
         if (_gpsRetries < 20) { _gpsRetries++; setTimeout(_initGpsGate, 300); }
-        else { _gpsState = 'error'; _gpsMsg = 'Could not load location settings.'; _applyGpsGate(); }
+        else { _gpsState = 'error'; _gpsErrCode = null; _gpsMsg = 'Could not load location settings.'; _applyGpsGate(); }
         return;
       }
       _gpsRetries = 0;
@@ -5944,42 +5965,57 @@ function _gasX(fn, args, timeout, onOk, onErr) {
       _applyGpsGate();
 
       if (!navigator.geolocation) {
-        _gpsState = 'error'; _gpsMsg = 'GPS not supported on this device/browser.';
+        _gpsState = 'error'; _gpsErrCode = null; _gpsMsg = 'GPS not supported on this device/browser.';
         _applyGpsGate();
         return;
       }
-      navigator.geolocation.getCurrentPosition(
-        function (pos) {
-          _gas('validateGpsForAttendance', [pos.coords.latitude, pos.coords.longitude], function (res) {
-            if (res && res.allowed) {
-              _gpsState = 'ok';
-              _gpsMsg = res.nearest_location ? ('At ' + res.nearest_location + (res.distance_km ? ' (' + res.distance_km + ' away)' : '')) : '';
-            } else {
-              _gpsState = 'blocked';
-              _gpsMsg = (res && res.message) || 'You are not within a registered attendance location.';
-            }
-            _applyGpsGate();
-          }, function () {
-            // The validation call itself failed (network blip) — this is
-            // exactly the kind of uncertainty that should block, not allow.
-            // The "Retry" link lets the user re-check once connectivity
-            // is back, and the click-time server-side check is always the
-            // final authority regardless.
-            _gpsState = 'error'; _gpsMsg = 'Could not verify your location. Check connection and retry.';
-            _applyGpsGate();
-          });
-        },
-        function (err) {
-          var msgs = {
-            1: 'Location permission denied. Allow location access to mark attendance.',
-            2: 'Location unavailable. Move to an open area and retry.',
-            3: 'Location request timed out. Retry.'
-          };
-          _gpsState = 'error'; _gpsMsg = msgs[err.code] || 'Location error.';
+
+      function onPos(pos) {
+        _gas('validateGpsForAttendance', [pos.coords.latitude, pos.coords.longitude], function (res) {
+          if (res && res.allowed) {
+            _gpsState = 'ok';
+            _gpsMsg = res.nearest_location ? ('At ' + res.nearest_location + (res.distance_km ? ' (' + res.distance_km + ' away)' : '')) : '';
+          } else {
+            _gpsState = 'blocked';
+            _gpsMsg = (res && res.message) || 'You are not within a registered attendance location.';
+          }
           _applyGpsGate();
-        },
-        { timeout: 12000, maximumAge: 0, enableHighAccuracy: true }
-      );
+        }, function () {
+          // The validation call itself failed (network blip) — this is
+          // exactly the kind of uncertainty that should block, not allow.
+          // The "Retry" link lets the user re-check once connectivity
+          // is back, and the click-time server-side check is always the
+          // final authority regardless.
+          _gpsState = 'error'; _gpsErrCode = null; _gpsMsg = 'Could not verify your location. Check connection and retry.';
+          _applyGpsGate();
+        });
+      }
+
+      function onErr(err) {
+        // UNAVAILABLE (2) or TIMEOUT (3) with high accuracy is exactly what
+        // happens on most desktops/laptops — there's no GPS chip, so a
+        // high-accuracy fix can fail even though location PERMISSION is
+        // correctly granted. Retry once with low accuracy (WiFi/IP-based,
+        // faster and far more likely to succeed) before giving up — only a
+        // genuine PERMISSION_DENIED (1) skips straight to that guide.
+        if (err.code !== 1) {
+          navigator.geolocation.getCurrentPosition(onPos, function (err2) {
+            var msgs = {
+              1: 'Location permission denied. Allow location access to mark attendance.',
+              2: 'Could not get your location. Make sure you have an internet/WiFi connection and try again.',
+              3: 'Location request timed out. Check your connection and retry.'
+            };
+            _gpsState = 'error'; _gpsErrCode = err2.code; _gpsMsg = msgs[err2.code] || 'Location error.';
+            _applyGpsGate();
+          }, { timeout: 15000, maximumAge: 30000, enableHighAccuracy: false });
+          return;
+        }
+        _gpsState = 'error'; _gpsErrCode = 1;
+        _gpsMsg = 'Location permission denied. Allow location access to mark attendance.';
+        _applyGpsGate();
+      }
+
+      navigator.geolocation.getCurrentPosition(onPos, onErr, { timeout: 12000, maximumAge: 0, enableHighAccuracy: true });
     }
 
     // Combines the GPS gate with the current punch state to decide the
