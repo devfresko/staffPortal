@@ -6024,29 +6024,21 @@ function _gasX(fn, args, timeout, onOk, onErr) {
 
     function _initGpsGate() {
       // AppConfig loads asynchronously at login — if it hasn't arrived yet,
-      // do NOT default to "GPS off" (that would let anyone through during
-      // the load window). Give the normal bulk load a short head start,
-      // then fetch it directly via the dedicated lightweight call rather
-      // than waiting indefinitely on the heavy getAllData call to finish.
+      // give the normal bulk load a short head start, then fetch it directly.
       if (!_D.appConfig) {
         _gpsState = 'checking'; _gpsMsg = 'Verifying location…';
         _applyGpsGate();
         if (_gpsRetries < 5) {
           _gpsRetries++; setTimeout(_initGpsGate, 300);
         } else {
-          // Dedicated lightweight fetch for just the AppConfig keys
           _gas('getAllAppConfigForFrontend', [], function (cfg) {
             _D.appConfig = cfg || {};
             _gpsRetries = 0;
             _initGpsGate();
           }, function () {
-            // AppConfig itself failed — rather than blocking forever, fall
-            // through to server-side-only validation. The backend ALWAYS
-            // re-checks GPS on check-in/out regardless of what the frontend
-            // shows, so this is safe: the button opens, but the server will
-            // still block if the employee is not at a registered location.
-            _gpsState = 'disabled';
-            _gpsMsg = '';
+            // AppConfig failed — fall through to server-side validation.
+            // Backend always re-checks GPS on check-in/out regardless.
+            _gpsState = 'disabled'; _gpsMsg = '';
             _applyGpsGate();
             _toast('⚠️ Location settings unavailable. Server will validate.', 'warn');
           });
@@ -6062,66 +6054,85 @@ function _gasX(fn, args, timeout, onOk, onErr) {
       _applyGpsGate();
 
       if (!navigator.geolocation) {
-        _gpsState = 'error'; _gpsErrCode = null; _gpsMsg = 'GPS not supported on this device/browser.';
+        // Geolocation unavailable (unsupported browser, or iframe without
+        // allow="geolocation" — e.g. Google Sites embedding). Don't block.
+        _gpsState = 'disabled'; _gpsMsg = '';
         _applyGpsGate();
         return;
       }
+
+      // ── Cached-first GPS strategy ──────────────────────────────────────────
+      // Most mobile devices have a recent GPS fix cached by Maps/other apps.
+      // Trying cached first gives an instant result on the common path,
+      // instead of the old approach (high-accuracy-first) which always waited
+      // 12+ seconds even when a perfectly good cached fix was available.
+      //
+      // Stage 1: any cached position (no age limit), 2s timeout → instant
+      // Stage 2: low-accuracy fresh (WiFi/cell), 10s timeout
+      // Stage 3: high-accuracy fresh (GPS chip), 15s timeout  
+      // Stage 4: server-side only validation (never block permanently)
+      //
+      // For already-checked-in users (about to check OUT), allow a 10-minute-
+      // old cached position — we already validated at check-in so no need for
+      // another fresh GPS fix.
+      var isCheckingOut = (_punchState === 'checked_in');
+      var cacheMaxAge   = isCheckingOut ? 600000 : 0; // 10min for checkout, fresh for check-in
 
       function onPos(pos) {
         _gas('validateGpsForAttendance', [pos.coords.latitude, pos.coords.longitude], function (res) {
           if (res && res.allowed) {
             _gpsState = 'ok';
-            _gpsMsg = res.nearest_location ? ('At ' + res.nearest_location + (res.distance_km ? ' (' + res.distance_km + ' away)' : '')) : '';
+            _gpsMsg = res.nearest_location
+              ? 'At ' + res.nearest_location + (res.distance_km ? ' (' + res.distance_km + ' away)' : '')
+              : '';
           } else {
             _gpsState = 'blocked';
             _gpsMsg = (res && res.message) || 'You are not within a registered attendance location.';
           }
           _applyGpsGate();
         }, function () {
-          // Validation call itself failed (network blip). Don't hard-block
-          // — server-side validation will still apply on the actual check-in/out.
+          // Server validation call failed (network blip) — don't hard-block.
           _gpsState = 'disabled'; _gpsMsg = '';
           _applyGpsGate();
           _toast('⚠️ Could not verify location. Server will validate.', 'warn');
         });
       }
 
-      function onErr3(err3) {
-        // All 3 GPS attempts failed. Rather than leaving the user permanently
-        // stuck (especially those working indoors on desktops), fall through
-        // to server-side-only validation with a clear warning. The backend
-        // always re-validates GPS on the actual check-in/out call.
-        _gpsState = 'disabled'; _gpsErrCode = err3.code;
-        _gpsMsg = '';
+      function permDenied() {
+        _gpsState = 'error'; _gpsErrCode = 1;
+        _gpsMsg = 'Location permission denied. Allow location access to mark attendance.';
         _applyGpsGate();
-        _toast('⚠️ Could not get location after 3 attempts. Server will validate at check-in.', 'warn');
       }
 
-      function onErr(err) {
-        // Stage 1 failed (high-accuracy). Code 1 = PERMISSION_DENIED → hard stop.
-        if (err.code === 1) {
-          _gpsState = 'error'; _gpsErrCode = 1;
-          _gpsMsg = 'Location permission denied. Allow location access to mark attendance.';
-          _applyGpsGate();
-          return;
-        }
-        // Stage 2: low-accuracy / WiFi-based, 15s timeout, accept 30s-old cached fix
-        navigator.geolocation.getCurrentPosition(onPos, function (err2) {
-          if (err2.code === 1) {
-            _gpsState = 'error'; _gpsErrCode = 1;
-            _gpsMsg = 'Location permission denied. Allow location access to mark attendance.';
-            _applyGpsGate();
-            return;
-          }
-          // Stage 3: last resort — accept any cached position up to 5 minutes old
-          // and a very long timeout. Works for devices that have a cached GPS fix
-          // but the fresh request is timing out due to weak signal or network.
-          navigator.geolocation.getCurrentPosition(onPos, onErr3,
-            { timeout: 25000, maximumAge: 300000, enableHighAccuracy: false });
-        }, { timeout: 15000, maximumAge: 30000, enableHighAccuracy: false });
+      function allFailed() {
+        // All stages failed — never leave user permanently blocked.
+        _gpsState = 'disabled'; _gpsMsg = '';
+        _applyGpsGate();
+        _toast('⚠️ Could not get location. Server will validate at check-in.', 'warn');
       }
 
-      navigator.geolocation.getCurrentPosition(onPos, onErr, { timeout: 12000, maximumAge: 0, enableHighAccuracy: true });
+      // Stage 3: high-accuracy (GPS chip), 15s
+      function tryStage3() {
+        navigator.geolocation.getCurrentPosition(onPos, function (e3) {
+          if (e3.code === 1) { permDenied(); return; }
+          allFailed();
+        }, { timeout: 15000, maximumAge: 0, enableHighAccuracy: true });
+      }
+
+      // Stage 2: low-accuracy (WiFi/cell), 10s, accept 30s-old cache
+      function tryStage2() {
+        navigator.geolocation.getCurrentPosition(onPos, function (e2) {
+          if (e2.code === 1) { permDenied(); return; }
+          tryStage3();
+        }, { timeout: 10000, maximumAge: 30000, enableHighAccuracy: false });
+      }
+
+      // Stage 1: any cached position, 2s — instant on most devices
+      navigator.geolocation.getCurrentPosition(onPos, function (e1) {
+        if (e1.code === 1) { permDenied(); return; }
+        // No usable cache — proceed to fresh attempts
+        tryStage2();
+      }, { timeout: 2000, maximumAge: isCheckingOut ? 600000 : 300000, enableHighAccuracy: false });
     }
 
     // Combines the GPS gate with the current punch state to decide the
@@ -6342,30 +6353,54 @@ function _gasX(fn, args, timeout, onOk, onErr) {
       if (!gpsEnabled) { onReady(deviceTs); return; }
 
       if (!navigator.geolocation) {
-        _toast('📍 GPS not supported on this device/browser.', 'err');
-        btn.disabled  = false;
-        btn.innerHTML = '<i class="fas ' + icon + '"></i> ' + label;
+        // Geolocation unavailable (unsupported or iframe restriction) —
+        // let server validate instead of blocking the user entirely.
+        onReady(deviceTs);
         return;
       }
+
       btn.innerHTML = '<i class="fas fa-location-dot fa-beat"></i> Getting location...';
-      navigator.geolocation.getCurrentPosition(
-        function (pos) {
-          btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Processing...';
-          onReady({ ts: deviceTs, lat: pos.coords.latitude, lng: pos.coords.longitude });
-        },
-        function (err) {
-          // GPS required but denied/unavailable — HARD BLOCK, do NOT call onReady
-          var msgs = {
-            1: '📍 Location permission denied. Please allow location access to ' + label.toLowerCase() + '.',
-            2: '📍 Location unavailable. Please try again.',
-            3: '📍 Location request timed out. Please try again.'
-          };
-          _toast(msgs[err.code] || '📍 Location error. ' + label + ' blocked.', 'err');
-          btn.disabled  = false;
-          btn.innerHTML = '<i class="fas ' + icon + '"></i> ' + label;
-        },
-        { timeout: 12000, maximumAge: 0, enableHighAccuracy: true }
-      );
+
+      var isCheckOut = (_punchState === 'checked_in');
+
+      function gotPos(pos) {
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Processing...';
+        onReady({ ts: deviceTs, lat: pos.coords.latitude, lng: pos.coords.longitude });
+      }
+
+      function errFresh(err) {
+        if (err.code === 1) {
+          _toast('📍 Location permission denied. Please allow location access to ' + label.toLowerCase() + '.', 'err');
+          btn.disabled = false; btn.innerHTML = '<i class="fas ' + icon + '"></i> ' + label;
+          return;
+        }
+        // High-accuracy fresh failed too — proceed with server-side validation
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Processing...';
+        onReady(deviceTs);
+      }
+
+      function errLow(err) {
+        if (err.code === 1) {
+          _toast('📍 Location permission denied. Please allow location access to ' + label.toLowerCase() + '.', 'err');
+          btn.disabled = false; btn.innerHTML = '<i class="fas ' + icon + '"></i> ' + label;
+          return;
+        }
+        // Stage 3: high-accuracy fresh, 15s
+        navigator.geolocation.getCurrentPosition(gotPos, errFresh,
+          { timeout: 15000, maximumAge: 0, enableHighAccuracy: true });
+      }
+
+      // Stage 1: cached position — instant. For check-out allow 10min old cache.
+      navigator.geolocation.getCurrentPosition(gotPos, function (e1) {
+        if (e1.code === 1) {
+          _toast('📍 Location permission denied. Please allow location access to ' + label.toLowerCase() + '.', 'err');
+          btn.disabled = false; btn.innerHTML = '<i class="fas ' + icon + '"></i> ' + label;
+          return;
+        }
+        // Stage 2: low-accuracy fresh, 10s
+        navigator.geolocation.getCurrentPosition(gotPos, errLow,
+          { timeout: 10000, maximumAge: 30000, enableHighAccuracy: false });
+      }, { timeout: 2000, maximumAge: isCheckOut ? 600000 : 300000, enableHighAccuracy: false });
     }
 
     /* ══════════════════════════════════════════════════════════
