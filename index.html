@@ -3749,15 +3749,19 @@
       transform: translate(-50%, -50%);
       background: var(--sur);
       border-radius: 20px;
-      padding: 30px;
+      padding: 0;
       width: 92%;
       max-width: 500px;
+      max-height: 88vh;
       z-index: calc(var(--z-modal) + 1);
       box-shadow: var(--shad3);
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
     }
 
     .modal-box.on {
-      display: block;
+      display: flex;
       animation: bounce-in .25s ease both;
     }
 
@@ -3772,24 +3776,32 @@
     .modal-title {
       font-size: 18px;
       font-weight: 900;
-      margin-bottom: 18px;
+      padding: 24px 28px 16px;
       display: flex;
       align-items: center;
       gap: 10px;
       letter-spacing: -.3px;
+      flex-shrink: 0;
+      border-bottom: 1px solid var(--bdr);
     }
 
     .modal-body {
       color: var(--tx);
+      padding: 20px 28px;
+      overflow-y: auto;
+      overflow-x: auto;
+      flex: 1;
+      min-height: 0;
     }
 
     .modal-foot {
       display: flex;
       justify-content: flex-end;
       gap: 10px;
-      margin-top: 24px;
-      padding-top: 18px;
+      padding: 16px 28px;
       border-top: 1px solid var(--bdr);
+      flex-shrink: 0;
+      background: var(--sur);
     }
 
     /* Sign-out confirm */
@@ -4523,9 +4535,11 @@
         width: 100% !important; max-width: 100% !important;
         margin: 0 !important;
         border-radius: 24px 24px 0 0 !important;
-        max-height: 90svh; overflow-y: auto;
-        padding-bottom: calc(env(safe-area-inset-bottom,0px) + 20px) !important;
+        max-height: 90svh;
         animation: sheetUp .28s cubic-bezier(.4,0,.2,1) both;
+      }
+      .modal-foot {
+        padding-bottom: calc(env(safe-area-inset-bottom,0px) + 16px) !important;
       }
       .modal-box::before {
         content: ''; display: block; width: 36px; height: 4px;
@@ -5060,6 +5074,56 @@
     var _V = null;   // Current view name
     var _ST = null;   // Current sub-tab
     var _D = {};     // Cached data store (empDir, todayTasks, etc.)
+    var _refreshTimer = null;   // background auto-refresh interval handle
+    var _AUTO_REFRESH_MS = 90000; // 90s — balance between freshness and GAS quota
+
+    // Background refresh — fetches only the lightweight dashboard data so
+    // changes in Google Sheets (task updates, delegation status, announcements)
+    // appear automatically without the user having to manually reload.
+    function _startAutoRefresh() {
+      _stopAutoRefresh();
+      _refreshTimer = setInterval(function () {
+        if (document.hidden) return; // skip when tab is in background
+        _gas('getDashboardStatsFresh', [], function (d) {
+          if (!d) return;
+          if (d.dashStats)    _D.dashStats    = d.dashStats;
+          if (d.todayAtt)     _D.todayAtt     = d.todayAtt;
+          if (d.announcements) _D.announcements = d.announcements;
+          if (d.myDelegations) _D.myDelegations = d.myDelegations;
+          _D.lastFetch = Date.now();
+          // If currently on the dashboard, silently re-render the KPI strip
+          var cur = window._curView || '';
+          if (cur === 'dash') {
+            var kpiEl = document.getElementById('dashKpi');
+            if (kpiEl && d.dashStats) _renderDashKpi(d.dashStats);
+          }
+        }, function() {}); // silent fail — will retry next interval
+      }, _AUTO_REFRESH_MS);
+    }
+
+    function _stopAutoRefresh() {
+      if (_refreshTimer) { clearInterval(_refreshTimer); _refreshTimer = null; }
+    }
+
+    // Hard refresh — clears in-memory _D (forces fresh server fetch on next
+    // navigation), shows a spinner, then reloads current view
+    function _forceRefresh() {
+      var cur = window._curView || 'dash';
+      // Clear in-memory cache for non-static data
+      delete _D.dashStats; delete _D.todayAtt; delete _D.todayTasks;
+      delete _D.announcements; delete _D.myDelegations; delete _D.myAtt;
+      delete _D.lastFetch;
+      _D.lastFetch = null;
+      _gas('getDashboardStatsFresh', [], function (d) {
+        if (!d) return;
+        if (d.dashStats)     _D.dashStats     = d.dashStats;
+        if (d.todayAtt)      _D.todayAtt      = d.todayAtt;
+        if (d.announcements) _D.announcements = d.announcements;
+        if (d.myDelegations) _D.myDelegations = d.myDelegations;
+        _D.lastFetch = Date.now();
+        _loadV(cur);
+      }, function() { _loadV(cur); });
+    }
     // Cache control: auto-disabled on desktop (>1024px), user can override
     var _cacheOk = (function() {
       try {
@@ -5398,7 +5462,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbyQqBOHHIbqYPl8U37RilibNaRZMV9BZzxohCyE3P4Ev6BiWjBElardaNvq6IsSrfj6tA/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbxGUT4iLCcZQCe_u_d-I9gPJAh-AnB9rSCmSIpwzaUtZPNwYwr5EWgYAo7VhV_ZAtPbMA/exec';
     var _TOKEN  = '';
 
 function _gas(fn, args, onOk, onErr) {
@@ -5768,6 +5832,7 @@ function _gasX(fn, args, timeout, onOk, onErr) {
         _loadV(window._pwaStartRoute || 'dash');
         window._pwaStartRoute = null;
         _updateMobNav && _updateMobNav('home');
+        _startAutoRefresh(); // keep data fresh in the background
 
       }, function() {
         // Fallback: getAllData itself failed/timed out. Still fetch
@@ -5779,6 +5844,7 @@ function _gasX(fn, args, timeout, onOk, onErr) {
         _gas('getAllAppConfigForFrontend', [], function(cfg) { _D.appConfig = cfg || {}; }, function() {});
         _loadV('dash');
         _updateMobNav && _updateMobNav('home');
+        _startAutoRefresh();
       });
     }
     function _bootNtfs() {
@@ -5802,6 +5868,7 @@ function _gasX(fn, args, timeout, onOk, onErr) {
     function _loadV(view, subTab) {
       _V = view;
       _ST = subTab || null;
+      window._curView = view; // tracked for background auto-refresh
 
       _closeSb();
 
@@ -5861,7 +5928,7 @@ function _gasX(fn, args, timeout, onOk, onErr) {
     }
 
     function _refresh() {
-      if (_V) _loadV(_V, _ST);
+      _forceRefresh();
     }
 
 
@@ -5968,14 +6035,21 @@ function _gasX(fn, args, timeout, onOk, onErr) {
         if (_gpsRetries < 5) {
           _gpsRetries++; setTimeout(_initGpsGate, 300);
         } else {
+          // Dedicated lightweight fetch for just the AppConfig keys
           _gas('getAllAppConfigForFrontend', [], function (cfg) {
             _D.appConfig = cfg || {};
             _gpsRetries = 0;
             _initGpsGate();
           }, function () {
-            _gpsState = 'error'; _gpsErrCode = null;
-            _gpsMsg = 'Could not load location settings. Check connection and retry.';
+            // AppConfig itself failed — rather than blocking forever, fall
+            // through to server-side-only validation. The backend ALWAYS
+            // re-checks GPS on check-in/out regardless of what the frontend
+            // shows, so this is safe: the button opens, but the server will
+            // still block if the employee is not at a registered location.
+            _gpsState = 'disabled';
+            _gpsMsg = '';
             _applyGpsGate();
+            _toast('⚠️ Location settings unavailable. Server will validate.', 'warn');
           });
         }
         return;
@@ -6005,38 +6079,47 @@ function _gasX(fn, args, timeout, onOk, onErr) {
           }
           _applyGpsGate();
         }, function () {
-          // The validation call itself failed (network blip) — this is
-          // exactly the kind of uncertainty that should block, not allow.
-          // The "Retry" link lets the user re-check once connectivity
-          // is back, and the click-time server-side check is always the
-          // final authority regardless.
-          _gpsState = 'error'; _gpsErrCode = null; _gpsMsg = 'Could not verify your location. Check connection and retry.';
+          // Validation call itself failed (network blip). Don't hard-block
+          // — server-side validation will still apply on the actual check-in/out.
+          _gpsState = 'disabled'; _gpsMsg = '';
           _applyGpsGate();
+          _toast('⚠️ Could not verify location. Server will validate.', 'warn');
         });
       }
 
+      function onErr3(err3) {
+        // All 3 GPS attempts failed. Rather than leaving the user permanently
+        // stuck (especially those working indoors on desktops), fall through
+        // to server-side-only validation with a clear warning. The backend
+        // always re-validates GPS on the actual check-in/out call.
+        _gpsState = 'disabled'; _gpsErrCode = err3.code;
+        _gpsMsg = '';
+        _applyGpsGate();
+        _toast('⚠️ Could not get location after 3 attempts. Server will validate at check-in.', 'warn');
+      }
+
       function onErr(err) {
-        // UNAVAILABLE (2) or TIMEOUT (3) with high accuracy is exactly what
-        // happens on most desktops/laptops — there's no GPS chip, so a
-        // high-accuracy fix can fail even though location PERMISSION is
-        // correctly granted. Retry once with low accuracy (WiFi/IP-based,
-        // faster and far more likely to succeed) before giving up — only a
-        // genuine PERMISSION_DENIED (1) skips straight to that guide.
-        if (err.code !== 1) {
-          navigator.geolocation.getCurrentPosition(onPos, function (err2) {
-            var msgs = {
-              1: 'Location permission denied. Allow location access to mark attendance.',
-              2: 'Could not get your location. Make sure you have an internet/WiFi connection and try again.',
-              3: 'Location request timed out. Check your connection and retry.'
-            };
-            _gpsState = 'error'; _gpsErrCode = err2.code; _gpsMsg = msgs[err2.code] || 'Location error.';
-            _applyGpsGate();
-          }, { timeout: 15000, maximumAge: 30000, enableHighAccuracy: false });
+        // Stage 1 failed (high-accuracy). Code 1 = PERMISSION_DENIED → hard stop.
+        if (err.code === 1) {
+          _gpsState = 'error'; _gpsErrCode = 1;
+          _gpsMsg = 'Location permission denied. Allow location access to mark attendance.';
+          _applyGpsGate();
           return;
         }
-        _gpsState = 'error'; _gpsErrCode = 1;
-        _gpsMsg = 'Location permission denied. Allow location access to mark attendance.';
-        _applyGpsGate();
+        // Stage 2: low-accuracy / WiFi-based, 15s timeout, accept 30s-old cached fix
+        navigator.geolocation.getCurrentPosition(onPos, function (err2) {
+          if (err2.code === 1) {
+            _gpsState = 'error'; _gpsErrCode = 1;
+            _gpsMsg = 'Location permission denied. Allow location access to mark attendance.';
+            _applyGpsGate();
+            return;
+          }
+          // Stage 3: last resort — accept any cached position up to 5 minutes old
+          // and a very long timeout. Works for devices that have a cached GPS fix
+          // but the fresh request is timing out due to weak signal or network.
+          navigator.geolocation.getCurrentPosition(onPos, onErr3,
+            { timeout: 25000, maximumAge: 300000, enableHighAccuracy: false });
+        }, { timeout: 15000, maximumAge: 30000, enableHighAccuracy: false });
       }
 
       navigator.geolocation.getCurrentPosition(onPos, onErr, { timeout: 12000, maximumAge: 0, enableHighAccuracy: true });
