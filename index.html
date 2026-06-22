@@ -5388,7 +5388,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbw-Mg0yodD-2rW4tGt9NL7iQxMIEHvHgHRrer37GvIfvILJ515ga93_W2K2CG4vgCL80Q/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbzzFs3Xpx57-o96ZK_2hyQn7y07x3ARJbaWSgoqJC8f7iTtUAvE82XkuAb3hvdTjGeK3A/exec';
     var _TOKEN  = '';
 
 function _gas(fn, args, onOk, onErr) {
@@ -13354,16 +13354,50 @@ function _loadSetupTasks() {
       if (!res.items.length) {
         body += '<div class="empty-state" style="padding:20px"><i class="fas fa-inbox"></i><p>No records in this range.</p></div>';
       } else if (res.module === 'at') {
+        // Shared attendance-status badge builder for this popup
+        function attBadge(status) {
+          var clr = status === 'P' ? 'var(--G)' : status === 'HD' ? 'var(--O)' : status === 'A' ? 'var(--R)' : status === 'H' ? '#4338ca' : 'var(--tx3)';
+          var bg  = status === 'P' ? 'var(--Gl)' : status === 'HD' ? 'var(--Ol)' : status === 'A' ? 'var(--Rl)' : status === 'H' ? '#e0e7ff' : 'var(--sur2)';
+          var lbl = status === 'P' ? 'Present' : status === 'HD' ? 'Half Day' : status === 'A' ? 'Absent' : status === 'H' ? 'Holiday' : status === 'WO' ? 'Week Off' : status || '—';
+          return '<span style="padding:3px 8px;border-radius:6px;font-size:10px;font-weight:800;background:' + bg + ';color:' + clr + ';white-space:nowrap">' + _esc(lbl) + '</span>';
+        }
+
+        var present = 0, halfDay = 0, absent = 0;
+        res.items.forEach(function (it) {
+          if (it.status === 'P') present++;
+          else if (it.status === 'HD') halfDay++;
+          else if (it.status === 'A') absent++;
+        });
+        body += '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;padding:10px;background:var(--sur2);border-radius:8px">' +
+          '<span style="font-size:12px;color:var(--G);font-weight:700"><i class="fas fa-circle-check"></i> Present: ' + present + '</span>' +
+          '<span style="font-size:12px;color:var(--O);font-weight:700"><i class="fas fa-circle-half-stroke"></i> Half Day: ' + halfDay + '</span>' +
+          '<span style="font-size:12px;color:var(--R);font-weight:700"><i class="fas fa-circle-xmark"></i> Absent: ' + absent + '</span>' +
+          '</div>';
+
         body += '<div style="display:flex;flex-direction:column;gap:6px">' +
           res.items.map(function (it) {
-            var clr = it.done ? 'var(--G)' : (it.status === 'A' ? 'var(--R)' : 'var(--O)');
-            var bg  = it.done ? 'var(--Gl)' : (it.status === 'A' ? 'var(--Rl)' : 'var(--Ol)');
-            return '<div style="display:flex;align-items:center;gap:10px;padding:9px 10px;background:var(--bg);border:1px solid var(--bdr);border-radius:8px;flex-wrap:wrap">' +
-              '<div style="min-width:90px;font-size:12px;font-weight:700">' + _esc(_fmtDateShort(it.date)) + '</div>' +
-              '<div style="flex:1;min-width:0;font-size:11px;color:var(--tx3);white-space:normal;word-break:break-word">' +
-              (it.check_in ? 'In: ' + _esc(it.check_in) : '') + (it.check_out ? ' &middot; Out: ' + _esc(it.check_out) : '') + (it.hours ? ' &middot; ' + _esc(String(it.hours)) : '') +
+            var isActual = (it.status === 'P' || it.status === 'HD');
+            // Only show check-in/out for days where attendance was actually recorded
+            // — synthesised absent rows always have '-' which is truthy in JS, so
+            // the old code showed "In: - · Out: - · -" making them look like real data
+            var timeInfo = '';
+            if (isActual) {
+              var hasIn  = it.check_in  && it.check_in  !== '-';
+              var hasOut = it.check_out && it.check_out !== '-';
+              var parts  = [];
+              if (hasIn)  parts.push('<span style="color:var(--G);font-weight:700"><i class="fas fa-sign-in-alt"></i> ' + _esc(it.check_in)  + '</span>');
+              if (hasOut) parts.push('<span style="color:var(--R);font-weight:700"><i class="fas fa-sign-out-alt"></i> ' + _esc(it.check_out) + '</span>');
+              if (it.hours && it.hours !== '-') parts.push('<span style="color:var(--P)"><i class="fas fa-clock"></i> ' + _esc(String(it.hours)) + '</span>');
+              timeInfo = parts.length ? '<div style="font-size:11px;display:flex;gap:10px;flex-wrap:wrap;margin-top:4px">' + parts.join('') + '</div>' : '';
+            } else if (it.status === 'A') {
+              timeInfo = '<div style="font-size:10px;color:var(--tx3);margin-top:2px;font-style:italic">No attendance recorded</div>';
+            }
+            return '<div style="padding:9px 10px;background:var(--bg);border:1px solid var(--bdr);border-left:3px solid ' + (isActual ? (it.status==='HD'?'var(--O)':'var(--G)') : 'var(--R)') + ';border-radius:8px">' +
+              '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">' +
+              '<span style="font-size:12px;font-weight:700">' + _esc(_fmtDateShort(it.date)) + '</span>' +
+              attBadge(it.status) +
               '</div>' +
-              '<span style="padding:3px 8px;border-radius:6px;font-size:10px;font-weight:800;background:' + bg + ';color:' + clr + ';white-space:nowrap">' + _esc(it.status) + '</span>' +
+              timeInfo +
               '</div>';
           }).join('') +
           '</div>';
