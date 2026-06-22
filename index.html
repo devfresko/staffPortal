@@ -3742,7 +3742,6 @@
     }
 
     .modal-box {
-      display: none;
       position: fixed;
       top: 50%;
       left: 50%;
@@ -12771,8 +12770,8 @@ function _loadSetupTasks() {
     '<button class="btn btn-outline" onclick="_closeModal()"><i class="fas fa-times"></i> Cancel</button>' +
     (onConfirm ? '<button class="btn" id="mConfirmBtn">' + (confirmLabel || 'Confirm') + '</button>' : '');
 
-  ov.style.display    = 'block';
-  modal.style.display = 'block';
+  ov.style.display    = 'flex';
+  modal.style.display = 'flex';
   modal.classList.add('open');
 
   setTimeout(function() {
