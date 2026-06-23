@@ -5570,7 +5570,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbx2-qGAL14thhz3GqZNb9g3k5nuNE1ByLCqnGvUIOXdgtSEOeIxwwTLPtGCCdnGaDw/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbxJpnA45GXXVK5eOyx2t8yl4-4S0-chzBVlaC0KmFDpAVZunn1gKljm8Z-SiCcWBSeFFw/exec';
     var _TOKEN  = '';
 
 function _gas(fn, args, onOk, onErr) {
@@ -12888,7 +12888,9 @@ function _loadSetupTasks() {
         // Leave management
         lreq: _loadMyLeaves, lbal: _loadLeaveBalance, lcal: _loadLeaveCalView, lsumm: _loadLeaveSummTab, lapprv: _loadLeaveApprovals,
         // EM Weekly Meeting
-        emwm: _vEMWeeklyMeeting
+        emwm: _vEMWeeklyMeeting,
+        // EM Increment Appraisal
+        emap: _vEMAppraisal
       };
 
       if (loaders[tabId]) {
@@ -13204,7 +13206,8 @@ function _loadSetupTasks() {
         { id: 'emcl',   lbl: '<i class="fas fa-list-check"></i> Checklist' },
         { id: 'emdl',   lbl: '<i class="fas fa-diagram-project"></i> Delegation' },
         { id: 'emat',   lbl: '<i class="fas fa-user-clock"></i> Attendance' },
-        { id: 'emwm',   lbl: '<i class="fas fa-handshake"></i> Weekly Meeting' }
+        { id: 'emwm',   lbl: '<i class="fas fa-handshake"></i> Weekly Meeting' },
+        { id: 'emap',   lbl: '<i class="fas fa-medal"></i> Increment Appraisal' }
       ];
       var defFrom = _currMonth() + '-01';
       var defTo   = _today();
@@ -13272,12 +13275,14 @@ function _loadSetupTasks() {
           '<div id="emClRoot">' + _skel(4) + '</div>',
           '<div id="emDlRoot">' + _skel(4) + '</div>',
           '<div id="emAtRoot">' + _skel(4) + '</div>',
-          '<div id="emWmRoot"><div style="padding:8px 0">' + _skel(4) + '</div></div>'
+          '<div id="emWmRoot"><div style="padding:8px 0">' + _skel(4) + '</div></div>',
+          '<div id="emApRoot"><div style="padding:8px 0">' + _skel(4) + '</div></div>'
         ]);
 
       _switchTab(at);
       _emRefreshViewBtns();
       if (at === 'emwm') _vEMWeeklyMeeting();
+      else if (at === 'emap') _vEMAppraisal();
       else _loadEM();
     }
 
@@ -13798,9 +13803,6 @@ function _loadSetupTasks() {
         '<div><label style="font-size:11px;font-weight:800;color:var(--tx2);text-transform:uppercase;display:block;margin-bottom:4px">Manager Notes</label>' +
         '<textarea id="wmManagerNotes" class="ana-sel" rows="2" placeholder="Your observations from this meeting" style="width:100%;resize:vertical"></textarea></div>' +
 
-        '<div><label style="font-size:11px;font-weight:800;color:var(--tx2);text-transform:uppercase;display:block;margin-bottom:4px">Increment Cycle (optional)</label>' +
-        '<input type="text" id="wmIncrCycle" class="ana-sel" placeholder="e.g. 2026-H1" style="width:100%"></div>' +
-
         '<button class="btn btn-wide" id="btnWmSave" onclick="_wmSave()" style="margin-top:4px">' +
         '<i class="fas fa-floppy-disk"></i> Save Commitment Record</button>' +
         '</div></div>' +
@@ -13918,8 +13920,7 @@ function _loadSetupTasks() {
         at_score:           doer ? modScore(doer.at_plan, doer.at_actual) : null,
         commitment_score:   commitScore,
         commitment_details: (document.getElementById('wmCommitDetails')  || {}).value || '',
-        manager_notes:      (document.getElementById('wmManagerNotes')   || {}).value || '',
-        increment_cycle:    (document.getElementById('wmIncrCycle')      || {}).value || ''
+        manager_notes:      (document.getElementById('wmManagerNotes')   || {}).value || ''
       };
 
       _gas('saveWeeklyCommitment', [payload], function (res) {
@@ -14027,28 +14028,10 @@ function _loadSetupTasks() {
               '<button class="btn btn-sm" onclick="_wmMarkStatus(\'' + _esc(r.record_id) + '\',\'' + r.commitment_score + '\')" style="white-space:nowrap">' +
               '<i class="fas fa-check"></i> Update</button>' +
               '</div>'
-            : r.increment_eligible === '' ?
-              '<div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--bdr)">' +
-              '<div style="font-size:10px;font-weight:800;color:var(--tx3);text-transform:uppercase;margin-bottom:6px;letter-spacing:.3px">Increment Decision</div>' +
-              '<div style="display:flex;gap:6px;flex-wrap:wrap">' +
-              '<button class="btn btn-sm" style="background:var(--Gl);color:var(--G);border:none" onclick="_wmOpenIncrModal(\'' + _esc(r.record_id) + '\',\'' + _esc(r.emp_name) + '\',\'Yes\')"><i class="fas fa-check"></i> Eligible</button>' +
-              '<button class="btn btn-sm" style="background:var(--Rl);color:var(--R);border:none" onclick="_wmOpenIncrModal(\'' + _esc(r.record_id) + '\',\'' + _esc(r.emp_name) + '\',\'No\')"><i class="fas fa-times"></i> Not Eligible</button>' +
-              '<button class="btn btn-sm" style="background:var(--Ol);color:var(--O);border:none" onclick="_wmOpenIncrModal(\'' + _esc(r.record_id) + '\',\'' + _esc(r.emp_name) + '\',\'Review\')"><i class="fas fa-clock"></i> Keep in Review</button>' +
-              '</div></div>'
             :
-              // Already has eligibility — show all fields + edit button
-              '<div style="margin-top:8px;padding:10px;background:var(--sur2);border-radius:10px;border:1px solid var(--bdr)">' +
-              '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
-              '<div style="font-size:10px;font-weight:800;color:var(--tx3);text-transform:uppercase;letter-spacing:.3px">Increment Decision</div>' +
-              '<button class="btn btn-xs btn-outline" onclick="_wmOpenIncrModal(\'' + _esc(r.record_id) + '\',\'' + _esc(r.emp_name) + '\',\'' + _esc(r.increment_eligible) + '\',\'' + _esc(r.increment_recommended_pct) + '\',\'' + _esc(r.increment_notes) + '\',\'' + _esc(r.increment_approved_by) + '\',\'' + _esc(r.increment_applied_date) + '\')"><i class="fas fa-pen"></i> Edit</button>' +
-              '</div>' +
-              '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;font-size:11.5px">' +
-              '<div><span style="color:var(--tx3)">Eligible:</span> <b style="color:' + (r.increment_eligible==='Yes'?'var(--G)':r.increment_eligible==='No'?'var(--R)':'var(--O)') + '">' + _esc(r.increment_eligible) + '</b></div>' +
-              '<div><span style="color:var(--tx3)">Recommended %:</span> <b>' + (r.increment_recommended_pct ? _esc(r.increment_recommended_pct) + '%' : '—') + '</b></div>' +
-              '<div><span style="color:var(--tx3)">Approved by:</span> <b>' + _esc(r.increment_approved_by || '—') + '</b></div>' +
-              '<div><span style="color:var(--tx3)">Applied date:</span> <b>' + _esc(r.increment_applied_date || '—') + '</b></div>' +
-              '</div>' +
-              (r.increment_notes ? '<div style="font-size:11px;color:var(--tx2);margin-top:6px;white-space:normal;word-break:break-word;font-style:italic">' + _esc(r.increment_notes) + '</div>' : '') +
+              '<div style="font-size:10.5px;color:var(--tx3);margin-top:4px"><i class="fas fa-circle-check" style="color:var(--G)"></i> Commitment closed &mdash; ' + _esc(r.commitment_status) +
+              (r.next_week_actual !== '' ? ' · Next week score: <b style="color:' + _emScoreColor(Number(r.next_week_actual)) + '">' + _emScoreLabel(Number(r.next_week_actual)) + '</b>' : '') +
+              (r.improvement_delta !== '' ? ' · Delta: <b style="color:' + (Number(r.improvement_delta) >= 0 ? 'var(--G)' : 'var(--R)') + '">' + (Number(r.improvement_delta) > 0 ? '+' : '') + r.improvement_delta + '</b>' : '') +
               '</div>'
             ) +
             '</div>';
@@ -14073,78 +14056,285 @@ function _loadSetupTasks() {
       }, function (e) { _toast('Error: ' + e.message, 'err'); });
     }
 
-    // Opens a full increment modal with all 4 fields: recommended %, notes,
-    // approved by, applied date — plus the eligibility selector.
-    // Pre-fills values when editing an existing increment decision.
-    function _wmOpenIncrModal(recId, empName, eligible, pct, notes, approvedBy, appliedDate) {
-      pct        = pct        || '';
-      notes      = notes      || '';
-      approvedBy = approvedBy || '';
-      appliedDate = appliedDate || '';
+    /* ══════════════════════════════════════════════════════════════════════
+       INCREMENT APPRAISAL — Separate from weekly meetings.
+       Triggered only when: staff requests increment OR yearly appraisal.
+       Auto-pulls commitment history for the selected employee and shows
+       trend stats before the manager fills the decision form.
+    ══════════════════════════════════════════════════════════════════════ */
+    function _vEMAppraisal() {
+      var root = document.getElementById('emApRoot');
+      if (!root) return;
 
-      var eligColor = eligible === 'Yes' ? 'var(--G)' : eligible === 'No' ? 'var(--R)' : 'var(--O)';
+      root.innerHTML =
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start">' +
 
-      var body =
-        '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--bdr)">' +
-        '<div style="flex:1;min-width:0;font-size:14px;font-weight:800;white-space:normal;word-break:break-word">' + _esc(empName) + '</div>' +
-        '<span style="padding:4px 10px;border-radius:7px;font-size:11px;font-weight:800;' +
-        'background:' + (eligible==='Yes'?'var(--Gl)':eligible==='No'?'var(--Rl)':'var(--Ol)') + ';' +
-        'color:' + eligColor + '">' + _esc(eligible) + '</span>' +
+        // ── INITIATE APPRAISAL FORM ───────────────────────────────────────
+        '<div class="card card-nohover">' +
+        '<div class="sec-title" style="margin-bottom:16px"><i class="fas fa-medal" style="color:var(--P)"></i> Initiate Appraisal</div>' +
+        '<div style="background:var(--Pl);border:1px solid var(--bdr2);border-radius:10px;padding:10px 12px;margin-bottom:16px;font-size:12px;color:var(--P);font-weight:600">' +
+        '<i class="fas fa-info-circle"></i> Start here when a staff member asks for increment, or when yearly appraisal cycle is due.' +
         '</div>' +
 
-        // Eligibility selector (can change)
-        '<div style="margin-bottom:14px">' +
-        '<label style="font-size:11px;font-weight:800;color:var(--tx2);text-transform:uppercase;display:block;margin-bottom:6px">Increment Eligibility</label>' +
-        '<div style="display:flex;gap:8px">' +
-        ['Yes','No','Review'].map(function(opt) {
-          var bg = opt==='Yes'?'var(--Gl)':opt==='No'?'var(--Rl)':'var(--Ol)';
-          var fc = opt==='Yes'?'var(--G)':opt==='No'?'var(--R)':'var(--O)';
-          var sel = eligible === opt ? ';border:2px solid ' + fc : ';border:2px solid transparent';
-          return '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:7px 12px;border-radius:9px;background:' + bg + sel + '">' +
-            '<input type="radio" name="wmIncrElig" value="' + opt + '"' + (eligible===opt?' checked':'') + ' style="accent-color:' + fc + '"> ' +
-            '<span style="font-weight:800;font-size:12px;color:' + fc + '">' + opt + '</span></label>';
-        }).join('') +
+        '<div style="display:flex;flex-direction:column;gap:12px">' +
+
+        '<div><label style="font-size:11px;font-weight:800;color:var(--tx2);text-transform:uppercase;display:block;margin-bottom:4px">Employee</label>' +
+        '<select id="apEmp" class="ana-sel" style="width:100%" onchange="_apLoadHistory()">' +
+        '<option value="">— Select Employee —</option>' + _getEmpOptions() + '</select></div>' +
+
+        '<div><label style="font-size:11px;font-weight:800;color:var(--tx2);text-transform:uppercase;display:block;margin-bottom:4px">Trigger</label>' +
+        '<select id="apTrigger" class="ana-sel" style="width:100%">' +
+        '<option value="Staff Request">📩 Staff Requested Increment</option>' +
+        '<option value="Annual Appraisal">📅 Annual Appraisal Cycle</option>' +
+        '<option value="Manager Initiated">👤 Manager Initiated</option>' +
+        '</select></div>' +
+
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
+        '<div><label style="font-size:11px;font-weight:800;color:var(--tx2);text-transform:uppercase;display:block;margin-bottom:4px">Review From</label>' +
+        '<input type="date" id="apFrom" class="ana-sel" value="' + (_currMonth() + '-01') + '" style="width:100%"></div>' +
+        '<div><label style="font-size:11px;font-weight:800;color:var(--tx2);text-transform:uppercase;display:block;margin-bottom:4px">Review To</label>' +
+        '<input type="date" id="apTo" class="ana-sel" value="' + _today() + '" style="width:100%"></div>' +
+        '</div>' +
+
+        // Commitment history preview (loads when employee selected)
+        '<div id="apHistPreview" style="display:none"></div>' +
+
+        '<div><label style="font-size:11px;font-weight:800;color:var(--tx2);text-transform:uppercase;display:block;margin-bottom:4px">Manager Assessment</label>' +
+        '<textarea id="apAssessment" class="ana-sel" rows="3" placeholder="Your overall assessment of this employee\'s performance and growth…" style="width:100%;resize:vertical"></textarea></div>' +
+
+        '<div><label style="font-size:11px;font-weight:800;color:var(--tx2);text-transform:uppercase;display:block;margin-bottom:4px">Recommendation</label>' +
+        '<select id="apRecommendation" class="ana-sel" style="width:100%">' +
+        '<option value="Increment">✅ Grant Increment</option>' +
+        '<option value="Deferred">🕐 Defer — Next Cycle</option>' +
+        '<option value="No Increment">❌ No Increment</option>' +
+        '</select></div>' +
+
+        '<div><label style="font-size:11px;font-weight:800;color:var(--tx2);text-transform:uppercase;display:block;margin-bottom:4px">Increment % <span style="color:var(--tx3);font-weight:600;text-transform:none">(if recommending increment)</span></label>' +
+        '<input type="number" id="apIncrPct" class="ana-sel" min="0" max="100" step="0.5" placeholder="e.g. 8 for 8%" style="width:100%"></div>' +
+
+        '<div><label style="font-size:11px;font-weight:800;color:var(--tx2);text-transform:uppercase;display:block;margin-bottom:4px">Notes / Reason</label>' +
+        '<textarea id="apNotes" class="ana-sel" rows="2" placeholder="Reason for this recommendation…" style="width:100%;resize:vertical"></textarea></div>' +
+
+        '<div><label style="font-size:11px;font-weight:800;color:var(--tx2);text-transform:uppercase;display:block;margin-bottom:4px">Approved by</label>' +
+        '<input type="text" id="apApprovedBy" class="ana-sel" placeholder="Director / Owner name" style="width:100%"></div>' +
+
+        '<button class="btn btn-wide" id="btnApSave" onclick="_apSave()" style="margin-top:4px">' +
+        '<i class="fas fa-floppy-disk"></i> Save Appraisal Record</button>' +
+
         '</div></div>' +
 
-        // Increment %
-        '<div style="margin-bottom:12px">' +
-        '<label style="font-size:11px;font-weight:800;color:var(--tx2);text-transform:uppercase;display:block;margin-bottom:4px">Recommended Increment %<span style="color:var(--tx3);font-weight:600;text-transform:none"> (e.g. 8 for 8%)</span></label>' +
-        '<input type="number" id="incrPct" class="ana-sel" min="0" max="100" step="0.5" placeholder="e.g. 8" value="' + _esc(pct) + '" style="width:100%"></div>' +
-
-        // Notes
-        '<div style="margin-bottom:12px">' +
-        '<label style="font-size:11px;font-weight:800;color:var(--tx2);text-transform:uppercase;display:block;margin-bottom:4px">Increment Notes / Justification</label>' +
-        '<textarea id="incrNotes" class="ana-sel" rows="3" placeholder="Reason for this increment decision…" style="width:100%;resize:vertical">' + _esc(notes) + '</textarea></div>' +
-
-        // Approved by
-        '<div style="margin-bottom:12px">' +
-        '<label style="font-size:11px;font-weight:800;color:var(--tx2);text-transform:uppercase;display:block;margin-bottom:4px">Approved by</label>' +
-        '<input type="text" id="incrApprovedBy" class="ana-sel" placeholder="Manager / Director name" value="' + _esc(approvedBy) + '" style="width:100%"></div>' +
-
-        // Applied date
+        // ── APPRAISAL HISTORY ─────────────────────────────────────────────
         '<div>' +
-        '<label style="font-size:11px;font-weight:800;color:var(--tx2);text-transform:uppercase;display:block;margin-bottom:4px">Increment Applied Date</label>' +
-        '<input type="date" id="incrAppliedDate" class="ana-sel" value="' + _esc(appliedDate) + '" style="width:100%"></div>';
+        '<div class="card card-nohover">' +
+        '<div class="sec-title" style="margin-bottom:12px"><i class="fas fa-clock-rotate-left" style="color:var(--V)"></i> Appraisal History</div>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">' +
+        '<select id="apHistEmpF" class="ana-sel" onchange="_apLoadAppraisals()">' +
+        '<option value="all">All Employees</option>' + _getEmpOptions() + '</select>' +
+        '<select id="apHistStatus" class="ana-sel" onchange="_apLoadAppraisals()">' +
+        '<option value="all">All Status</option>' +
+        '<option value="Pending">⏳ Pending</option>' +
+        '<option value="Approved">✅ Approved</option>' +
+        '<option value="Applied">💰 Applied</option>' +
+        '<option value="Rejected">❌ Rejected</option>' +
+        '</select>' +
+        '<button class="btn btn-sm" onclick="_apLoadAppraisals()"><i class="fas fa-rotate-right"></i></button>' +
+        '</div>' +
+        '<div id="apHistList">' + _skel(3, 'sk-h5') + '</div>' +
+        '</div></div>' +
 
-      _openModal('<i class="fas fa-medal" style="color:var(--P)"></i> Increment Decision', body,
-        function () {
-          var newElig  = (document.querySelector('input[name="wmIncrElig"]:checked') || {}).value || eligible;
-          var newPct   = (document.getElementById('incrPct')         || {}).value || '';
-          var newNotes = (document.getElementById('incrNotes')       || {}).value || '';
-          var newBy    = (document.getElementById('incrApprovedBy')  || {}).value || '';
-          var newDate  = (document.getElementById('incrAppliedDate') || {}).value || '';
-          _gas('updateCommitmentStatus', [recId, {
-            increment_eligible:       newElig,
-            increment_recommended_pct: newPct,
-            increment_notes:          newNotes,
-            increment_approved_by:    newBy,
-            increment_applied_date:   newDate
-          }], function () {
+        '</div>';
+
+      _apLoadAppraisals();
+    }
+
+    // Load commitment history preview for selected employee
+    function _apLoadHistory() {
+      var empId = (document.getElementById('apEmp') || {}).value;
+      var preview = document.getElementById('apHistPreview');
+      if (!preview) return;
+      if (!empId) { preview.style.display = 'none'; return; }
+
+      preview.style.display = '';
+      preview.innerHTML = '<div style="background:var(--sur2);border:1px solid var(--bdr);border-radius:10px;padding:12px">' +
+        '<div style="font-size:10px;font-weight:800;color:var(--tx3);text-transform:uppercase;margin-bottom:8px">Loading commitment history…</div>' +
+        _skel(2, 'sk-h3') + '</div>';
+
+      _gas('getWeeklyCommitments', [{ emp_id: empId }], function (rows) {
+        if (!rows || !rows.length) {
+          preview.innerHTML = '<div style="background:var(--sur2);border:1px solid var(--bdr);border-radius:10px;padding:12px;font-size:12px;color:var(--tx3)"><i class="fas fa-info-circle"></i> No weekly meeting records found for this employee yet.</div>';
+          return;
+        }
+        var closed = rows.filter(function(r) { return r.commitment_status !== 'Pending'; });
+        var met    = closed.filter(function(r) { return r.commitment_status === 'Met'; });
+        var avgSc  = Math.round(rows.reduce(function(s,r){ return s + Number(r.actual_score||0); }, 0) / rows.length);
+        var commitRate = closed.length ? Math.round(met.length / closed.length * 100) : null;
+        var deltas = closed.filter(function(r) { return r.improvement_delta !== ''; })
+                           .map(function(r) { return Number(r.improvement_delta); });
+        var avgDelta = deltas.length ? Math.round(deltas.reduce(function(s,v){ return s+v; }, 0) / deltas.length) : null;
+
+        preview.innerHTML =
+          '<div style="background:var(--sur2);border:1px solid var(--bdr);border-radius:10px;padding:12px">' +
+          '<div style="font-size:10px;font-weight:800;color:var(--tx3);text-transform:uppercase;margin-bottom:10px"><i class="fas fa-chart-bar"></i> Commitment History — ' + rows.length + ' weekly records</div>' +
+          '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">' +
+          '<div style="text-align:center;background:var(--bg);border-radius:8px;padding:8px">' +
+          '<div style="font-size:9px;color:var(--tx3);font-weight:700;text-transform:uppercase">Avg Score</div>' +
+          '<div style="font-size:18px;font-weight:900;color:' + _emScoreColor(avgSc) + '">' + _emScoreLabel(avgSc) + '</div>' +
+          '</div>' +
+          '<div style="text-align:center;background:var(--bg);border-radius:8px;padding:8px">' +
+          '<div style="font-size:9px;color:var(--tx3);font-weight:700;text-transform:uppercase">Commit Rate</div>' +
+          '<div style="font-size:18px;font-weight:900;color:' + (commitRate >= 70 ? 'var(--G)' : commitRate >= 40 ? 'var(--O)' : 'var(--R)') + '">' + (commitRate !== null ? commitRate + '%' : '—') + '</div>' +
+          '</div>' +
+          '<div style="text-align:center;background:var(--bg);border-radius:8px;padding:8px">' +
+          '<div style="font-size:9px;color:var(--tx3);font-weight:700;text-transform:uppercase">Avg Δ</div>' +
+          '<div style="font-size:18px;font-weight:900;color:' + (avgDelta > 0 ? 'var(--G)' : avgDelta < 0 ? 'var(--R)' : 'var(--tx3)') + '">' + (avgDelta !== null ? (avgDelta > 0 ? '+' : '') + avgDelta : '—') + '</div>' +
+          '</div>' +
+          '</div>' +
+          '<div style="font-size:10.5px;color:var(--tx3);margin-top:8px">' +
+          met.length + ' of ' + closed.length + ' commitments met' +
+          (avgDelta !== null ? ' · Average improvement vs commitment: ' + (avgDelta > 0 ? '+' : '') + avgDelta + ' pts' : '') +
+          '</div>' +
+          '</div>';
+      }, function() {
+        preview.innerHTML = '<div style="font-size:12px;color:var(--R)">Could not load commitment history.</div>';
+      });
+    }
+
+    function _apSave() {
+      if (!_startSub('btnApSave', 'Saving…')) return;
+      var empSel = document.getElementById('apEmp');
+      var empId  = empSel ? empSel.value : '';
+      var empName = empSel && empSel.selectedIndex >= 0 ? empSel.options[empSel.selectedIndex].text.split(' (')[0] : '';
+
+      if (!empId) { _endSub('btnApSave'); _toast('Please select an employee', 'warn'); return; }
+
+      // Find doer dept from empDir
+      var dept = '';
+      if (_D.empDir) {
+        for (var i = 0; i < _D.empDir.length; i++) {
+          if (String(_D.empDir[i].emp_code || _D.empDir[i].emp_id || '') === empId) { dept = _D.empDir[i].dept || ''; break; }
+        }
+      }
+
+      var payload = {
+        emp_id:             empId,
+        emp_name:           empName,
+        dept:               dept,
+        trigger_type:       (document.getElementById('apTrigger')       || {}).value || 'Manager Initiated',
+        review_from:        (document.getElementById('apFrom')          || {}).value || '',
+        review_to:          (document.getElementById('apTo')            || {}).value || _today(),
+        manager_assessment: (document.getElementById('apAssessment')    || {}).value || '',
+        recommendation:     (document.getElementById('apRecommendation') || {}).value || 'Increment',
+        increment_pct:      (document.getElementById('apIncrPct')       || {}).value || '',
+        increment_notes:    (document.getElementById('apNotes')         || {}).value || '',
+        approved_by:        (document.getElementById('apApprovedBy')    || {}).value || ''
+      };
+
+      _gas('saveIncrementAppraisal', [payload], function (res) {
+        _successSub('btnApSave', 'Saved!');
+        _toast('✓ Appraisal recorded: ' + res.appraisal_id, 'ok');
+        ['apAssessment','apNotes','apIncrPct','apApprovedBy'].forEach(function(id) {
+          var el = document.getElementById(id); if (el) el.value = '';
+        });
+        var ep = document.getElementById('apEmp'); if (ep) ep.value = '';
+        var pv = document.getElementById('apHistPreview'); if (pv) pv.style.display = 'none';
+        _apLoadAppraisals();
+      }, function (e) {
+        _endSub('btnApSave');
+        _toast('Error: ' + e.message, 'err');
+      });
+    }
+
+    function _apLoadAppraisals() {
+      var root = document.getElementById('apHistList');
+      if (!root) return;
+      root.innerHTML = _skel(3, 'sk-h5');
+      var filters = {
+        emp_id: (document.getElementById('apHistEmpF')  || {}).value || 'all',
+        status: (document.getElementById('apHistStatus') || {}).value || 'all'
+      };
+      _gas('getIncrementAppraisals', [filters], function (rows) {
+        if (!root) return;
+        if (!rows || !rows.length) {
+          root.innerHTML = '<div class="empty-state" style="padding:20px"><i class="fas fa-medal" style="font-size:28px;opacity:.2"></i><p style="color:var(--tx3);margin-top:8px">No appraisals yet.</p></div>';
+          return;
+        }
+        root.innerHTML = rows.map(function(r) {
+          var recClr = r.recommendation === 'Increment' ? 'var(--G)' : r.recommendation === 'No Increment' ? 'var(--R)' : 'var(--O)';
+          var stBg   = r.status === 'Applied' ? 'var(--Gl)' : r.status === 'Approved' ? 'var(--Pl)' : r.status === 'Rejected' ? 'var(--Rl)' : 'var(--sur2)';
+          var stClr  = r.status === 'Applied' ? 'var(--G)'  : r.status === 'Approved' ? 'var(--P)'  : r.status === 'Rejected' ? 'var(--R)'  : 'var(--tx3)';
+          return '<div class="anim-item" style="border:1px solid var(--bdr);border-radius:12px;padding:13px;margin-bottom:10px;background:var(--bg)">' +
+            '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap;margin-bottom:10px">' +
+            '<div>' +
+            '<div style="font-weight:800;font-size:14px;white-space:normal;word-break:break-word">' + _esc(r.emp_name) + ' <span style="font-size:10px;color:var(--tx3);font-weight:600">· ' + _esc(r.dept) + '</span></div>' +
+            '<div style="font-size:10.5px;color:var(--tx3);margin-top:2px">' + _esc(r.trigger_type) + ' · ' + _fmtDate(r.request_date) + '</div>' +
+            '</div>' +
+            '<span style="padding:3px 8px;border-radius:6px;font-size:10px;font-weight:800;background:' + stBg + ';color:' + stClr + ';white-space:nowrap">' + _esc(r.status) + '</span>' +
+            '</div>' +
+
+            // Commitment history stats
+            (r.avg_score !== null ? '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px">' +
+            '<div style="background:var(--sur2);border-radius:7px;padding:7px;text-align:center"><div style="font-size:9px;color:var(--tx3);font-weight:700;text-transform:uppercase">Avg Score</div><div style="font-size:14px;font-weight:900;color:' + _emScoreColor(r.avg_score) + '">' + _emScoreLabel(r.avg_score) + '</div></div>' +
+            '<div style="background:var(--sur2);border-radius:7px;padding:7px;text-align:center"><div style="font-size:9px;color:var(--tx3);font-weight:700;text-transform:uppercase">Commit Rate</div><div style="font-size:14px;font-weight:900;color:' + (r.commitment_rate_pct >= 70 ? 'var(--G)' : r.commitment_rate_pct >= 40 ? 'var(--O)' : 'var(--R)') + '">' + (r.commitment_rate_pct !== null ? r.commitment_rate_pct + '%' : '—') + '</div></div>' +
+            '<div style="background:var(--sur2);border-radius:7px;padding:7px;text-align:center"><div style="font-size:9px;color:var(--tx3);font-weight:700;text-transform:uppercase">Avg Δ</div><div style="font-size:14px;font-weight:900;color:' + (r.avg_improvement_delta > 0 ? 'var(--G)' : r.avg_improvement_delta < 0 ? 'var(--R)' : 'var(--tx3)') + '">' + (r.avg_improvement_delta !== null ? (r.avg_improvement_delta > 0 ? '+' : '') + r.avg_improvement_delta : '—') + '</div></div>' +
+            '</div>' : '') +
+
+            // Decision
+            '<div style="padding:10px;background:var(--sur2);border-radius:9px;margin-bottom:8px">' +
+            '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">' +
+            '<div><span style="font-size:10px;color:var(--tx3);font-weight:700;text-transform:uppercase">Recommendation</span>' +
+            '<div style="font-weight:900;font-size:14px;color:' + recClr + ';margin-top:2px">' + _esc(r.recommendation) +
+            (r.increment_pct ? ' · <span style="font-size:13px">' + _esc(r.increment_pct) + '%</span>' : '') + '</div></div>' +
+            '</div>' +
+            (r.manager_assessment ? '<div style="font-size:11.5px;color:var(--tx2);margin-top:8px;white-space:normal;word-break:break-word;line-height:1.5">' + _esc(r.manager_assessment) + '</div>' : '') +
+            (r.increment_notes ? '<div style="font-size:11px;color:var(--tx3);margin-top:4px;white-space:normal;word-break:break-word;font-style:italic">' + _esc(r.increment_notes) + '</div>' : '') +
+            '</div>' +
+
+            // Status update buttons
+            (r.status === 'Pending' ?
+              '<div style="display:flex;gap:6px;flex-wrap:wrap">' +
+              '<button class="btn btn-sm" style="background:var(--Pl);color:var(--P);border:none" onclick="_apUpdateStatus(\'' + _esc(r.appraisal_id) + '\',\'Approved\')"><i class="fas fa-check"></i> Mark Approved</button>' +
+              '<button class="btn btn-sm" style="background:var(--Gl);color:var(--G);border:none" onclick="_apUpdateStatus(\'' + _esc(r.appraisal_id) + '\',\'Applied\')"><i class="fas fa-indian-rupee-sign"></i> Mark Applied</button>' +
+              '<button class="btn btn-sm" style="background:var(--Rl);color:var(--R);border:none" onclick="_apUpdateStatus(\'' + _esc(r.appraisal_id) + '\',\'Rejected\')"><i class="fas fa-times"></i> Reject</button>' +
+              '</div>'
+            : r.status === 'Approved' ?
+              '<button class="btn btn-sm" style="background:var(--Gl);color:var(--G);border:none;margin-top:4px" onclick="_apAppliedForm(\'' + _esc(r.appraisal_id) + '\')">' +
+              '<i class="fas fa-indian-rupee-sign"></i> Mark as Applied (with date)</button>'
+            : '<div style="font-size:10.5px;color:var(--tx3);margin-top:4px">' +
+              (r.approved_by ? 'Approved by: <b>' + _esc(r.approved_by) + '</b>' : '') +
+              (r.applied_date ? ' · Applied: <b>' + _esc(r.applied_date) + '</b>' : '') +
+              '</div>'
+            ) +
+            '</div>';
+        }).join('');
+      }, function(e) {
+        if (root) root.innerHTML = '<div class="te"><i class="fas fa-exclamation-triangle"></i> ' + _esc(e.message) + '</div>';
+      });
+    }
+
+    function _apUpdateStatus(apprId, status) {
+      _gas('updateIncrementAppraisal', [apprId, { status: status }], function() {
+        _toast('✓ Status updated: ' + status, 'ok');
+        _apLoadAppraisals();
+      }, function(e) { _toast('Error: ' + e.message, 'err'); });
+    }
+
+    function _apAppliedForm(apprId) {
+      _openModal('<i class="fas fa-indian-rupee-sign" style="color:var(--G)"></i> Mark Increment Applied',
+        '<div style="display:flex;flex-direction:column;gap:12px">' +
+        '<div><label style="font-size:11px;font-weight:800;color:var(--tx2);text-transform:uppercase;display:block;margin-bottom:4px">Applied Date</label>' +
+        '<input type="date" id="apAppliedDate" class="ana-sel" value="' + _today() + '" style="width:100%"></div>' +
+        '<div><label style="font-size:11px;font-weight:800;color:var(--tx2);text-transform:uppercase;display:block;margin-bottom:4px">Approved by</label>' +
+        '<input type="text" id="apAppliedBy" class="ana-sel" placeholder="Director / Owner name" style="width:100%"></div>' +
+        '</div>',
+        function() {
+          var d = (document.getElementById('apAppliedDate') || {}).value || _today();
+          var b = (document.getElementById('apAppliedBy')   || {}).value || '';
+          _gas('updateIncrementAppraisal', [apprId, { status: 'Applied', applied_date: d, approved_by: b }], function() {
             _closeModal();
-            _toast('✓ Increment decision saved', 'ok');
-            _wmLoadHistory();
-          }, function (e) { _toast('Error: ' + e.message, 'err'); });
-        }, '<i class="fas fa-floppy-disk"></i> Save Decision');
+            _toast('✓ Increment marked as applied!', 'ok');
+            _apLoadAppraisals();
+          }, function(e) { _toast('Error: ' + e.message, 'err'); });
+        }, '<i class="fas fa-check"></i> Confirm Applied');
     }
 
     function _exportEM() {
