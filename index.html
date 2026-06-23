@@ -4470,7 +4470,34 @@
     }
     .safe-bot { display: block; height: env(safe-area-inset-bottom, 0px); }
 
-    /* Animations */
+    /* ── Splash screen ── */
+    @keyframes splashPop {
+      from { opacity: 0; transform: scale(.85) translateY(20px); }
+      to   { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    @keyframes splashHide {
+      to { opacity: 0; transform: scale(1.04); }
+    }
+    .fk-dot {
+      width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,.9);
+      animation: fkPulse 1.2s ease-in-out infinite;
+    }
+    @keyframes fkPulse {
+      0%, 100% { opacity: .3; transform: scale(.7); }
+      50%       { opacity: 1;  transform: scale(1.1); }
+    }
+    /* ── Submit button success state ── */
+    @keyframes btnCheck {
+      0%   { transform: scale(.6); opacity: 0; }
+      60%  { transform: scale(1.2); }
+      100% { transform: scale(1);  opacity: 1; }
+    }
+    .btn-success {
+      background: var(--G) !important;
+      color: #fff !important;
+      pointer-events: none;
+    }
+    /* ── Mobile card hover / press ── */
     @keyframes mobFadeUp {
       from { opacity: 0; transform: translateY(10px); }
       to   { opacity: 1; transform: translateY(0); }
@@ -4516,16 +4543,36 @@
       .ico-btn { width: 40px; height: 40px; font-size: 15px; border-radius: 12px; }
 
       /* ── 3. Touch targets 44px ── */
-      .btn     { min-height: 44px; padding: 11px 18px; font-size: 14px; border-radius: 12px; }
+      .btn     { min-height: 48px; padding: 13px 20px; font-size: 14.5px; border-radius: 14px; }
       .btn-sm  { min-height: 40px; padding: 8px 14px; font-size: 13px; }
       .btn-xs  { min-height: 36px; font-size: 12px; }
-      .nv      { min-height: 50px; padding: 13px 18px; font-size: 14px; }
+      .nv      { min-height: 52px; padding: 13px 18px; font-size: 14px; }
       input, select, textarea { font-size: 16px !important; }
       select, input[type="text"], input[type="month"],
       input[type="date"], input[type="time"],
       input[type="email"], input[type="password"] {
-        min-height: 46px; padding: 12px 14px; border-radius: 12px;
+        min-height: 50px; padding: 13px 16px; border-radius: 14px;
       }
+      /* Active / press state for buttons — gives haptic-like visual feedback */
+      .btn:active { transform: scale(.97); transition: transform .08s; }
+      .card:active { transform: scale(.985); transition: transform .1s; }
+      .mob-nav-item:active i { transform: scale(.88); }
+      /* Cards wider gap on small screens */
+      .card { border-radius: 18px !important; }
+      .da-kpi { border-radius: 16px !important; }
+      /* Pull-to-refresh indicator */
+      #fkPtr {
+        display: none; position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+        height: 3px; background: linear-gradient(90deg, var(--P), var(--T), var(--G));
+        animation: ptrSlide 1.4s linear infinite;
+      }
+      @keyframes ptrSlide {
+        from { transform: translateX(-100%); }
+        to   { transform: translateX(100%); }
+      }
+      /* Improve the bottom punch card on mobile */
+      .att-punch-card { border-radius: 20px !important; padding: 18px !important; }
+      .btn-checkin { font-size: 15px !important; min-height: 52px !important; border-radius: 14px !important; }
 
       /* ── 4. Bottom sheet modals ── */
       .modal-ov   { align-items: flex-end; padding: 0; }
@@ -4798,7 +4845,32 @@
   <!-- Sidebar overlay (mobile tap-to-close) -->
   <div class="sb-overlay" id="sbOverlay" onclick="_sbClose()"></div>
 
+  <!-- ── SPLASH LOADER — shown during getAllData, hidden once data arrives ── -->
+  <div id="fkSplash" style="display:none;position:fixed;inset:0;z-index:9999;
+    background:linear-gradient(150deg,#005F73 0%,#0A9396 55%,#94D2BD 100%);
+    flex-direction:column;align-items:center;justify-content:center;gap:0">
+    <div style="animation:splashPop .5s cubic-bezier(.34,1.56,.64,1) both;display:flex;flex-direction:column;align-items:center;gap:20px">
+      <img src="https://fresko.co.in/wp-content/uploads/2025/08/Untitled-design-21.png" alt="Fresko"
+        style="width:88px;height:88px;object-fit:contain;filter:drop-shadow(0 4px 24px rgba(0,0,0,.25))"
+        onerror="this.style.display='none'">
+      <div style="color:#fff;font-size:22px;font-weight:900;letter-spacing:-.4px;text-align:center;
+        text-shadow:0 2px 12px rgba(0,0,0,.2)">Fresko Staff Portal</div>
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <div class="fk-dot" style="animation-delay:0s"></div>
+        <div class="fk-dot" style="animation-delay:.18s"></div>
+        <div class="fk-dot" style="animation-delay:.36s"></div>
+      </div>
+      <div id="fkSplashMsg" style="color:rgba(255,255,255,.72);font-size:13px;font-weight:600;
+        text-align:center;margin-top:-6px">Loading your workspace…</div>
+    </div>
+    <div style="position:absolute;bottom:40px;color:rgba(255,255,255,.45);font-size:11px">
+      © 2026 Fresko &nbsp;·&nbsp; All rights reserved
+    </div>
+  </div>
+
   <div class="scr" id="sApp">
+    <!-- Pull-to-refresh indicator (mobile) -->
+    <div id="fkPtr"></div>
 
     <!-- Mobile sidebar overlay -->
     <div class="mob-ov" id="mobOv" onclick="_closeSb()"></div>
@@ -5356,14 +5428,16 @@
     /* ══════════════════════════════════════════════════════════
        BUTTON LOADING STATE
     ══════════════════════════════════════════════════════════ */
-    function _startSub(id) {
+    function _startSub(id, label) {
       var b = document.getElementById(id);
       if (!b || _loadingBtns[id]) return false;
       _loadingBtns[id] = true;
       b._orig = b.innerHTML;
-      b.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Saving...';
-      b.style.opacity = '.65';
+      b.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> ' + (label || 'Processing…');
+      b.style.opacity = '.75';
       b.style.pointerEvents = 'none';
+      b.style.transform = 'scale(.98)';
+      b.style.transition = 'all .15s';
       return true;
     }
     function _endSub(id) {
@@ -5373,6 +5447,20 @@
       if (b._orig !== undefined) b.innerHTML = b._orig;
       b.style.opacity = '1';
       b.style.pointerEvents = 'auto';
+      b.style.transform = '';
+    }
+    // Show ✓ checkmark briefly on success before restoring original label
+    function _successSub(id, msg) {
+      var b = document.getElementById(id);
+      if (!b) { _endSub(id); return; }
+      delete _loadingBtns[id];
+      b.innerHTML = '<i class="fas fa-check" style="animation:btnCheck .3s both"></i> ' + (msg || 'Saved!');
+      b.style.background = 'var(--G)';
+      b.style.color = '#fff';
+      b.style.opacity = '1';
+      b.style.pointerEvents = 'none';
+      b.style.transform = '';
+      setTimeout(function () { _endSub(id); b.style.background = ''; b.style.color = ''; }, 1600);
     }
 
     /* ══════════════════════════════════════════════════════════
@@ -5766,6 +5854,26 @@ function _gasX(fn, args, timeout, onOk, onErr) {
       document.getElementById('sLogin').classList.remove('on');
       document.getElementById('sApp').classList.add('on');
 
+      // Show the Fresko splash while getAllData loads
+      var splash = document.getElementById('fkSplash');
+      if (splash) splash.style.display = 'flex';
+
+      // Cycle splash messages so it feels alive
+      var msgs = ['Loading your workspace…', 'Fetching your tasks…', 'Almost there…'];
+      var mi = 0;
+      var msgEl = document.getElementById('fkSplashMsg');
+      var splashMsgTimer = setInterval(function () {
+        mi = (mi + 1) % msgs.length;
+        if (msgEl) msgEl.textContent = msgs[mi];
+      }, 1800);
+
+      function _hideSplash() {
+        clearInterval(splashMsgTimer);
+        if (!splash) return;
+        splash.style.animation = 'splashHide .35s cubic-bezier(.4,0,.2,1) forwards';
+        setTimeout(function () { splash.style.display = 'none'; }, 340);
+      }
+
       // Set up user avatar in sidebar
       var initials = _initials(_U.name);
       var avaEl    = document.getElementById('sbAva');
@@ -5828,6 +5936,7 @@ function _gasX(fn, args, timeout, onOk, onErr) {
         }
 
         // Render dashboard with cached data
+        _hideSplash();
         _loadV(window._pwaStartRoute || 'dash');
         window._pwaStartRoute = null;
         _updateMobNav && _updateMobNav('home');
@@ -5841,6 +5950,7 @@ function _gasX(fn, args, timeout, onOk, onErr) {
         // and show "Could not load location settings" even when location
         // itself was working fine.
         _gas('getAllAppConfigForFrontend', [], function(cfg) { _D.appConfig = cfg || {}; }, function() {});
+        _hideSplash();
         _loadV('dash');
         _updateMobNav && _updateMobNav('home');
         _startAutoRefresh();
@@ -7212,21 +7322,19 @@ function _loadSetupTasks() {
       }
 
  _gas('saveNewTask', [obj], function(r) {
-  _endSub('btnSaveTask');
   if (r && r.success) {
-
-    // ← YE ADD KARO
+    _successSub('btnSaveTask', 'Added!');
     if (r.warn) {
       _toast('Task saved but checklist failed: ' + r.warn, 'warn');
     } else {
       _toast('✓ Task added & checklist generated: ' + r.task_uid, 'ok');
     }
-
     if (taskInp) taskInp.value = '';
     if (startInp) startInp.value = _today();
     document.getElementById('csFreqX').innerHTML = '';
     _loadSetupTasks();
   } else {
+    _endSub('btnSaveTask');
     _toast('Error: ' + (r && r.error ? r.error : 'Unknown error'), 'err');
   }
 }, function(e) {
@@ -7569,7 +7677,7 @@ function _loadSetupTasks() {
       if (!_req(toId, 'Employee') || !_req(desc, 'Task Description') || !_req(date, 'Due Date')) { _endSub('btnSaveDel'); return; }
       if (desc.length < 10) { _toast('Task description too short (min 10 chars)', 'err'); _endSub('btnSaveDel'); return; }
       _gas('createDelegation', [{ delegated_to: toId, delegated_to_name: toNm, task_desc: desc, first_date: date }], function (r) {
-        _endSub('btnSaveDel');
+        _successSub('btnSaveDel', 'Delegated!');
         _toast('Delegation created: ' + r.task_id, 'ok');
         _addNtf('Task delegated to ' + toNm, 'fa-paper-plane', 'var(--Vl)', 'var(--V)', 'deleg');
         var descEl = document.getElementById('dcrDesc'); if (descEl) descEl.value = '';
@@ -8201,7 +8309,7 @@ function _loadSetupTasks() {
       if (!_req(from, 'From Date') || !_req(to, 'To Date')) { _endSub('btnSaveLvr'); return; }
       if (to < from) { _toast('To Date cannot be before From Date', 'err'); _endSub('btnSaveLvr'); return; }
       _gas('requestLeave', [{ leave_type: type, from_date: from, to_date: to, reason: reason }], function () {
-        _endSub('btnSaveLvr');
+        _successSub('btnSaveLvr', 'Submitted!');
         _toast('Leave request submitted!', 'ok');
         _addNtf('Leave request submitted: ' + type, 'fa-umbrella-beach', 'var(--Tl)', 'var(--T)', 'attend');
         _loadMyLeaveReqs();
@@ -14740,6 +14848,32 @@ function _deactivateTask(uid) {
       ct.classList.add('mob-page');
       setTimeout(function(){ ct.classList.remove('mob-page'); }, 350);
     }
+
+    // ── Pull-to-refresh ──────────────────────────────────────────────────
+    (function () {
+      var startY = 0, pulling = false, ptr = null;
+      document.addEventListener('touchstart', function (e) {
+        ptr = document.getElementById('fkPtr');
+        var ct = document.getElementById('content');
+        if (!ct || ct.scrollTop > 0) return;
+        startY = e.touches[0].clientY;
+        pulling = true;
+      }, { passive: true });
+      document.addEventListener('touchmove', function (e) {
+        if (!pulling || !ptr) return;
+        var dy = e.touches[0].clientY - startY;
+        if (dy > 60) { ptr.style.display = 'block'; }
+      }, { passive: true });
+      document.addEventListener('touchend', function () {
+        if (!pulling || !ptr) return;
+        pulling = false;
+        if (ptr.style.display === 'block') {
+          ptr.style.display = 'block';
+          _forceRefresh();
+          setTimeout(function () { if (ptr) ptr.style.display = 'none'; }, 1200);
+        }
+      });
+    })();
 
     // ── Bottom nav: routing ──────────────────────────────────────────────
     var _mbnRoutes = { home:'dash', check:'check', attend:'attend', leave:'leave' };
