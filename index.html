@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="Fresko Portal">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-180.png">
-  <title>Fresko Staff Portal</title>
+  <title>Fresko Staff Portal — v3.0</title>
 
   <!-- External Assets -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -5570,7 +5570,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbxdGbTlHwvG8Kyg6l8TXHGg6WNq0z1XH9bwi68Ju-YUMdgwey1LG0f4YQXhFOt1MmPWlw/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbxBNIqcEv2dZmzAW3OppaQF3dJYhYoSeoMcQLP9uOMvPLUfUCvHEjC3q1xOL4e8s4i0cg/exec';
     var _TOKEN  = '';
 
 function _gas(fn, args, onOk, onErr) {
@@ -12886,7 +12886,9 @@ function _loadSetupTasks() {
         // harmless no-op stub since nothing currently routes to it.
         pteam: _loadTeamPerf,
         // Leave management
-        lreq: _loadMyLeaves, lbal: _loadLeaveBalance, lcal: _loadLeaveCalView, lsumm: _loadLeaveSummTab, lapprv: _loadLeaveApprovals
+        lreq: _loadMyLeaves, lbal: _loadLeaveBalance, lcal: _loadLeaveCalView, lsumm: _loadLeaveSummTab, lapprv: _loadLeaveApprovals,
+        // EM Weekly Meeting
+        emwm: _vEMWeeklyMeeting
       };
 
       if (loaders[tabId]) {
@@ -13201,7 +13203,8 @@ function _loadSetupTasks() {
         { id: 'emsumm', lbl: '<i class="fas fa-table-cells-large"></i> Summary' },
         { id: 'emcl',   lbl: '<i class="fas fa-list-check"></i> Checklist' },
         { id: 'emdl',   lbl: '<i class="fas fa-diagram-project"></i> Delegation' },
-        { id: 'emat',   lbl: '<i class="fas fa-user-clock"></i> Attendance' }
+        { id: 'emat',   lbl: '<i class="fas fa-user-clock"></i> Attendance' },
+        { id: 'emwm',   lbl: '<i class="fas fa-handshake"></i> Weekly Meeting' }
       ];
       var defFrom = _currMonth() + '-01';
       var defTo   = _today();
@@ -13268,12 +13271,14 @@ function _loadSetupTasks() {
           '<div id="emRoot">' + _skel(6) + '</div>',
           '<div id="emClRoot">' + _skel(4) + '</div>',
           '<div id="emDlRoot">' + _skel(4) + '</div>',
-          '<div id="emAtRoot">' + _skel(4) + '</div>'
+          '<div id="emAtRoot">' + _skel(4) + '</div>',
+          '<div id="emWmRoot"><div style="padding:8px 0">' + _skel(4) + '</div></div>'
         ]);
 
       _switchTab(at);
       _emRefreshViewBtns();
-      _loadEM();
+      if (at === 'emwm') _vEMWeeklyMeeting();
+      else _loadEM();
     }
 
     function _emMarkCustom() {
@@ -13715,6 +13720,283 @@ function _loadSetupTasks() {
 
       var bEl = document.getElementById('mBody');
       if (bEl) bEl.innerHTML = body;
+    }
+
+    /* ══════════════════════════════════════════════════════════════════════
+       EM WEEKLY MEETING — Monday meeting recorder + commitment tracker
+       Left: Record form (auto-populates score from current EM data)
+       Right: History with Mark Met/Not Met, increment tracking
+    ══════════════════════════════════════════════════════════════════════ */
+    function _vEMWeeklyMeeting() {
+      var root = document.getElementById('emWmRoot');
+      if (!root) return;
+
+      // Calculate last week's date range (Mon-Sun)
+      var now = new Date();
+      var dow = now.getDay();
+      var lastMon = new Date(now); lastMon.setDate(now.getDate() - (dow === 0 ? 13 : dow + 6));
+      var lastSun = new Date(lastMon); lastSun.setDate(lastMon.getDate() + 6);
+      function iso(d) { return d.toISOString().slice(0, 10); }
+      var lFrom = iso(lastMon), lTo = iso(lastSun);
+
+      root.innerHTML =
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start">' +
+
+        // ── RECORD FORM ──────────────────────────────────────────────────
+        '<div class="card card-nohover">' +
+        '<div class="sec-title" style="margin-bottom:16px"><i class="fas fa-handshake" style="color:var(--P)"></i> Record Monday Meeting</div>' +
+
+        '<div style="display:flex;flex-direction:column;gap:12px">' +
+
+        '<div><label style="font-size:11px;font-weight:800;color:var(--tx2);text-transform:uppercase;display:block;margin-bottom:4px">Meeting Date</label>' +
+        '<input type="date" id="wmMeetDate" class="ana-sel" value="' + iso(now) + '" style="width:100%"></div>' +
+
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
+        '<div><label style="font-size:11px;font-weight:800;color:var(--tx2);text-transform:uppercase;display:block;margin-bottom:4px">Week From</label>' +
+        '<input type="date" id="wmWkFrom" class="ana-sel" value="' + lFrom + '" style="width:100%"></div>' +
+        '<div><label style="font-size:11px;font-weight:800;color:var(--tx2);text-transform:uppercase;display:block;margin-bottom:4px">Week To</label>' +
+        '<input type="date" id="wmWkTo" class="ana-sel" value="' + lTo + '" style="width:100%"></div>' +
+        '</div>' +
+
+        '<div><label style="font-size:11px;font-weight:800;color:var(--tx2);text-transform:uppercase;display:block;margin-bottom:4px">Employee</label>' +
+        '<select id="wmEmp" class="ana-sel" style="width:100%" onchange="_wmPopulateScore()">' +
+        '<option value="">— Select Employee —</option>' + _getEmpOptions() + '</select></div>' +
+
+        '<div id="wmScorePreview" style="display:none;padding:12px;border-radius:10px;background:var(--sur2);border:1px solid var(--bdr)">' +
+        '<div style="font-size:11px;font-weight:800;color:var(--tx2);text-transform:uppercase;margin-bottom:6px">Last Score (from current EM data)</div>' +
+        '<div id="wmScoreDisplay" style="font-size:22px;font-weight:900"></div>' +
+        '<div id="wmScoreBreakdown" style="font-size:11px;color:var(--tx3);margin-top:4px"></div>' +
+        '</div>' +
+
+        '<div><label style="font-size:11px;font-weight:800;color:var(--tx2);text-transform:uppercase;display:block;margin-bottom:4px">Commitment for Next Week<span style="color:var(--tx3);font-weight:600;text-transform:none"> (0=best, -100=worst)</span></label>' +
+        '<input type="number" id="wmCommitScore" class="ana-sel" min="-100" max="0" placeholder="e.g. -10" style="width:100%"></div>' +
+
+        '<div><label style="font-size:11px;font-weight:800;color:var(--tx2);text-transform:uppercase;display:block;margin-bottom:4px">What will you do differently?</label>' +
+        '<textarea id="wmCommitDetails" class="ana-sel" rows="3" placeholder="Employee\'s specific commitment (e.g. will complete all daily tasks before 6pm, will not miss attendance)" style="width:100%;resize:vertical"></textarea></div>' +
+
+        '<div><label style="font-size:11px;font-weight:800;color:var(--tx2);text-transform:uppercase;display:block;margin-bottom:4px">Manager Notes</label>' +
+        '<textarea id="wmManagerNotes" class="ana-sel" rows="2" placeholder="Your observations from this meeting" style="width:100%;resize:vertical"></textarea></div>' +
+
+        '<div><label style="font-size:11px;font-weight:800;color:var(--tx2);text-transform:uppercase;display:block;margin-bottom:4px">Increment Cycle (optional)</label>' +
+        '<input type="text" id="wmIncrCycle" class="ana-sel" placeholder="e.g. 2026-H1" style="width:100%"></div>' +
+
+        '<button class="btn btn-wide" id="btnWmSave" onclick="_wmSave()" style="margin-top:4px">' +
+        '<i class="fas fa-floppy-disk"></i> Save Commitment Record</button>' +
+        '</div></div>' +
+
+        // ── HISTORY + FILTERS ─────────────────────────────────────────────
+        '<div>' +
+        '<div class="card card-nohover" style="margin-bottom:14px">' +
+        '<div class="sec-title" style="margin-bottom:12px"><i class="fas fa-clock-rotate-left" style="color:var(--V)"></i> Commitment History</div>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">' +
+        '<select id="wmHistEmp" class="ana-sel" onchange="_wmLoadHistory()">' +
+        '<option value="all">All Employees</option>' + _getEmpOptions() + '</select>' +
+        '<select id="wmHistDept" class="ana-sel" onchange="_wmLoadHistory()">' +
+        '<option value="all">All Departments</option>' + _getDeptOptions() + '</select>' +
+        '<select id="wmHistStatus" class="ana-sel" onchange="_wmLoadHistory()">' +
+        '<option value="all">All Status</option>' +
+        '<option value="Pending">⏳ Pending</option>' +
+        '<option value="Met">✅ Met</option>' +
+        '<option value="Partial">🔶 Partial</option>' +
+        '<option value="Not Met">❌ Not Met</option>' +
+        '</select>' +
+        '<button class="btn btn-sm" onclick="_wmLoadHistory()"><i class="fas fa-rotate-right"></i></button>' +
+        '</div>' +
+        '<div id="wmHistList">' + _skel(3, 'sk-h5') + '</div>' +
+        '</div>' +
+        '</div>' +
+
+        '</div>'; // grid
+
+      _wmLoadHistory();
+    }
+
+    function _wmPopulateScore() {
+      var empId = (document.getElementById('wmEmp') || {}).value;
+      var preview = document.getElementById('wmScorePreview');
+      var scoreEl = document.getElementById('wmScoreDisplay');
+      var brkEl   = document.getElementById('wmScoreBreakdown');
+      if (!empId || !_D.emData || !_D.emData.doers) { if (preview) preview.style.display = 'none'; return; }
+
+      var doer = null;
+      for (var i = 0; i < _D.emData.doers.length; i++) {
+        if (_D.emData.doers[i].emp_id === empId) { doer = _D.emData.doers[i]; break; }
+      }
+      if (!doer) { if (preview) preview.style.display = 'none'; return; }
+
+      var score = _emScore(doer);
+      var c = _emScoreColor(score);
+      if (scoreEl) { scoreEl.textContent = _emScoreLabel(score); scoreEl.style.color = c; }
+      if (brkEl)   brkEl.textContent = 'CL: ' + doer.cl_actual + '/' + doer.cl_plan + '  DL: ' + doer.dl_actual + '/' + doer.dl_plan + '  AT: ' + doer.at_actual + '/' + doer.at_plan;
+      if (preview) preview.style.display = '';
+
+      // Auto-suggest next week commitment (slight improvement on current)
+      var suggest = Math.min(0, score + 15);
+      var cInp = document.getElementById('wmCommitScore');
+      if (cInp && !cInp.value) cInp.value = suggest;
+    }
+
+    function _wmSave() {
+      if (!_startSub('btnWmSave', 'Saving…')) return;
+      var empSel = document.getElementById('wmEmp');
+      var empId  = empSel ? empSel.value : '';
+      var empName = empSel && empSel.selectedIndex >= 0 ? empSel.options[empSel.selectedIndex].text.split(' (')[0] : '';
+      var commitScore = parseInt((document.getElementById('wmCommitScore') || {}).value, 10);
+
+      if (!empId) { _endSub('btnWmSave'); _toast('Please select an employee', 'warn'); return; }
+      if (isNaN(commitScore) || commitScore > 0 || commitScore < -100) {
+        _endSub('btnWmSave'); _toast('Commitment score must be between -100 and 0', 'warn'); return;
+      }
+
+      // Find doer details from current EM data
+      var doer = null;
+      if (_D.emData && _D.emData.doers) {
+        for (var i = 0; i < _D.emData.doers.length; i++) {
+          if (_D.emData.doers[i].emp_id === empId) { doer = _D.emData.doers[i]; break; }
+        }
+      }
+
+      var payload = {
+        meeting_date:       (document.getElementById('wmMeetDate')    || {}).value || _today(),
+        week_from:          (document.getElementById('wmWkFrom')      || {}).value || '',
+        week_to:            (document.getElementById('wmWkTo')        || {}).value || '',
+        emp_id:             empId,
+        emp_name:           empName,
+        dept:               doer ? doer.dept : '',
+        actual_score:       doer ? _emScore(doer) : 0,
+        cl_plan:            doer ? doer.cl_plan   : 0,
+        cl_actual:          doer ? doer.cl_actual  : 0,
+        dl_plan:            doer ? doer.dl_plan    : 0,
+        dl_actual:          doer ? doer.dl_actual  : 0,
+        at_plan:            doer ? doer.at_plan    : 0,
+        at_actual:          doer ? doer.at_actual  : 0,
+        commitment_score:   commitScore,
+        commitment_details: (document.getElementById('wmCommitDetails')  || {}).value || '',
+        manager_notes:      (document.getElementById('wmManagerNotes')   || {}).value || '',
+        increment_cycle:    (document.getElementById('wmIncrCycle')      || {}).value || ''
+      };
+
+      _gas('saveWeeklyCommitment', [payload], function (res) {
+        _successSub('btnWmSave', 'Saved!');
+        _toast('✓ Commitment recorded: ' + res.record_id, 'ok');
+        // Clear form
+        ['wmCommitScore','wmCommitDetails','wmManagerNotes'].forEach(function(id){
+          var el = document.getElementById(id); if (el) el.value = '';
+        });
+        var ep = document.getElementById('wmEmp'); if (ep) ep.value = '';
+        var pv = document.getElementById('wmScorePreview'); if (pv) pv.style.display = 'none';
+        _wmLoadHistory();
+      }, function (e) {
+        _endSub('btnWmSave');
+        _toast('Error: ' + e.message, 'err');
+      });
+    }
+
+    function _wmLoadHistory() {
+      var root = document.getElementById('wmHistList');
+      if (!root) return;
+      root.innerHTML = _skel(3, 'sk-h5');
+
+      var filters = {
+        emp_id: (document.getElementById('wmHistEmp')    || {}).value || 'all',
+        dept:   (document.getElementById('wmHistDept')   || {}).value || 'all',
+        status: (document.getElementById('wmHistStatus') || {}).value || 'all'
+      };
+
+      _gas('getWeeklyCommitments', [filters], function (rows) {
+        if (!root) return;
+        if (!rows || !rows.length) {
+          root.innerHTML = '<div class="empty-state" style="padding:20px"><i class="fas fa-handshake" style="font-size:28px;opacity:.25"></i><p style="color:var(--tx3);margin-top:8px">No records yet. Record the first Monday meeting!</p></div>';
+          return;
+        }
+        root.innerHTML = rows.map(function (r) {
+          var sc  = Number(r.actual_score || 0);
+          var cmt = Number(r.commitment_score || 0);
+          var sc2 = r.next_week_actual !== '' ? Number(r.next_week_actual) : null;
+          var delta = r.improvement_delta !== '' ? Number(r.improvement_delta) : null;
+          var stClr = r.commitment_status === 'Met' ? 'var(--G)' : r.commitment_status === 'Not Met' ? 'var(--R)' : r.commitment_status === 'Partial' ? 'var(--O)' : 'var(--tx3)';
+          var stBg  = r.commitment_status === 'Met' ? 'var(--Gl)' : r.commitment_status === 'Not Met' ? 'var(--Rl)' : r.commitment_status === 'Partial' ? 'var(--Ol)' : 'var(--sur2)';
+
+          return '<div class="anim-item" style="border:1px solid var(--bdr);border-radius:12px;padding:12px 14px;margin-bottom:10px;background:var(--bg)">' +
+            '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px">' +
+            '<div>' +
+            '<div style="font-weight:800;font-size:13.5px;white-space:normal;word-break:break-word">' + _esc(r.emp_name) + ' <span style="font-size:10px;color:var(--tx3);font-weight:600">· ' + _esc(r.dept) + '</span></div>' +
+            '<div style="font-size:10.5px;color:var(--tx3);margin-top:2px">Meeting: ' + _fmtDate(r.meeting_date) + ' &nbsp;|&nbsp; Week: ' + _fmtDateShort(r.week_reviewed_from) + ' – ' + _fmtDateShort(r.week_reviewed_to) + '</div>' +
+            '</div>' +
+            '<span style="padding:3px 8px;border-radius:6px;font-size:10px;font-weight:800;background:' + stBg + ';color:' + stClr + ';white-space:nowrap;flex-shrink:0">' + _esc(r.commitment_status) + '</span>' +
+            '</div>' +
+
+            '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px">' +
+            '<div style="background:var(--sur2);border-radius:8px;padding:8px;text-align:center">' +
+            '<div style="font-size:9px;color:var(--tx3);font-weight:700;text-transform:uppercase;margin-bottom:2px">Last Score</div>' +
+            '<div style="font-size:16px;font-weight:900;color:' + _emScoreColor(sc) + '">' + _emScoreLabel(sc) + '</div>' +
+            '</div>' +
+            '<div style="background:var(--sur2);border-radius:8px;padding:8px;text-align:center">' +
+            '<div style="font-size:9px;color:var(--tx3);font-weight:700;text-transform:uppercase;margin-bottom:2px">Committed</div>' +
+            '<div style="font-size:16px;font-weight:900;color:' + _emScoreColor(cmt) + '">' + _emScoreLabel(cmt) + '</div>' +
+            '</div>' +
+            '<div style="background:var(--sur2);border-radius:8px;padding:8px;text-align:center">' +
+            '<div style="font-size:9px;color:var(--tx3);font-weight:700;text-transform:uppercase;margin-bottom:2px">Actual (Next Wk)</div>' +
+            '<div style="font-size:16px;font-weight:900;color:' + (sc2 !== null ? _emScoreColor(sc2) : 'var(--tx3)') + '">' + (sc2 !== null ? _emScoreLabel(sc2) : '—') + '</div>' +
+            '</div>' +
+            '</div>' +
+
+            (delta !== null ? '<div style="font-size:11px;font-weight:700;margin-bottom:6px;color:' + (delta >= 0 ? 'var(--G)' : 'var(--R)') + '">' +
+              (delta >= 0 ? '↑ ' : '↓ ') + 'Improvement: ' + (delta > 0 ? '+' : '') + delta + ' pts vs commitment' +
+              '</div>' : '') +
+
+            (r.commitment_details ? '<div style="font-size:11.5px;color:var(--tx2);margin-bottom:6px;white-space:normal;word-break:break-word;line-height:1.5"><i class="fas fa-quote-left" style="color:var(--P);font-size:9px"></i> ' + _esc(r.commitment_details) + '</div>' : '') +
+
+            (r.manager_notes ? '<div style="font-size:11px;color:var(--tx3);margin-bottom:8px;white-space:normal;word-break:break-word;font-style:italic"><i class="fas fa-pen" style="font-size:9px"></i> ' + _esc(r.manager_notes) + '</div>' : '') +
+
+            (r.commitment_status === 'Pending' ?
+              '<div style="display:flex;gap:6px;flex-wrap:wrap">' +
+              '<input type="number" id="nxt_' + _esc(r.record_id) + '" placeholder="Next week score (e.g. -20)" min="-100" max="0" class="ana-sel" style="flex:1;min-width:160px">' +
+              '<select id="sts_' + _esc(r.record_id) + '" class="ana-sel">' +
+              '<option value="Met">✅ Met</option>' +
+              '<option value="Partial">🔶 Partial</option>' +
+              '<option value="Not Met">❌ Not Met</option>' +
+              '</select>' +
+              '<button class="btn btn-sm" onclick="_wmMarkStatus(\'' + _esc(r.record_id) + '\',\'' + r.commitment_score + '\')" style="white-space:nowrap">' +
+              '<i class="fas fa-check"></i> Update</button>' +
+              '</div>'
+            : r.increment_eligible === '' ?
+              '<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">' +
+              '<span style="font-size:11px;color:var(--tx3)">Mark increment eligibility:</span>' +
+              '<button class="btn btn-sm" style="background:var(--Gl);color:var(--G);border:none" onclick="_wmMarkIncrement(\'' + _esc(r.record_id) + '\',\'Yes\')">✓ Eligible</button>' +
+              '<button class="btn btn-sm" style="background:var(--Rl);color:var(--R);border:none" onclick="_wmMarkIncrement(\'' + _esc(r.record_id) + '\',\'No\')">✗ Not Eligible</button>' +
+              '<button class="btn btn-sm" style="background:var(--Ol);color:var(--O);border:none" onclick="_wmMarkIncrement(\'' + _esc(r.record_id) + '\',\'Review\')">⚠ Review</button>' +
+              '</div>'
+            : '<div style="font-size:11px;margin-top:4px;color:var(--tx3)">Increment: <b style="color:' + (r.increment_eligible==='Yes'?'var(--G)':r.increment_eligible==='No'?'var(--R)':'var(--O)') + '">' + _esc(r.increment_eligible) + '</b>' +
+              (r.increment_recommended_pct ? ' · Recommended: <b>' + _esc(r.increment_recommended_pct) + '%</b>' : '') + '</div>'
+            ) +
+            '</div>';
+        }).join('');
+      }, function (e) {
+        if (root) root.innerHTML = '<div class="te"><i class="fas fa-exclamation-triangle"></i> ' + _esc(e.message) + '</div>';
+      });
+    }
+
+    function _wmMarkStatus(recId, commitScore) {
+      var nxtEl = document.getElementById('nxt_' + recId);
+      var stsEl = document.getElementById('sts_' + recId);
+      var nextActual = nxtEl ? nxtEl.value : '';
+      var status = stsEl ? stsEl.value : 'Met';
+      _gas('updateCommitmentStatus', [recId, {
+        commitment_status: status,
+        next_week_actual:  nextActual,
+        commitment_score:  commitScore
+      }], function () {
+        _toast('✓ Status updated', 'ok');
+        _wmLoadHistory();
+      }, function (e) { _toast('Error: ' + e.message, 'err'); });
+    }
+
+    function _wmMarkIncrement(recId, eligible) {
+      _gas('updateCommitmentStatus', [recId, { increment_eligible: eligible }], function () {
+        _toast('✓ Increment eligibility marked: ' + eligible, 'ok');
+        _wmLoadHistory();
+      }, function (e) { _toast('Error: ' + e.message, 'err'); });
     }
 
     function _exportEM() {
