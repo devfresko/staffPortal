@@ -2323,12 +2323,33 @@
     .sk {
       background: linear-gradient(90deg,
           var(--sur2) 25%,
-          var(--bdr) 50%,
+          color-mix(in srgb, var(--bdr) 80%, var(--sur2)) 50%,
           var(--sur2) 75%);
-      background-size: 200%;
-      animation: shimmer 1.4s infinite;
+      background-size: 300%;
+      animation: shimmer 1.6s ease-in-out infinite;
       border-radius: 8px;
     }
+    /* Stagger animation for list items appearing */
+    @keyframes fadeSlideUp {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .anim-item {
+      animation: fadeSlideUp .32s cubic-bezier(.4,0,.2,1) both;
+    }
+    .anim-item:nth-child(1) { animation-delay: .00s; }
+    .anim-item:nth-child(2) { animation-delay: .06s; }
+    .anim-item:nth-child(3) { animation-delay: .12s; }
+    .anim-item:nth-child(4) { animation-delay: .18s; }
+    .anim-item:nth-child(5) { animation-delay: .24s; }
+    .anim-item:nth-child(n+6) { animation-delay: .28s; }
+    /* KPI counter count-up glow on first load */
+    @keyframes kpiPop {
+      0%   { opacity:0; transform: scale(.7) translateY(8px); }
+      70%  { transform: scale(1.06); }
+      100% { opacity:1; transform: scale(1) translateY(0); }
+    }
+    .kpi-anim { animation: kpiPop .4s cubic-bezier(.34,1.56,.64,1) both; }
 
     .sk-h1 {
       height: 12px;
@@ -6548,81 +6569,94 @@ function _gasX(fn, args, timeout, onOk, onErr) {
     function _vDash() {
       var hr = new Date().getHours();
       var greet = hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening';
+      var mob = _isMobile();
+      var today = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
 
       document.getElementById('content').innerHTML =
-        '<div class="mod-head">' +
-        '<div>' +
-        '<div class="mod-title" id="dashGreet">' + greet + ', ' + _esc(_U.name.split(' ')[0] || 'there') + ' 👋</div>' +
-        '<div class="mod-sub" id="dashSubtitle">Loading your workspace...</div>' +
-        '</div>' +
-        '<div class="mod-head-right">' +
-        '<button class="btn btn-outline btn-sm" onclick="_loadV(\'feed\')"><i class="fas fa-bolt"></i> Activity</button>' +
-        '<button class="btn btn-sm" onclick="_loadV(\'check\')"><i class="fas fa-list-check"></i> My Tasks</button>' +
-        '</div>' +
-        '</div>' +
+        // ── Hero greeting ──
+        (mob
+          ? '<div style="background:linear-gradient(135deg,var(--P) 0%,var(--T) 100%);border-radius:22px;padding:20px 20px 40px;margin-bottom:-28px;margin:-14px -14px 0;position:relative;overflow:hidden">' +
+            '<div style="position:absolute;top:-30px;right:-30px;width:130px;height:130px;border-radius:50%;background:rgba(255,255,255,.08)"></div>' +
+            '<div style="position:absolute;bottom:-40px;left:-20px;width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,.06)"></div>' +
+            '<div style="color:rgba(255,255,255,.8);font-size:12.5px;font-weight:600;letter-spacing:.3px">' + today + '</div>' +
+            '<div style="color:#fff;font-size:22px;font-weight:900;margin-top:6px;letter-spacing:-.5px">' + greet + ', ' + _esc(_U.name.split(' ')[0]) + ' 👋</div>' +
+            '<div style="color:rgba(255,255,255,.7);font-size:12px;margin-top:3px;font-weight:500">' + (_U.role || 'Staff') + ' · ' + (_U.dept || '') + '</div>' +
+            '</div>'
+          : '<div class="mod-head">' +
+            '<div><div class="mod-title">' + greet + ', ' + _esc(_U.name.split(' ')[0]) + ' 👋</div>' +
+            '<div class="mod-sub">' + today + '</div></div>' +
+            '<div class="mod-head-right">' +
+            '<button class="btn btn-outline btn-sm" onclick="_loadV(\'feed\')"><i class="fas fa-bolt"></i> Activity</button>' +
+            '<button class="btn btn-sm" onclick="_loadV(\'check\')"><i class="fas fa-list-check"></i> My Tasks</button>' +
+            '</div></div>'
+        ) +
 
-        /* ── Check In / Out Punch Card ── */
-        '<div class="att-punch-card" id="dashPunchCard">' +
-        '<div class="att-punch-info">' +
-        '<div class="att-punch-title"><i class="fas fa-fingerprint" style="color:var(--P);margin-right:6px"></i>Today\'s Attendance</div>' +
-        '<div class="att-punch-status" id="dashPunchStatus">Checking status...</div>' +
-        '<div class="att-punch-times" id="dashPunchTimes"></div>' +
-        '<div id="dashPunchGps" style="display:none;font-size:11.5px;margin-top:6px;font-weight:600"></div>' +
-        '</div>' +
-        '<button class="btn-checkin" id="dashPunchBtn" onclick="_doPunch()" disabled>' +
-        '<i class="fas fa-circle-notch ci-spinner"></i> Checking...' +
-        '</button>' +
-        '</div>' +
+        // ── Check In/Out card ──
+        (mob
+          ? '<div style="margin:0 -14px;padding:0 14px 16px;margin-top:-2px">' +
+            '<div class="att-punch-card" id="dashPunchCard" style="margin-top:28px;z-index:2;position:relative;box-shadow:0 8px 32px rgba(0,0,0,.15)">' +
+            '<div class="att-punch-info">' +
+            '<div class="att-punch-title"><i class="fas fa-fingerprint" style="color:var(--P);margin-right:6px"></i>TODAY\'S ATTENDANCE</div>' +
+            '<div class="att-punch-status" id="dashPunchStatus">Checking status...</div>' +
+            '<div class="att-punch-times" id="dashPunchTimes"></div>' +
+            '<div id="dashPunchGps" style="display:none;font-size:11.5px;margin-top:6px;font-weight:600"></div>' +
+            '</div>' +
+            '<button class="btn-checkin" id="dashPunchBtn" onclick="_doPunch()" disabled>' +
+            '<i class="fas fa-circle-notch ci-spinner"></i> Checking...</button>' +
+            '</div></div>'
+          : '<div class="att-punch-card" id="dashPunchCard">' +
+            '<div class="att-punch-info">' +
+            '<div class="att-punch-title"><i class="fas fa-fingerprint" style="color:var(--P);margin-right:6px"></i>Today\'s Attendance</div>' +
+            '<div class="att-punch-status" id="dashPunchStatus">Checking status...</div>' +
+            '<div class="att-punch-times" id="dashPunchTimes"></div>' +
+            '<div id="dashPunchGps" style="display:none;font-size:11.5px;margin-top:6px;font-weight:600"></div>' +
+            '</div>' +
+            '<button class="btn-checkin" id="dashPunchBtn" onclick="_doPunch()" disabled>' +
+            '<i class="fas fa-circle-notch ci-spinner"></i> Checking...' +
+            '</button></div>'
+        ) +
 
-        /* Celebrations Widget (hidden if no celebrations) */
+        // ── Celebrations ──
         '<div id="dashCelebrations" style="display:none;margin-bottom:14px"></div>' +
 
-        /* KPI Row */
-        '<div class="krow" id="dashKrow">' + [1, 2, 3, 4].map(function () { return '<div class="sk sk-h6" style="border-radius:14px"></div>'; }).join('') + '</div>' +
-
-        /* Charts row */
-        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px">' +
-        '<div class="chart-wrap">' +
-        '<div class="chart-head"><div class="chart-title">Task Completion — Last 7 Days</div><div class="chart-sub">Daily tasks marked as done</div></div>' +
-        '<div class="chart-inner"><canvas id="dashBarChart"></canvas></div>' +
-        '</div>' +
-        '<div class="chart-wrap">' +
-        '<div class="chart-head" style="display:flex;align-items:center;justify-content:space-between"><div><div class="chart-title">Task Status</div><div class="chart-sub">Today\'s breakdown</div></div></div>' +
-        '<div class="chart-inner"><canvas id="dashDoughChart"></canvas></div>' +
-        '</div>' +
+        // ── KPI grid ──
+        '<div class="krow" id="dashKrow">' +
+        [1,2,3,4].map(function() { return '<div class="sk sk-h6" style="border-radius:14px"></div>'; }).join('') +
         '</div>' +
 
-        /* Lower row */
-        '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px">' +
-        /* Announcements */
-        '<div class="card card-nohover">' +
-        '<div class="sec-head">' +
-        '<div class="sec-title"><i class="fas fa-bullhorn" style="color:var(--O)"></i> Announcements</div>' +
-        '<button class="btn btn-ghost btn-xs" onclick="_loadV(\'ann\')">View all <i class="fas fa-arrow-right"></i></button>' +
-        '</div>' +
-        '<div id="dashAnnList">' + _skel(2, 'sk-h5') + '</div>' +
-        '</div>' +
-        /* Recent Delegations */
-        '<div class="card card-nohover">' +
-        '<div class="sec-head">' +
-        '<div class="sec-title"><i class="fas fa-inbox" style="color:var(--P)"></i> My Delegations</div>' +
-        '<button class="btn btn-ghost btn-xs" onclick="_loadV(\'deleg\')">View all <i class="fas fa-arrow-right"></i></button>' +
-        '</div>' +
-        '<div id="dashDelList">' + _skel(2, 'sk-h5') + '</div>' +
-        '</div>' +
-        /* Attendance summary */
-        '<div class="card card-nohover">' +
-        '<div class="sec-head">' +
-        '<div class="sec-title"><i class="fas fa-calendar-check" style="color:var(--T)"></i> This Month</div>' +
-        '<button class="btn btn-ghost btn-xs" onclick="_loadV(\'attend\')">Details <i class="fas fa-arrow-right"></i></button>' +
-        '</div>' +
-        '<div id="dashAttSum">' + _skel(1, 'sk-h6') + '</div>' +
-        '</div>' +
+        // ── Mobile: quick action row ──
+        (mob
+          ? '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px" id="dashQuickAct">' +
+            ['fa-list-check:Tasks:check','fa-diagram-project:Delegate:deleg','fa-user-clock:Attend:attend','fa-umbrella-beach:Leave:leave']
+            .map(function(s) {
+              var p=s.split(':');
+              return '<button onclick="_loadV(\''+p[2]+'\')" style="display:flex;flex-direction:column;align-items:center;gap:7px;padding:14px 6px;background:var(--sur);border:1.5px solid var(--bdr);border-radius:16px;cursor:pointer;box-shadow:var(--shad);transition:all .15s;-webkit-tap-highlight-color:transparent" onactive="this.style.transform=\'scale(.95)\'">' +
+                '<div style="width:42px;height:42px;border-radius:13px;background:var(--Pl);display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--P)"><i class="fas '+p[0]+'"></i></div>' +
+                '<span style="font-size:11px;font-weight:800;color:var(--tx2);letter-spacing:.2px">'+p[1]+'</span>' +
+                '</button>';
+            }).join('') +
+            '</div>'
+          : ''
+        ) +
+
+        // ── Charts row (desktop only; mobile shows list-style cards instead) ──
+        (mob ? '' :
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px">' +
+          '<div class="chart-wrap"><div class="chart-head"><div class="chart-title">Task Completion — Last 7 Days</div><div class="chart-sub">Daily tasks marked as done</div></div><div class="chart-inner"><canvas id="dashBarChart"></canvas></div></div>' +
+          '<div class="chart-wrap"><div class="chart-head" style="display:flex;align-items:center;justify-content:space-between"><div><div class="chart-title">Task Status</div><div class="chart-sub">Today\'s breakdown</div></div></div><div class="chart-inner"><canvas id="dashDoughChart"></canvas></div></div>' +
+          '</div>'
+        ) +
+
+        // ── Lower cards ──
+        '<div style="display:grid;grid-template-columns:' + (mob ? '1fr' : '1fr 1fr 1fr') + ';gap:' + (mob ? '12px' : '16px') + '">' +
+        '<div class="card card-nohover"><div class="sec-head"><div class="sec-title"><i class="fas fa-bullhorn" style="color:var(--O)"></i> Announcements</div><button class="btn btn-ghost btn-xs" onclick="_loadV(\'ann\')">View all <i class="fas fa-arrow-right"></i></button></div><div id="dashAnnList">' + _skel(2, 'sk-h5') + '</div></div>' +
+        '<div class="card card-nohover"><div class="sec-head"><div class="sec-title"><i class="fas fa-inbox" style="color:var(--P)"></i> My Delegations</div><button class="btn btn-ghost btn-xs" onclick="_loadV(\'deleg\')">View all <i class="fas fa-arrow-right"></i></button></div><div id="dashDelList">' + _skel(2, 'sk-h5') + '</div></div>' +
+        '<div class="card card-nohover"><div class="sec-head"><div class="sec-title"><i class="fas fa-calendar-check" style="color:var(--T)"></i> This Month</div><button class="btn btn-ghost btn-xs" onclick="_loadV(\'attend\')">Details <i class="fas fa-arrow-right"></i></button></div><div id="dashAttSum">' + _skel(1, 'sk-h6') + '</div></div>' +
         '</div>';
 
       /* ── Load Dashboard Data ── */
-      _loadPunchStatus(); // Load Check-In/Out status
-      _initGpsGate();     // Proactively check location so the button reflects reality before any click
+      _loadPunchStatus();
+      _initGpsGate();
       _gas('getDashboardStats', [], function (s) {
         // Subtitle
         var d = new Date();
@@ -6639,8 +6673,8 @@ function _gasX(fn, args, timeout, onOk, onErr) {
             { lbl: 'Pending Tasks', val: s.pendingTasks || 0, c: 'var(--O)', ib: 'var(--Ol)', ico: 'fa-hourglass-half', extra: '' },
             { lbl: 'Overdue Delegations', val: s.overdueDelegations || 0, c: 'var(--R)', ib: 'var(--Rl)', ico: 'fa-triangle-exclamation', extra: '' },
             { lbl: 'Attendance This Month', val: s.myAttendanceToday || '—', c: 'var(--P)', ib: 'var(--Pl)', ico: 'fa-user-clock', extra: '' }
-          ].map(function (k) {
-            return '<div class="kpi" style="--kc:' + k.c + ';--kib:' + k.ib + '">' +
+          ].map(function (k, i) {
+            return '<div class="kpi kpi-anim" style="--kc:' + k.c + ';--kib:' + k.ib + ';animation-delay:' + (i * .08) + 's">' +
               '<div class="kpi-ico"><i class="fas ' + k.ico + '"></i></div>' +
               '<div class="kpi-val">' + _esc(String(k.val)) + '</div>' +
               '<div class="kpi-lbl">' + k.lbl + '</div>' +
@@ -6724,7 +6758,7 @@ function _gasX(fn, args, timeout, onOk, onErr) {
         if (!el) return;
         if (!anns || !anns.length) { el.innerHTML = '<div class="te" style="padding:20px"><i class="fas fa-bullhorn" style="font-size:24px;opacity:.3"></i>No announcements</div>'; return; }
         el.innerHTML = anns.slice(0, 4).map(function (a) {
-          return '<div style="padding:10px 12px;border-radius:9px;background:var(--bg);margin-bottom:8px;border-left:3px solid ' + (a.priority === 'High' ? 'var(--R)' : 'var(--P)') + ';transition:all .15s;cursor:default" ' +
+          return '<div class="anim-item" style="padding:10px 12px;border-radius:9px;background:var(--bg);margin-bottom:8px;border-left:3px solid ' + (a.priority === 'High' ? 'var(--R)' : 'var(--P)') + ';transition:background .15s;cursor:default" ' +
             'onmouseover="this.style.background=\'var(--Pl)\'" onmouseout="this.style.background=\'var(--bg)\'">' +
             '<div style="font-size:13px;font-weight:600;color:var(--tx);line-height:1.5;margin-bottom:4px">' + _esc(a.text.length > 90 ? a.text.slice(0, 87) + '…' : a.text) + '</div>' +
             '<div style="font-size:10.5px;color:var(--tx3);font-weight:600;display:flex;align-items:center;gap:8px">' +
@@ -6745,7 +6779,7 @@ function _gasX(fn, args, timeout, onOk, onErr) {
         el.innerHTML = active.map(function (d) {
           var dl = _dl(d.final_date);
           var dlTxt = dl === null ? '' : dl < 0 ? '<span style="color:var(--R);font-size:10px;font-weight:800">Overdue ' + Math.abs(dl) + 'd</span>' : dl === 0 ? '<span style="color:var(--O);font-size:10px;font-weight:800">Due Today</span>' : '<span style="color:var(--tx3);font-size:10px;font-weight:600">Due ' + dl + 'd</span>';
-          return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--bdr)">' +
+          return '<div class="anim-item" style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--bdr)">' +
             '<div style="width:8px;height:8px;border-radius:50%;flex-shrink:0;background:' + _colorForStatus(d.is_overdue && d.status !== 'Completed' ? 'Overdue' : d.status) + '"></div>' +
             '<div style="flex:1;min-width:0">' +
             '<div style="font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _esc(d.task_desc) + '</div>' +
