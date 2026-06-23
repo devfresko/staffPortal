@@ -5570,7 +5570,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbxBNIqcEv2dZmzAW3OppaQF3dJYhYoSeoMcQLP9uOMvPLUfUCvHEjC3q1xOL4e8s4i0cg/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbx2-qGAL14thhz3GqZNb9g3k5nuNE1ByLCqnGvUIOXdgtSEOeIxwwTLPtGCCdnGaDw/exec';
     var _TOKEN  = '';
 
 function _gas(fn, args, onOk, onErr) {
@@ -13731,6 +13731,27 @@ function _loadSetupTasks() {
       var root = document.getElementById('emWmRoot');
       if (!root) return;
 
+      // If EM data isn't loaded yet (user went directly to Weekly Meeting tab
+      // without visiting Summary first), auto-load it now so module scores
+      // can be auto-populated once an employee is selected.
+      if (!_D.emData) {
+        var from = (document.getElementById('emFrom') || {}).value || (_currMonth() + '-01');
+        var to   = (document.getElementById('emTo')   || {}).value || _today();
+        var dept = (document.getElementById('emDept') || {}).value || 'all';
+        var hd   = parseInt((document.getElementById('emHeatDays') || {}).value, 10) || 14;
+        root.innerHTML = '<div style="padding:20px;text-align:center;color:var(--tx3)">' +
+          '<i class="fas fa-circle-notch fa-spin" style="font-size:22px;color:var(--P)"></i>' +
+          '<div style="margin-top:10px;font-weight:600">Loading scores for the selected period…</div></div>';
+        _gasX('getEMDashboard', [{ from: from, to: to, dept: dept, empId: 'all', heatDays: hd }], 45000, function(data) {
+          _D.emData = data;
+          _vEMWeeklyMeeting(); // re-render now that data is ready
+        }, function(e) {
+          root.innerHTML = '<div class="te"><i class="fas fa-exclamation-triangle"></i> Could not load scores: ' + _esc(e.message) +
+            '<br><br><button class="btn btn-sm" onclick="_vEMWeeklyMeeting()"><i class="fas fa-rotate-right"></i> Retry</button></div>';
+        });
+        return;
+      }
+
       // Calculate last week's date range (Mon-Sun)
       var now = new Date();
       var dow = now.getDay();
@@ -13816,7 +13837,11 @@ function _loadSetupTasks() {
       var preview = document.getElementById('wmScorePreview');
       var scoreEl = document.getElementById('wmScoreDisplay');
       var brkEl   = document.getElementById('wmScoreBreakdown');
-      if (!empId || !_D.emData || !_D.emData.doers) { if (preview) preview.style.display = 'none'; return; }
+      if (!empId) { if (preview) preview.style.display = 'none'; return; }
+      if (!_D.emData || !_D.emData.doers) {
+        if (preview) { preview.style.display = ''; preview.innerHTML = '<div style="color:var(--tx3);font-size:12px"><i class="fas fa-circle-notch fa-spin"></i> Loading scores…</div>'; }
+        return;
+      }
 
       var doer = null;
       for (var i = 0; i < _D.emData.doers.length; i++) {
@@ -13824,14 +13849,32 @@ function _loadSetupTasks() {
       }
       if (!doer) { if (preview) preview.style.display = 'none'; return; }
 
-      var score = _emScore(doer);
-      var c = _emScoreColor(score);
-      if (scoreEl) { scoreEl.textContent = _emScoreLabel(score); scoreEl.style.color = c; }
-      if (brkEl)   brkEl.textContent = 'CL: ' + doer.cl_actual + '/' + doer.cl_plan + '  DL: ' + doer.dl_actual + '/' + doer.dl_plan + '  AT: ' + doer.at_actual + '/' + doer.at_plan;
-      if (preview) preview.style.display = '';
+      function modSc(plan, actual) { return plan > 0 ? Math.round((actual / plan * 100) - 100) : null; }
+      var overall = _emScore(doer);
+      var clSc    = modSc(doer.cl_plan, doer.cl_actual);
+      var dlSc    = modSc(doer.dl_plan, doer.dl_actual);
+      var atSc    = modSc(doer.at_plan, doer.at_actual);
 
-      // Auto-suggest next week commitment (slight improvement on current)
-      var suggest = Math.min(0, score + 15);
+      if (preview) {
+        preview.style.display = '';
+        preview.innerHTML =
+          '<div style="font-size:10px;font-weight:800;color:var(--tx3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Score for selected period (from EM data)</div>' +
+          '<div style="font-size:28px;font-weight:900;color:' + _emScoreColor(overall) + ';margin-bottom:10px">' + _emScoreLabel(overall) + ' overall</div>' +
+          '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">' +
+          ['Checklist', 'Delegation', 'Attendance'].map(function(lbl, i) {
+            var sc = [clSc, dlSc, atSc][i];
+            var ico = ['fa-list-check', 'fa-diagram-project', 'fa-user-clock'][i];
+            var clr = sc !== null ? _emScoreColor(sc) : 'var(--tx3)';
+            return '<div style="background:var(--bg);border:1px solid var(--bdr);border-radius:8px;padding:8px;text-align:center">' +
+              '<div style="font-size:9px;color:var(--tx3);font-weight:700;text-transform:uppercase"><i class="fas ' + ico + '"></i> ' + lbl + '</div>' +
+              '<div style="font-size:16px;font-weight:900;color:' + clr + ';margin-top:3px">' + (sc !== null ? _emScoreLabel(sc) : '—') + '</div>' +
+              '</div>';
+          }).join('') +
+          '</div>';
+      }
+
+      // Auto-suggest next week commitment: slight improvement
+      var suggest = Math.min(0, overall + 15);
       var cInp = document.getElementById('wmCommitScore');
       if (cInp && !cInp.value) cInp.value = suggest;
     }
@@ -13856,6 +13899,11 @@ function _loadSetupTasks() {
         }
       }
 
+      // Calculate per-module scores from doer's plan/actual data
+      function modScore(plan, actual) {
+        return plan > 0 ? Math.round((actual / plan * 100) - 100) : null;
+      }
+
       var payload = {
         meeting_date:       (document.getElementById('wmMeetDate')    || {}).value || _today(),
         week_from:          (document.getElementById('wmWkFrom')      || {}).value || '',
@@ -13864,12 +13912,10 @@ function _loadSetupTasks() {
         emp_name:           empName,
         dept:               doer ? doer.dept : '',
         actual_score:       doer ? _emScore(doer) : 0,
-        cl_plan:            doer ? doer.cl_plan   : 0,
-        cl_actual:          doer ? doer.cl_actual  : 0,
-        dl_plan:            doer ? doer.dl_plan    : 0,
-        dl_actual:          doer ? doer.dl_actual  : 0,
-        at_plan:            doer ? doer.at_plan    : 0,
-        at_actual:          doer ? doer.at_actual  : 0,
+        // Single score per module (matches sheet columns cl_score/dl_score/at_score)
+        cl_score:           doer ? modScore(doer.cl_plan, doer.cl_actual) : null,
+        dl_score:           doer ? modScore(doer.dl_plan, doer.dl_actual) : null,
+        at_score:           doer ? modScore(doer.at_plan, doer.at_actual) : null,
         commitment_score:   commitScore,
         commitment_details: (document.getElementById('wmCommitDetails')  || {}).value || '',
         manager_notes:      (document.getElementById('wmManagerNotes')   || {}).value || '',
@@ -13940,6 +13986,27 @@ function _loadSetupTasks() {
             '<div style="font-size:16px;font-weight:900;color:' + (sc2 !== null ? _emScoreColor(sc2) : 'var(--tx3)') + '">' + (sc2 !== null ? _emScoreLabel(sc2) : '—') + '</div>' +
             '</div>' +
             '</div>' +
+
+            // Per-module breakdown (only shown if at least one module score is available)
+            ((r.cl_score !== null || r.dl_score !== null || r.at_score !== null)
+              ? '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px">' +
+                [['fa-list-check','CL',r.cl_score],['fa-diagram-project','DL',r.dl_score],['fa-user-clock','AT',r.at_score]].map(function(m) {
+                  var s3 = m[2]; var c3 = s3 !== null ? _emScoreColor(s3) : 'var(--tx3)';
+                  return '<div style="background:var(--bg);border:1px solid var(--bdr);border-radius:7px;padding:6px;text-align:center">' +
+                    '<div style="font-size:9px;color:var(--tx3);font-weight:700"><i class="fas ' + m[0] + '"></i> ' + m[1] + '</div>' +
+                    '<div style="font-size:13px;font-weight:800;color:' + c3 + '">' + (s3 !== null ? _emScoreLabel(s3) : '—') + '</div>' +
+                    '</div>';
+                }).join('') +
+                '</div>'
+              : '') +
+
+            // Module-wise score breakdown (from cl_score/dl_score/at_score columns)
+            (r.cl_score !== null || r.dl_score !== null || r.at_score !== null ?
+              '<div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">' +
+              (r.cl_score !== null ? '<div style="font-size:10px;padding:3px 8px;border-radius:6px;background:var(--Vl);color:var(--V);font-weight:700"><i class="fas fa-list-check"></i> CL ' + (r.cl_score > 0 ? '+' : '') + r.cl_score + '%</div>' : '') +
+              (r.dl_score !== null ? '<div style="font-size:10px;padding:3px 8px;border-radius:6px;background:var(--Tl);color:var(--T);font-weight:700"><i class="fas fa-diagram-project"></i> DL ' + (r.dl_score > 0 ? '+' : '') + r.dl_score + '%</div>' : '') +
+              (r.at_score !== null ? '<div style="font-size:10px;padding:3px 8px;border-radius:6px;background:var(--Ol);color:var(--O);font-weight:700"><i class="fas fa-user-clock"></i> AT ' + (r.at_score > 0 ? '+' : '') + r.at_score + '%</div>' : '') +
+              '</div>' : '') +
 
             (delta !== null ? '<div style="font-size:11px;font-weight:700;margin-bottom:6px;color:' + (delta >= 0 ? 'var(--G)' : 'var(--R)') + '">' +
               (delta >= 0 ? '↑ ' : '↓ ') + 'Improvement: ' + (delta > 0 ? '+' : '') + delta + ' pts vs commitment' +
