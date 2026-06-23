@@ -14028,14 +14028,28 @@ function _loadSetupTasks() {
               '<i class="fas fa-check"></i> Update</button>' +
               '</div>'
             : r.increment_eligible === '' ?
-              '<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">' +
-              '<span style="font-size:11px;color:var(--tx3)">Mark increment eligibility:</span>' +
-              '<button class="btn btn-sm" style="background:var(--Gl);color:var(--G);border:none" onclick="_wmMarkIncrement(\'' + _esc(r.record_id) + '\',\'Yes\')">✓ Eligible</button>' +
-              '<button class="btn btn-sm" style="background:var(--Rl);color:var(--R);border:none" onclick="_wmMarkIncrement(\'' + _esc(r.record_id) + '\',\'No\')">✗ Not Eligible</button>' +
-              '<button class="btn btn-sm" style="background:var(--Ol);color:var(--O);border:none" onclick="_wmMarkIncrement(\'' + _esc(r.record_id) + '\',\'Review\')">⚠ Review</button>' +
+              '<div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--bdr)">' +
+              '<div style="font-size:10px;font-weight:800;color:var(--tx3);text-transform:uppercase;margin-bottom:6px;letter-spacing:.3px">Increment Decision</div>' +
+              '<div style="display:flex;gap:6px;flex-wrap:wrap">' +
+              '<button class="btn btn-sm" style="background:var(--Gl);color:var(--G);border:none" onclick="_wmOpenIncrModal(\'' + _esc(r.record_id) + '\',\'' + _esc(r.emp_name) + '\',\'Yes\')"><i class="fas fa-check"></i> Eligible</button>' +
+              '<button class="btn btn-sm" style="background:var(--Rl);color:var(--R);border:none" onclick="_wmOpenIncrModal(\'' + _esc(r.record_id) + '\',\'' + _esc(r.emp_name) + '\',\'No\')"><i class="fas fa-times"></i> Not Eligible</button>' +
+              '<button class="btn btn-sm" style="background:var(--Ol);color:var(--O);border:none" onclick="_wmOpenIncrModal(\'' + _esc(r.record_id) + '\',\'' + _esc(r.emp_name) + '\',\'Review\')"><i class="fas fa-clock"></i> Keep in Review</button>' +
+              '</div></div>'
+            :
+              // Already has eligibility — show all fields + edit button
+              '<div style="margin-top:8px;padding:10px;background:var(--sur2);border-radius:10px;border:1px solid var(--bdr)">' +
+              '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
+              '<div style="font-size:10px;font-weight:800;color:var(--tx3);text-transform:uppercase;letter-spacing:.3px">Increment Decision</div>' +
+              '<button class="btn btn-xs btn-outline" onclick="_wmOpenIncrModal(\'' + _esc(r.record_id) + '\',\'' + _esc(r.emp_name) + '\',\'' + _esc(r.increment_eligible) + '\',\'' + _esc(r.increment_recommended_pct) + '\',\'' + _esc(r.increment_notes) + '\',\'' + _esc(r.increment_approved_by) + '\',\'' + _esc(r.increment_applied_date) + '\')"><i class="fas fa-pen"></i> Edit</button>' +
+              '</div>' +
+              '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;font-size:11.5px">' +
+              '<div><span style="color:var(--tx3)">Eligible:</span> <b style="color:' + (r.increment_eligible==='Yes'?'var(--G)':r.increment_eligible==='No'?'var(--R)':'var(--O)') + '">' + _esc(r.increment_eligible) + '</b></div>' +
+              '<div><span style="color:var(--tx3)">Recommended %:</span> <b>' + (r.increment_recommended_pct ? _esc(r.increment_recommended_pct) + '%' : '—') + '</b></div>' +
+              '<div><span style="color:var(--tx3)">Approved by:</span> <b>' + _esc(r.increment_approved_by || '—') + '</b></div>' +
+              '<div><span style="color:var(--tx3)">Applied date:</span> <b>' + _esc(r.increment_applied_date || '—') + '</b></div>' +
+              '</div>' +
+              (r.increment_notes ? '<div style="font-size:11px;color:var(--tx2);margin-top:6px;white-space:normal;word-break:break-word;font-style:italic">' + _esc(r.increment_notes) + '</div>' : '') +
               '</div>'
-            : '<div style="font-size:11px;margin-top:4px;color:var(--tx3)">Increment: <b style="color:' + (r.increment_eligible==='Yes'?'var(--G)':r.increment_eligible==='No'?'var(--R)':'var(--O)') + '">' + _esc(r.increment_eligible) + '</b>' +
-              (r.increment_recommended_pct ? ' · Recommended: <b>' + _esc(r.increment_recommended_pct) + '%</b>' : '') + '</div>'
             ) +
             '</div>';
         }).join('');
@@ -14059,11 +14073,78 @@ function _loadSetupTasks() {
       }, function (e) { _toast('Error: ' + e.message, 'err'); });
     }
 
-    function _wmMarkIncrement(recId, eligible) {
-      _gas('updateCommitmentStatus', [recId, { increment_eligible: eligible }], function () {
-        _toast('✓ Increment eligibility marked: ' + eligible, 'ok');
-        _wmLoadHistory();
-      }, function (e) { _toast('Error: ' + e.message, 'err'); });
+    // Opens a full increment modal with all 4 fields: recommended %, notes,
+    // approved by, applied date — plus the eligibility selector.
+    // Pre-fills values when editing an existing increment decision.
+    function _wmOpenIncrModal(recId, empName, eligible, pct, notes, approvedBy, appliedDate) {
+      pct        = pct        || '';
+      notes      = notes      || '';
+      approvedBy = approvedBy || '';
+      appliedDate = appliedDate || '';
+
+      var eligColor = eligible === 'Yes' ? 'var(--G)' : eligible === 'No' ? 'var(--R)' : 'var(--O)';
+
+      var body =
+        '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--bdr)">' +
+        '<div style="flex:1;min-width:0;font-size:14px;font-weight:800;white-space:normal;word-break:break-word">' + _esc(empName) + '</div>' +
+        '<span style="padding:4px 10px;border-radius:7px;font-size:11px;font-weight:800;' +
+        'background:' + (eligible==='Yes'?'var(--Gl)':eligible==='No'?'var(--Rl)':'var(--Ol)') + ';' +
+        'color:' + eligColor + '">' + _esc(eligible) + '</span>' +
+        '</div>' +
+
+        // Eligibility selector (can change)
+        '<div style="margin-bottom:14px">' +
+        '<label style="font-size:11px;font-weight:800;color:var(--tx2);text-transform:uppercase;display:block;margin-bottom:6px">Increment Eligibility</label>' +
+        '<div style="display:flex;gap:8px">' +
+        ['Yes','No','Review'].map(function(opt) {
+          var bg = opt==='Yes'?'var(--Gl)':opt==='No'?'var(--Rl)':'var(--Ol)';
+          var fc = opt==='Yes'?'var(--G)':opt==='No'?'var(--R)':'var(--O)';
+          var sel = eligible === opt ? ';border:2px solid ' + fc : ';border:2px solid transparent';
+          return '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:7px 12px;border-radius:9px;background:' + bg + sel + '">' +
+            '<input type="radio" name="wmIncrElig" value="' + opt + '"' + (eligible===opt?' checked':'') + ' style="accent-color:' + fc + '"> ' +
+            '<span style="font-weight:800;font-size:12px;color:' + fc + '">' + opt + '</span></label>';
+        }).join('') +
+        '</div></div>' +
+
+        // Increment %
+        '<div style="margin-bottom:12px">' +
+        '<label style="font-size:11px;font-weight:800;color:var(--tx2);text-transform:uppercase;display:block;margin-bottom:4px">Recommended Increment %<span style="color:var(--tx3);font-weight:600;text-transform:none"> (e.g. 8 for 8%)</span></label>' +
+        '<input type="number" id="incrPct" class="ana-sel" min="0" max="100" step="0.5" placeholder="e.g. 8" value="' + _esc(pct) + '" style="width:100%"></div>' +
+
+        // Notes
+        '<div style="margin-bottom:12px">' +
+        '<label style="font-size:11px;font-weight:800;color:var(--tx2);text-transform:uppercase;display:block;margin-bottom:4px">Increment Notes / Justification</label>' +
+        '<textarea id="incrNotes" class="ana-sel" rows="3" placeholder="Reason for this increment decision…" style="width:100%;resize:vertical">' + _esc(notes) + '</textarea></div>' +
+
+        // Approved by
+        '<div style="margin-bottom:12px">' +
+        '<label style="font-size:11px;font-weight:800;color:var(--tx2);text-transform:uppercase;display:block;margin-bottom:4px">Approved by</label>' +
+        '<input type="text" id="incrApprovedBy" class="ana-sel" placeholder="Manager / Director name" value="' + _esc(approvedBy) + '" style="width:100%"></div>' +
+
+        // Applied date
+        '<div>' +
+        '<label style="font-size:11px;font-weight:800;color:var(--tx2);text-transform:uppercase;display:block;margin-bottom:4px">Increment Applied Date</label>' +
+        '<input type="date" id="incrAppliedDate" class="ana-sel" value="' + _esc(appliedDate) + '" style="width:100%"></div>';
+
+      _openModal('<i class="fas fa-medal" style="color:var(--P)"></i> Increment Decision', body,
+        function () {
+          var newElig  = (document.querySelector('input[name="wmIncrElig"]:checked') || {}).value || eligible;
+          var newPct   = (document.getElementById('incrPct')         || {}).value || '';
+          var newNotes = (document.getElementById('incrNotes')       || {}).value || '';
+          var newBy    = (document.getElementById('incrApprovedBy')  || {}).value || '';
+          var newDate  = (document.getElementById('incrAppliedDate') || {}).value || '';
+          _gas('updateCommitmentStatus', [recId, {
+            increment_eligible:       newElig,
+            increment_recommended_pct: newPct,
+            increment_notes:          newNotes,
+            increment_approved_by:    newBy,
+            increment_applied_date:   newDate
+          }], function () {
+            _closeModal();
+            _toast('✓ Increment decision saved', 'ok');
+            _wmLoadHistory();
+          }, function (e) { _toast('Error: ' + e.message, 'err'); });
+        }, '<i class="fas fa-floppy-disk"></i> Save Decision');
     }
 
     function _exportEM() {
