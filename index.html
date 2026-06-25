@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="Fresko Portal">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-180.png">
-  <title>Fresko Staff Portal</title>
+  <title>Fresko Staff Portal — v3.0</title>
 
   <!-- External Assets -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -7834,9 +7834,8 @@ function _loadSetupTasks() {
     ══════════════════════════════════════════════════════════ */
     function _vAttend() {
       var tabs = [
-        { id: 'amy',     lbl: '<i class="fas fa-user-clock"></i> My Attendance' },
-        { id: 'adetail', lbl: '<i class="fas fa-calendar-days"></i> Detailed View' },
-        { id: 'areg',    lbl: '<i class="fas fa-pen-to-square"></i> Regularize' }
+        { id: 'amy',  lbl: '<i class="fas fa-user-clock"></i> My Attendance' },
+        { id: 'areg', lbl: '<i class="fas fa-pen-to-square"></i> Regularize' }
       ];
       if (_isManager()) {
         tabs.push({ id: 'arega', lbl: '<i class="fas fa-clipboard-check"></i> Reg. Approvals' });
@@ -7850,16 +7849,14 @@ function _loadSetupTasks() {
         '</div>' +
         _mkTabs(tabs, at) +
         _mkPanes(tabs, at, [
-          '<div id="amyPane">'     + _amyForm()     + '</div>',
-          '<div id="adetailPane">' + _adetailForm() + '</div>',
-          '<div id="aregPane">'    + _aregForm()    + '</div>',
+          '<div id="amyPane">'  + _amyForm()  + '</div>',
+          '<div id="aregPane">' + _aregForm() + '</div>',
           (_isManager() ? '<div id="aregaPane">' + _aregaForm() + '</div>' : ''),
           (_isManager() ? '<div id="amustPane">' + _amustForm() + '</div>' : ''),
         ]);
 
-      if (at === 'amy')          _loadMyAtt();
-      else if (at === 'adetail') _loadAttDetail();
-      else if (at === 'areg')    _loadMyRegularizations();
+      if (at === 'amy')  _loadMyAtt();
+      else if (at === 'areg') _loadMyRegularizations();
       else if (at === 'arega' && _isManager()) _loadRegApprovals();
       else if (at === 'amust' && _isManager()) _loadMustTab();
       if (_ST) setTimeout(function () { _switchTab(_ST); }, 30);
@@ -12436,56 +12433,46 @@ function _loadSetupTasks() {
       document.getElementById('content').innerHTML =
         '<div class="mod-head">' +
         '<div><div class="mod-title">Attendance Analytics</div>' +
-        '<div class="mod-sub">Presence rates, late arrivals, work hours &amp; department trends <span style="color:var(--tx3);font-size:10px">&middot; build 2026-06-19c</span></div></div>' +
-        '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
+        '<div class="mod-sub">Presence rates, late arrivals, work hours &amp; department trends</div></div>' +
+        '</div>' +
 
-        '<select id="attPreset" class="ana-sel" onchange="_attApplyPreset()">' +
-        '<option value="month">This Month</option>' +
-        '<option value="lastmonth">Last Month</option>' +
-        '<option value="quarter">This Quarter</option>' +
-        '<option value="year">This Year</option>' +
-        '<option value="custom">Custom Range</option>' +
-        '</select>' +
-        '<input type="date" id="attFrom" class="ana-sel" value="'+defFrom+'" onchange="_attMarkCustom();_loadAtt()">' +
-        '<span style="color:var(--tx3);font-size:12px">to</span>' +
-        '<input type="date" id="attTo" class="ana-sel" value="'+defTo+'" onchange="_attMarkCustom();_loadAtt()">' +
-
-        '<select id="attDept" class="ana-sel" onchange="_loadAtt()">' +
-        '<option value="all">All Departments</option>' +
-        _getDeptOptions() +
-        '</select>' +
-        '<select id="attEmp" class="ana-sel" onchange="_loadAtt()">' +
-        '<option value="all">All Employees</option>' +
-        _getEmpOptions() +
-        '</select>' +
-        '<select id="attStatus" class="ana-sel" onchange="_loadAtt()">' +
+        // ── Single-row filter bar ─────────────────────────────────────────
+        '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:14px;padding:12px 14px;background:var(--sur2);border-radius:12px;border:1px solid var(--bdr)">' +
+        '<select id="attPreset" class="ana-sel" style="min-width:110px" onchange="_attApplyPreset()">' +
+        '<option value="month">This Month</option><option value="lastmonth">Last Month</option>' +
+        '<option value="quarter">This Quarter</option><option value="year">This Year</option>' +
+        '<option value="custom">Custom</option></select>' +
+        '<input type="date" id="attFrom" class="ana-sel" value="'+defFrom+'" style="min-width:120px" onchange="_attMarkCustom();_loadAtt()">' +
+        '<span style="color:var(--tx3);font-size:11px;font-weight:700;white-space:nowrap">→</span>' +
+        '<input type="date" id="attTo" class="ana-sel" value="'+defTo+'" style="min-width:120px" onchange="_attMarkCustom();_loadAtt()">' +
+        '<div style="width:1px;height:26px;background:var(--bdr);flex-shrink:0"></div>' +
+        '<select id="attDept" class="ana-sel" style="min-width:130px" onchange="_loadAtt()">' +
+        '<option value="all">All Depts</option>' + _getDeptOptions() + '</select>' +
+        _ssHtml('attEmp','<option value="all">All Employees</option>'+_getEmpOptions(),'All Employees','_loadAtt') +
+        '<select id="attStatus" class="ana-sel" style="min-width:100px" onchange="_loadAtt()">' +
         '<option value="all">All Status</option>' +
-        '<option value="P">Present</option>' +
-        '<option value="HD">Half Day</option>' +
-        '<option value="A">Absent</option>' +
-        '<option value="WO">Week Off</option>' +
-        '<option value="H">Holiday</option>' +
+        '<option value="P">Present</option><option value="HD">Half Day</option>' +
+        '<option value="A">Absent</option><option value="WO">Week Off</option><option value="H">Holiday</option>' +
         '</select>' +
-
-        '<select id="attView" class="ana-sel" onchange="_renderAtt()">' +
+        '<div style="width:1px;height:26px;background:var(--bdr);flex-shrink:0"></div>' +
+        '<select id="attView" class="ana-sel" style="min-width:130px" onchange="_renderAtt()">' +
         '<option value="overview">Overview</option>' +
         '<option value="employee">By Employee</option>' +
         '<option value="dept">By Department</option>' +
         '<option value="trend">Trends &amp; Patterns</option>' +
         '<option value="late">Late Arrivals</option>' +
+        '<option value="detail">📅 Detailed Log</option>' +
         '</select>' +
-        '<select id="attSort" class="ana-sel" onchange="_renderAtt()">' +
-        '<option value="pct_desc">Presence % &darr;</option>' +
-        '<option value="pct_asc">Presence % &uarr;</option>' +
-        '<option value="absent_desc">Absent &darr;</option>' +
-        '<option value="late_desc">Late &darr;</option>' +
-        '<option value="name_asc">Name A-Z</option>' +
-        '</select>' +
+        '<select id="attSort" class="ana-sel" style="min-width:110px" onchange="_renderAtt()">' +
+        '<option value="pct_desc">Presence % ↓</option><option value="pct_asc">Presence % ↑</option>' +
+        '<option value="absent_desc">Absent ↓</option><option value="late_desc">Late ↓</option>' +
+        '<option value="name_asc">Name A-Z</option></select>' +
+        '<div style="flex:1;min-width:8px"></div>' +
+        '<button class="btn btn-sm" onclick="_loadAtt()" style="white-space:nowrap"><i class="fas fa-chart-bar"></i> Analyze</button>' +
+        '<button class="btn btn-sm btn-outline" onclick="_exportAttCSV()" style="white-space:nowrap"><i class="fas fa-file-export"></i> Export</button>' +
+        '</div>' +
 
-        '<button class="btn btn-sm" onclick="_loadAtt()"><i class="fas fa-chart-bar"></i> Analyze</button>' +
-        '<button class="btn btn-sm" onclick="_exportAttCSV()"><i class="fas fa-file-export"></i> Export</button>' +
-        '</div></div>' +
-        '<div id="attRoot" style="margin-top:4px">' + _skel(4) + '</div>';
+        '<div id="attRoot">' + _skel(4) + '</div>';
 
       _loadAtt();
     }
@@ -12520,8 +12507,16 @@ function _loadSetupTasks() {
       var from   = (document.getElementById('attFrom')   || {}).value || (_currMonth() + '-01');
       var to     = (document.getElementById('attTo')     || {}).value || _today();
       var dept   = (document.getElementById('attDept')   || {}).value || 'all';
-      var emp    = (document.getElementById('attEmp')    || {}).value || 'all';
+      var emp    = _ssVal('attEmp') || 'all';
       var status = (document.getElementById('attStatus') || {}).value || 'all';
+      var view   = (document.getElementById('attView')   || {}).value || 'overview';
+
+      // Detailed Log view — load attendance records directly, not analytics summary
+      if (view === 'detail') {
+        _loadAttDetailedLog(from, to, dept, emp, status);
+        return;
+      }
+
       _gasX('getAttendanceAnalyticsV2', [{ from: from, to: to, dept: dept, empId: emp, status: status }], 45000, function (data) {
         _D.attData = data;
         _renderAtt();
@@ -12539,6 +12534,8 @@ function _loadSetupTasks() {
       if (!root) return;
 
       var view = (document.getElementById('attView') || {}).value || 'overview';
+      if (view === 'detail') { _loadAtt(); return; } // re-route
+
       var sort = (document.getElementById('attSort') || {}).value || 'pct_desc';
 
       var emps = (data.by_employee || []).slice().sort(function (a, b) {
@@ -12903,6 +12900,187 @@ function _loadSetupTasks() {
       });
     }
 
+    /* ══════════════════════════════════════════════════════════
+       ATTENDANCE DETAILED LOG (in Attendance Analytics)
+       Month → Date grouping. Each date shows all staff present
+       with their Check IN / Check OUT / Hours / Status.
+       Managers can see the full team picture per day.
+    ══════════════════════════════════════════════════════════ */
+    function _loadAttDetailedLog(from, to, dept, emp, status) {
+      var root = document.getElementById('attRoot');
+      if (!root) return;
+      root.innerHTML = _skel(4);
+
+      _gasX('getAttendanceAnalyticsV2',
+        [{ from: from, to: to, dept: dept, empId: emp, status: status }],
+        45000,
+        function (data) {
+          if (!root) return;
+          // Flatten all individual employee daily logs into one array
+          var allRows = [];
+          (data.by_employee || []).forEach(function (emp) {
+            (emp.log || []).forEach(function (r) {
+              allRows.push({
+                emp_id:      emp.emp_id,
+                name:        emp.name,
+                dept:        emp.dept,
+                date:        r.date,
+                check_in:    r.check_in,
+                check_out:   r.check_out,
+                total_hours: r.total_hours,
+                status:      r.status,
+                is_late:     r.is_late,
+                parsed_hours: r.parsed_hours
+              });
+            });
+          });
+
+          if (!allRows.length) {
+            root.innerHTML = '<div class="empty-state" style="padding:32px;text-align:center">' +
+              '<i class="fas fa-calendar-xmark" style="font-size:36px;opacity:.2;color:var(--P)"></i>' +
+              '<div style="margin-top:10px;font-size:13px;color:var(--tx3);font-weight:600">No attendance records found.</div></div>';
+            return;
+          }
+
+          // Group by month → by date
+          var byMonth = {}, mOrder = [];
+          allRows.forEach(function (r) {
+            var m = String(r.date || '').slice(0, 7);
+            var d = String(r.date || '');
+            if (!byMonth[m]) { byMonth[m] = {}; mOrder.push(m); }
+            if (!byMonth[m][d]) byMonth[m][d] = [];
+            byMonth[m][d].push(r);
+          });
+          mOrder.sort();
+
+          // Total summary
+          var totP = allRows.filter(function(r){ return r.status==='P'; }).length;
+          var totHD= allRows.filter(function(r){ return r.status==='HD'; }).length;
+          var totA = allRows.filter(function(r){ return r.status==='A'; }).length;
+
+          var html = '<div style="display:flex;gap:0;margin-bottom:16px;border-radius:12px;overflow:hidden;border:1px solid var(--bdr)">' +
+            [['var(--G)','var(--Gl)','fa-circle-check','Present',totP],
+             ['var(--O)','var(--Ol)','fa-circle-half-stroke','Half Day',totHD],
+             ['var(--R)','var(--Rl)','fa-circle-xmark','Absent',totA],
+             ['var(--P)','var(--Pl)','fa-calendar-days','Total Entries',allRows.length]]
+            .map(function(p){
+              return '<div style="flex:1;padding:12px 10px;text-align:center;background:'+p[1]+'">' +
+                '<div style="font-size:22px;font-weight:900;color:'+p[0]+'">' + p[4] + '</div>' +
+                '<div style="font-size:10px;font-weight:800;color:'+p[0]+';text-transform:uppercase;opacity:.8"><i class="fas '+p[2]+'"></i> '+p[3]+'</div></div>';
+            }).join('<div style="width:1px;background:var(--bdr)"></div>') + '</div>';
+
+          mOrder.forEach(function (m, mi) {
+            var mDates = byMonth[m];
+            var dOrder = Object.keys(mDates).sort();
+            var mLbl = new Date(m+'-01T00:00:00').toLocaleDateString('en-IN',{month:'long',year:'numeric'});
+            var uid  = 'adl' + mi;
+            var open = mi === 0;
+
+            // Month totals
+            var mRecs = []; dOrder.forEach(function(d){ mRecs = mRecs.concat(mDates[d]); });
+            var mP=mRecs.filter(function(r){return r.status==='P';}).length;
+            var mHD=mRecs.filter(function(r){return r.status==='HD';}).length;
+            var mA=mRecs.filter(function(r){return r.status==='A';}).length;
+
+            html += '<div style="margin-bottom:12px;border-radius:14px;overflow:hidden;border:1px solid var(--bdr);box-shadow:var(--shad)">' +
+
+              // ── Month header ───────────────────────────────────────────
+              '<div id="adlh_'+uid+'" onclick="_adlToggle(\''+uid+'\')"' +
+              ' style="display:flex;align-items:center;gap:12px;padding:13px 16px;background:linear-gradient(135deg,var(--sur2),var(--bg));cursor:pointer;user-select:none"' +
+              ' onmouseover="this.style.opacity=\'.85\'" onmouseout="this.style.opacity=\'1\'">' +
+              '<i id="adli_'+uid+'" class="fas fa-chevron-'+(open?'down':'right')+' fa-fw" style="color:var(--P);font-size:12px"></i>' +
+              '<span style="font-weight:900;font-size:15px;flex:1">'+mLbl+'</span>' +
+              '<div style="display:flex;gap:10px;align-items:center">' +
+              '<span style="font-size:12px;font-weight:800;color:var(--G)"><i class="fas fa-circle-check"></i> '+mP+'</span>' +
+              (mHD?'<span style="font-size:12px;font-weight:800;color:var(--O)"><i class="fas fa-circle-half-stroke"></i> '+mHD+'</span>':'') +
+              (mA?'<span style="font-size:12px;font-weight:800;color:var(--R)"><i class="fas fa-circle-xmark"></i> '+mA+'</span>':'') +
+              '<span style="font-size:11px;color:var(--tx3);padding:2px 8px;border-radius:6px;background:var(--sur);border:1px solid var(--bdr)">'+dOrder.length+' days · '+mRecs.length+' entries</span>' +
+              '</div></div>' +
+
+              '<div id="'+uid+'" class="adm-body'+(open?' adm-open':'')+'" style="padding:0">';
+
+            // ── Date sub-groups ────────────────────────────────────────
+            dOrder.forEach(function (d, di) {
+              var dRecs = mDates[d];
+              var dDate = new Date(d + 'T00:00:00');
+              var dLbl  = dDate.toLocaleDateString('en-IN',{weekday:'short',day:'2-digit',month:'short'});
+              var dP    = dRecs.filter(function(r){return r.status==='P';}).length;
+              var dHD   = dRecs.filter(function(r){return r.status==='HD';}).length;
+              var dA    = dRecs.filter(function(r){return r.status==='A';}).length;
+              var duid  = uid + '_d' + di;
+              var isLastDate = di === dOrder.length - 1;
+
+              html +=
+                // Date sub-header
+                '<div id="adldh_'+duid+'" onclick="_adlToggle(\''+duid+'\')"' +
+                ' style="display:flex;align-items:center;gap:10px;padding:9px 16px 9px 28px;background:var(--bg);border-top:1px solid var(--bdr);cursor:pointer;user-select:none"' +
+                ' onmouseover="this.style.background=\'var(--Pl)\'" onmouseout="this.style.background=\'var(--bg)\'">' +
+                '<i id="adli_'+duid+'" class="fas fa-chevron-down fa-fw" style="color:var(--P);font-size:11px"></i>' +
+                '<span style="font-weight:800;font-size:13px;min-width:120px">'+dLbl+'</span>' +
+                '<div style="display:flex;gap:8px;align-items:center">' +
+                (dP?'<span style="font-size:11px;font-weight:800;color:var(--G)"><i class="fas fa-circle-check"></i> '+dP+' Present</span>':'') +
+                (dHD?'<span style="font-size:11px;font-weight:800;color:var(--O)"><i class="fas fa-circle-half-stroke"></i> '+dHD+' Half Day</span>':'') +
+                (dA?'<span style="font-size:11px;font-weight:800;color:var(--R)"><i class="fas fa-circle-xmark"></i> '+dA+' Absent</span>':'') +
+                '</div></div>' +
+
+                // Date staff rows
+                '<div id="'+duid+'" class="adm-body adm-open">' +
+                '<table style="width:100%;border-collapse:collapse">' +
+                '<thead><tr style="background:var(--sur2)">' +
+                '<th style="padding:7px 16px 7px 40px;font-size:10.5px;font-weight:800;color:var(--tx2);text-transform:uppercase;text-align:left;width:180px">Employee</th>' +
+                '<th style="padding:7px 10px;font-size:10.5px;font-weight:800;color:var(--tx2);text-transform:uppercase;text-align:left">Dept</th>' +
+                '<th style="padding:7px 10px;font-size:10.5px;font-weight:800;color:var(--G);text-transform:uppercase;text-align:center;width:70px"><i class="fas fa-sign-in-alt"></i> In</th>' +
+                '<th style="padding:7px 10px;font-size:10.5px;font-weight:800;color:var(--R);text-transform:uppercase;text-align:center;width:70px"><i class="fas fa-sign-out-alt"></i> Out</th>' +
+                '<th style="padding:7px 10px;font-size:10.5px;font-weight:800;color:var(--P);text-transform:uppercase;text-align:center;width:70px"><i class="fas fa-clock"></i> Hrs</th>' +
+                '<th style="padding:7px 16px;font-size:10.5px;font-weight:800;color:var(--tx2);text-transform:uppercase;text-align:center;width:90px">Status</th>' +
+                '</tr></thead><tbody>' +
+                dRecs.map(function(r, ri) {
+                  var isP  = r.status==='P';
+                  var isHD = r.status==='HD';
+                  var isA  = r.status==='A';
+                  var stBg = isP?'var(--Gl)':isHD?'var(--Ol)':isA?'var(--Rl)':'var(--sur2)';
+                  var stFc = isP?'var(--G)' :isHD?'var(--O)' :isA?'var(--R)' :'var(--tx3)';
+                  var stLbl= isP?'Present'  :isHD?'Half Day' :isA?'Absent'   :(r.status||'—');
+                  var ci = (!r.check_in||r.check_in==='-')?'—':r.check_in;
+                  var co = (!r.check_out||r.check_out==='-')?'—':r.check_out;
+                  var hr = r.parsed_hours != null ? (Math.round(r.parsed_hours * 10) / 10) + 'h' : ((!r.total_hours||r.total_hours==='-')?'—':r.total_hours);
+                  var isLate = r.is_late;
+                  var rowBg = ri%2===0?'var(--bg)':'var(--sur2)';
+                  return '<tr style="background:'+rowBg+'" onmouseover="this.style.background=\'var(--Pl)\'" onmouseout="this.style.background=\''+rowBg+'\'">' +
+                    '<td style="padding:9px 10px 9px 40px;font-weight:700;font-size:13px">' + _esc(r.name) +
+                    (isLate?'<span style="margin-left:6px;font-size:9px;padding:1px 5px;border-radius:4px;background:var(--Ol);color:var(--O);font-weight:800">LATE</span>':'') +
+                    '</td>' +
+                    '<td style="padding:9px 10px;font-size:11.5px;color:var(--tx2)">' + _esc(r.dept||'') + '</td>' +
+                    '<td style="padding:9px 10px;text-align:center;font-weight:700;font-size:13px;color:'+(ci==='—'?'var(--tx3)':'var(--G)')+'">'+ci+'</td>' +
+                    '<td style="padding:9px 10px;text-align:center;font-weight:700;font-size:13px;color:'+(co==='—'?'var(--tx3)':'var(--R)')+'">'+co+'</td>' +
+                    '<td style="padding:9px 10px;text-align:center;font-weight:700;font-size:13px;color:'+(hr==='—'?'var(--tx3)':'var(--P)')+'">'+_esc(String(hr))+'</td>' +
+                    '<td style="padding:9px 16px;text-align:center"><span style="display:inline-block;padding:3px 9px;border-radius:7px;font-size:10.5px;font-weight:800;background:'+stBg+';color:'+stFc+'">'+stLbl+'</span></td>' +
+                    '</tr>';
+                }).join('') +
+                '</tbody></table></div>' +
+                (isLastDate ? '' : '');
+            });
+
+            html += '</div></div>';
+          });
+
+          root.innerHTML = html;
+        },
+        function (e) {
+          if (root) root.innerHTML = '<div class="te"><i class="fas fa-exclamation-triangle"></i> ' + _esc(e.message) +
+            '<br><br><button class="btn btn-sm" onclick="_loadAtt()"><i class="fas fa-rotate-right"></i> Retry</button></div>';
+        }
+      );
+    }
+
+    function _adlToggle(uid) {
+      var b = document.getElementById(uid);
+      var ic= document.getElementById('adli_' + uid);
+      if (!b) return;
+      var open = b.classList.toggle('adm-open');
+      if (ic) ic.className = 'fas fa-chevron-' + (open?'down':'right') + ' fa-fw';
+    }
+
     function _exportAttCSV() {
       var data = _D.attData;
       if (!data) { _toast('Load analytics first', 'err'); return; }
@@ -13186,7 +13364,7 @@ function _loadSetupTasks() {
         // Delegation
         dmine: _loadDelMine, dout: _loadDelOut, dall: _loadDelAll, dcr: _loadDelCreate,
         // Attendance — all tab IDs mapped to correct loader functions
-        amy: _loadMyAtt, adetail: _loadAttDetail,
+        amy: _loadMyAtt,
         areg: _loadMyRegularizations, ala: _loadLeaveApprovals,
         arega: _loadRegApprovals, amust: _loadMustTab, aana: _loadAttAnalytics,
         // legacy aliases kept for safety
