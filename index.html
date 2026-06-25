@@ -5529,7 +5529,69 @@
       var h=document.getElementById(id), d=document.getElementById('ssd_'+id);
       if(h) h.value=val; if(d) d.value=lbl!==undefined?lbl:val;
     }
-    function _ssVal(id){ var h=document.getElementById(id); return h?h.value:''; }
+    function _ssVal(id){
+      var h=document.getElementById(id);
+      return h ? h.value : '';
+    }
+
+    /* Universal searchable select auto-initialiser.
+       After every _loadV() this converts ALL <select> elements in the
+       content area to searchable ss-wrap components automatically.
+       No per-view changes needed - works for every page in the app. */
+    function _initSearchSelects(root) {
+      var ct = root || document.getElementById('content');
+      if (!ct) return;
+      ct.querySelectorAll('select:not([data-ss="1"])').forEach(function(sel) {
+        if (sel.closest('.ss-wrap')) return;
+        sel.setAttribute('data-ss', '1');
+        var id = sel.id;
+        var st = (sel.getAttribute('style') || '');
+        var selIdx = sel.selectedIndex >= 0 ? sel.selectedIndex : 0;
+        var selTxt = (sel.options[selIdx] ? sel.options[selIdx].text : '') || '';
+        var selVal = sel.value || '';
+        var wrap = document.createElement('div');
+        wrap.className = 'ss-wrap';
+        if (id) wrap.setAttribute('data-id', id);
+        if (id) wrap.setAttribute('data-selref', id);
+        if (st.trim()) wrap.setAttribute('style', st);
+        wrap.innerHTML =
+          '<input class="ss-inp ana-sel" id="ssd_' + _esc(id) + '"' +
+            ' placeholder="' + _esc(selTxt || 'Select...') + '"' +
+            ' value="' + _esc(selTxt) + '" readonly>' +
+          '<i class="fas fa-chevron-down ss-arr"></i>' +
+          '<div class="ss-list" id="ssl_' + _esc(id) + '">' +
+            '<div class="ss-sw"><input class="ss-si" placeholder="Search..."></div>' +
+            '<div class="ss-opts" id="ssop_' + _esc(id) + '">' + _buildSsOpts(sel, selVal) + '</div>' +
+          '</div>';
+        // Keep original select hidden but in DOM — all existing .value/.options/.innerHTML
+        // code still works on it. ss-wrap is purely a visual layer on top.
+        sel.style.cssText = 'display:none!important;position:absolute;width:0;height:0;opacity:0;pointer-events:none';
+        sel.parentNode.insertBefore(wrap, sel);
+        // Watch for async option changes (e.g. _populateDeptSel adds options later)
+        (function(s, wid) {
+          var obs = new MutationObserver(function() {
+            var optsEl = document.getElementById('ssop_' + wid);
+            if (optsEl) optsEl.innerHTML = _buildSsOpts(s, s.value || '');
+            var dsp = document.getElementById('ssd_' + wid);
+            if (dsp && s.options[s.selectedIndex]) {
+              var t = s.options[s.selectedIndex].text;
+              dsp.value = t; dsp.placeholder = t || 'Select...';
+            }
+          });
+          obs.observe(s, { childList: true, subtree: true, attributes: true });
+        })(sel, id);
+      });
+    }
+
+    function _buildSsOpts(sel, curVal) {
+      var divs = '';
+      Array.from(sel.options).forEach(function(o) {
+        divs += '<div class="ss-opt' + (o.value === curVal ? ' ss-hl' : '') +
+          '" data-v="' + _esc(o.value) + '">' + _esc(o.text) + '</div>';
+      });
+      return divs || '<div class="ss-none">No options</div>';
+    }
+
 
     (function(){
       function closeAll(except){
@@ -5572,13 +5634,36 @@
           var list2=opt.closest('.ss-list'), w2=list2&&list2.closest('.ss-wrap');
           if(!w2) return;
           var id2=w2.getAttribute('data-id'), val=opt.getAttribute('data-v'), lbl=opt.textContent.trim();
-          var h=document.getElementById(id2), d=document.getElementById('ssd_'+id2);
-          if(h) h.value=val; if(d) d.value=lbl;
+          var d=document.getElementById('ssd_'+id2);
+          if(d) d.value=lbl;
           list2.querySelectorAll('.ss-opt').forEach(function(o){o.classList.toggle('ss-hl',o===opt);});
           list2.classList.remove('ss-open'); if(d) d.classList.remove('ss-open');
           var arr=w2.querySelector('.ss-arr'); if(arr) arr.style.transform='translateY(-50%)';
+
+          // Path A: _ssHtml-created wrap — named callback + hidden input
           var cb=w2.getAttribute('data-cb');
-          if(cb){ try{window[cb]();}catch(ex){} }
+          if(cb){
+            var hid=document.getElementById(id2);
+            if(hid && hid.type==='hidden') hid.value=val;
+            try{window[cb]();}catch(ex){}
+          }
+          // Path B: _initSearchSelects-created wrap — original select still in DOM
+          var selRef=w2.getAttribute('data-selref');
+          if(selRef){
+            var origSel=document.getElementById(selRef);
+            // origSel might be the hidden select OR a hidden input (from _ssHtml path)
+            if(origSel && origSel.tagName==='SELECT'){
+              origSel.value=val;
+              // Fire the original onchange so _loadEM(), _renderAtt() etc. run
+              try{ origSel.dispatchEvent(new Event('change')); }catch(ex){}
+            } else if(origSel && origSel.type==='hidden'){
+              origSel.value=val;
+            }
+          }
+          // data-cbi = inline callback string fallback
+          var cbi=w2.getAttribute('data-cbi');
+          if(cbi && !cb && !selRef){ try{(new Function(cbi))();}catch(ex){} }
+
           e.stopPropagation(); return;
         }
         if(!e.target.closest('.ss-wrap')) closeAll(null);
@@ -6161,7 +6246,49 @@ function _gasX(fn, args, timeout, onOk, onErr) {
         if (cont) cont.innerHTML =
           '<div class="empty-state"><i class="fas fa-hammer"></i><h4>Coming Soon</h4><p>This section is under construction.</p></div>';
       }
+      // Auto-convert all <select> elements rendered by this view to searchable dropdowns.
+      // 50ms delay ensures the view function's innerHTML has been fully set first.
+      setTimeout(function() {
+        _initSearchSelects(document.getElementById('content'));
+      }, 50);
     }
+
+    // MutationObserver: fires _initSearchSelects whenever new <select> elements
+    // appear anywhere in the content area — covers async loads (analytics tabs,
+    // delegation lists, leave history, etc.) automatically.
+    (function() {
+      var observer = new MutationObserver(function(mutations) {
+        var hasSelect = false;
+        for (var i = 0; i < mutations.length; i++) {
+          var nodes = mutations[i].addedNodes;
+          for (var j = 0; j < nodes.length; j++) {
+            var n = nodes[j];
+            if (n.nodeType !== 1) continue;
+            if (n.tagName === 'SELECT' || (n.querySelector && n.querySelector('select'))) {
+              hasSelect = true; break;
+            }
+          }
+          if (hasSelect) break;
+        }
+        if (hasSelect) {
+          // Debounce: wait for the full DOM update before scanning
+          clearTimeout(observer._t);
+          observer._t = setTimeout(function() {
+            _initSearchSelects(document.getElementById('content'));
+          }, 30);
+        }
+      });
+      // Start observing once the content div exists (after login)
+      function startObserver() {
+        var ct = document.getElementById('content');
+        if (ct) {
+          observer.observe(ct, { childList: true, subtree: true });
+        } else {
+          setTimeout(startObserver, 500);
+        }
+      }
+      startObserver();
+    })();
 
     function _refresh() {
       _forceRefresh();
