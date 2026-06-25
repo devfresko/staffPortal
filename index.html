@@ -4819,7 +4819,7 @@
     }
 
     /* ── Searchable Select ── */
-    .ss-wrap{position:relative;width:100%}
+    .ss-wrap{position:relative;display:inline-block;min-width:120px;max-width:260px;vertical-align:middle}
     .ss-inp{width:100%;cursor:pointer;background:var(--sur)!important;caret-color:transparent;user-select:none}
     .ss-inp.ss-open{border-color:var(--P)!important;box-shadow:0 0 0 3px rgba(99,102,241,.15)}
     .ss-arr{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--tx3);pointer-events:none;font-size:11px;transition:transform .2s}
@@ -7185,14 +7185,14 @@ function _gasX(fn, args, timeout, onOk, onErr) {
         '<div id="ckWGrid">' + _skel(2, 'sk-h8') + '</div>';
     }
     function _chistForm() {
-      return '<div class="fbar">' +
-        '<label>From:</label><input type="date" id="histFrom" value="' + _daysAgo(30) + '">' +
-        '<label>To:</label><input type="date" id="histTo" value="' + _today() + '">' +
-        '<label>Status:</label><select id="histSt"><option value="">All</option><option>Done</option><option>Pending</option></select>' +
-        '<label>Freq:</label><select id="histFreq"><option value="">All</option><option value="D">D — Daily</option><option value="W">W — Weekly</option><option value="F">F — Fortnightly</option><option value="M">M — Monthly</option><option value="2M">2M — Every 2 Months</option><option value="Q">Q — Quarterly</option><option value="4M">4M — Every 4 Months</option><option value="H">H — Half Yearly</option><option value="Y">Y — Yearly</option><option value="E1st">E1st — 1st Weekday</option><option value="E2nd">E2nd — 2nd Weekday</option><option value="E3rd">E3rd — 3rd Weekday</option><option value="E4th">E4th — 4th Weekday</option><option value="ELast">ELast — Last Weekday</option></select>' +
-        '<button class="btn btn-sm" onclick="_loadHist()"><i class="fas fa-search"></i> Search</button>' +
-        '<div class="fbar-spacer"></div>' +
-        
+      return '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">' +
+        '<span style="font-size:12px;font-weight:700;color:var(--tx2)">From:</span>' +
+        '<input type="date" id="histFrom" class="ana-sel" style="max-width:130px" value="' + _daysAgo(30) + '">' +
+        '<span style="font-size:12px;font-weight:700;color:var(--tx2)">To:</span>' +
+        '<input type="date" id="histTo" class="ana-sel" style="max-width:130px" value="' + _today() + '">' +
+        '<select id="histSt" class="ana-sel" style="min-width:110px"><option value="">All Status</option><option>Done</option><option>Pending</option></select>' +
+        '<select id="histFreq" class="ana-sel" style="min-width:120px"><option value="">All Freq</option><option value="D">Daily</option><option value="W">Weekly</option><option value="F">Fortnightly</option><option value="M">Monthly</option><option value="2M">Every 2 Months</option><option value="Q">Quarterly</option><option value="4M">Every 4 Months</option><option value="H">Half Yearly</option><option value="Y">Yearly</option><option value="E1st">1st Weekday</option><option value="E2nd">2nd Weekday</option><option value="E3rd">3rd Weekday</option><option value="E4th">4th Weekday</option><option value="ELast">Last Weekday</option></select>' +
+        '<button class="btn btn-sm" onclick="_loadHist()" style="white-space:nowrap"><i class="fas fa-search"></i> Search</button>' +
         '</div>' +
         '<div id="histTable"></div>';
     }
@@ -8350,24 +8350,18 @@ function _loadSetupTasks() {
     // ════════════════════════════════════════════════════════════════════════
 
     function _aanaForm() {
-      return [
-        '<div class="ana-toolbar">',
-        '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">',
-        '  <div class="ana-filter-grp"><label class="ana-lbl"><i class="fas fa-building"></i> Dept</label><select id="aanaDept" class="ana-sel"><option value="All">All Departments</option></select></div>',
-        '  <div class="ana-filter-grp"><label class="ana-lbl"><i class="fas fa-calendar"></i> Month</label><input type="month" id="aanaMonth" class="ana-sel" value="' + _currMonth() + '"></div>',
-        '  <div class="ana-filter-grp"><label class="ana-lbl"><i class="fas fa-eye"></i> View</label><select id="aanaView" class="ana-sel"><option value="overview">Overview</option><option value="dept">By Department</option><option value="employee">By Employee</option><option value="trend">Trend & Insights</option></select></div>',
-        '  <div class="ana-filter-grp"><label class="ana-lbl"><i class="fas fa-filter"></i> Filter</label><select id="aanaStatus" class="ana-sel"><option value="all">All Employees</option><option value="perfect">Perfect (100%)</option><option value="good">Good (≥80%)</option><option value="avg">Average (60-79%)</option><option value="low">Low (<60%)</option><option value="absent_heavy">High Absent (>3)</option></select></div>',
-        '  <div class="ana-filter-grp"><label class="ana-lbl"><i class="fas fa-sort"></i> Sort</label><select id="aanaSort" class="ana-sel"><option value="pct_desc">Presence % ↓</option><option value="pct_asc">Presence % ↑</option><option value="absent_desc">Absent ↓</option><option value="name_asc">Name A-Z</option><option value="dept_asc">Department</option></select></div>',
-        '</div>',
-        '<div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap">',
-        '  <input type="text" id="aanaEmpSearch" class="ana-sel" placeholder="🔍 Search employee..." oninput="_filterAnaTable()" style="width:100%;max-width:220px">',
-        '  <button class="btn btn-sm" onclick="_loadAttAnalytics()"><i class="fas fa-chart-bar"></i> Analyze</button>',
-      
-        '  <span id="aanaLastLoad" style="font-size:11px;color:var(--tx3)"></span>',
-        '</div>',
-        '</div>',
-        '<div id="aanaContent" style="margin-top:16px">' + _skel(4) + '</div>'
-      ].join('');
+      return '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:14px;padding:10px 14px;background:var(--sur2);border-radius:12px;border:1px solid var(--bdr)">' +
+        '<select id="aanaDept" class="ana-sel" style="min-width:130px"><option value="All">All Departments</option></select>' +
+        '<input type="month" id="aanaMonth" class="ana-sel" style="max-width:140px" value="' + _currMonth() + '">' +
+        '<select id="aanaView" class="ana-sel" style="min-width:130px" onchange="_renderAnaTable()"><option value="overview">Overview</option><option value="dept">By Department</option><option value="employee">By Employee</option><option value="trend">Trend &amp; Insights</option></select>' +
+        '<select id="aanaStatus" class="ana-sel" style="min-width:130px"><option value="all">All Employees</option><option value="perfect">Perfect (100%)</option><option value="good">Good (≥80%)</option><option value="avg">Average (60-79%)</option><option value="low">Low (&lt;60%)</option></select>' +
+        '<select id="aanaSort" class="ana-sel" style="min-width:110px" onchange="_renderAnaTable()"><option value="pct_desc">Presence % ↓</option><option value="pct_asc">Presence % ↑</option><option value="absent_desc">Absent ↓</option><option value="name_asc">Name A-Z</option><option value="dept_asc">Department</option></select>' +
+        '<input type="text" id="aanaEmpSearch" class="ana-sel" placeholder="Search employee..." oninput="_filterAnaTable()" style="min-width:150px;max-width:200px">' +
+        '<div style="flex:1"></div>' +
+        '<button class="btn btn-sm" onclick="_loadAttAnalytics()" style="white-space:nowrap"><i class="fas fa-chart-bar"></i> Analyze</button>' +
+        '<span id="aanaLastLoad" style="font-size:11px;color:var(--tx3);white-space:nowrap"></span>' +
+        '</div>' +
+        '<div id="aanaContent">' + _skel(4) + '</div>';
     }
 
     function _filterAnaTable() {
@@ -11959,9 +11953,9 @@ function _loadSetupTasks() {
         '<div class="mod-head">' +
         '<div><div class="mod-title">Delegation Analytics</div>' +
         '<div class="mod-sub">Workload distribution, completion rates, on-time performance &amp; overdue analysis</div></div>' +
-        '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
+        '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:10px 14px;background:var(--sur2);border-radius:12px;border:1px solid var(--bdr);margin-bottom:14px">' +
 
-        '<select id="daPreset" class="ana-sel" onchange="_daApplyPreset()">' +
+        '<select id="daPreset" class="ana-sel" style="min-width:110px" onchange="_daApplyPreset()">' +
         '<option value="alltime">All Time</option>' +
         '<option value="month">This Month</option>' +
         '<option value="last3m">Last 3 Months</option>' +
@@ -11969,23 +11963,17 @@ function _loadSetupTasks() {
         '<option value="year">This Year</option>' +
         '<option value="custom">Custom Range</option>' +
         '</select>' +
-        '<input type="date" id="daFrom" class="ana-sel" value="'+defFrom+'" onchange="_daMarkCustom();_loadDa()">' +
-        '<span style="color:var(--tx3);font-size:12px">to</span>' +
-        '<input type="date" id="daTo" class="ana-sel" value="'+defTo+'" onchange="_daMarkCustom();_loadDa()">' +
-
-        '<select id="daDept" class="ana-sel" onchange="_loadDa()">' +
-        '<option value="all">All Departments</option>' +
+        '<input type="date" id="daFrom" class="ana-sel" style="max-width:130px" value="'+defFrom+'" onchange="_daMarkCustom();_loadDa()">' +
+        '<span style="color:var(--tx3);font-size:11px;font-weight:700">→</span>' +
+        '<input type="date" id="daTo" class="ana-sel" style="max-width:130px" value="'+defTo+'" onchange="_daMarkCustom();_loadDa()">' +
+        '<div style="width:1px;height:24px;background:var(--bdr);flex-shrink:0"></div>' +
+        '<select id="daDept" class="ana-sel" style="min-width:120px" onchange="_loadDa()">' +
+        '<option value="all">All Depts</option>' +
         _getDeptOptions() +
         '</select>' +
-        '<select id="daEmp" class="ana-sel" onchange="_loadDa()">' +
-        '<option value="all">All Assignees</option>' +
-        _getEmpOptions() +
-        '</select>' +
-        '<select id="daGiver" class="ana-sel" onchange="_loadDa()">' +
-        '<option value="all">All Delegators</option>' +
-        _getGiverOptions() +
-        '</select>' +
-        '<select id="daStatus" class="ana-sel" onchange="_loadDa()">' +
+        _ssHtml('daEmp','<option value="all">All Assignees</option>'+_getEmpOptions(),'All Assignees','_loadDa') +
+        _ssHtml('daGiver','<option value="all">All Delegators</option>'+_getGiverOptions(),'All Delegators','_loadDa') +
+        '<select id="daStatus" class="ana-sel" style="min-width:100px" onchange="_loadDa()">' +
         '<option value="all">All Status</option>' +
         '<option value="Pending">Pending</option>' +
         '<option value="Completed">Completed</option>' +
@@ -11993,8 +11981,8 @@ function _loadSetupTasks() {
         '<option value="Cancelled">Cancelled</option>' +
         '<option value="Shifted">Shifted</option>' +
         '</select>' +
-
-        '<select id="daView" class="ana-sel" onchange="_renderDa()">' +
+        '<div style="width:1px;height:24px;background:var(--bdr);flex-shrink:0"></div>' +
+        '<select id="daView" class="ana-sel" style="min-width:130px" onchange="_renderDa()">' +
         '<option value="overview">Overview</option>' +
         '<option value="employee">By Employee</option>' +
         '<option value="dept">By Department</option>' +
@@ -12002,18 +11990,18 @@ function _loadSetupTasks() {
         '<option value="trend">Trends &amp; Patterns</option>' +
         '<option value="aging">Pending &amp; Overdue</option>' +
         '</select>' +
-        '<select id="daSort2" class="ana-sel" onchange="_renderDa()">' +
+        '<select id="daSort2" class="ana-sel" style="min-width:110px" onchange="_renderDa()">' +
         '<option value="assigned_desc">Assigned &darr;</option>' +
         '<option value="rate_desc">Completion % &darr;</option>' +
         '<option value="rate_asc">Completion % &uarr;</option>' +
         '<option value="overdue_desc">Overdue &darr;</option>' +
         '<option value="name_asc">Name A-Z</option>' +
         '</select>' +
-
-        '<button class="btn btn-sm" onclick="_loadDa()"><i class="fas fa-chart-bar"></i> Analyze</button>' +
-        '<button class="btn btn-sm" onclick="_exportDaCSV()"><i class="fas fa-file-export"></i> Export</button>' +
+        '<div style="flex:1"></div>' +
+        '<button class="btn btn-sm" onclick="_loadDa()" style="white-space:nowrap"><i class="fas fa-chart-bar"></i> Analyze</button>' +
+        '<button class="btn btn-sm btn-outline" onclick="_exportDaCSV()" style="white-space:nowrap"><i class="fas fa-file-export"></i> Export</button>' +
         '</div></div>' +
-        '<div id="daRoot" style="margin-top:4px">' + _skel(4) + '</div>';
+        '<div id="daRoot">' + _skel(4) + '</div>';
 
       _loadDa();
     }
@@ -15580,31 +15568,28 @@ function _loadSetupTasks() {
         '</div>' +
         // Toolbar
         '<div class="ed-toolbar">' +
-        '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
-        '<div class="ed-search-wrap"><i class="fas fa-search"></i>' +
-        '<input type="text" id="edSearch" placeholder="Search name, dept, role, email…" oninput="_filterEmpDir(this.value)">' +
+        '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 14px;background:var(--sur2);border-radius:12px;border:1px solid var(--bdr);margin-bottom:14px">' +
+        '<div class="ed-search-wrap" style="flex:none"><i class="fas fa-search"></i>' +
+        '<input type="text" id="edSearch" placeholder="Search name, dept, role, email..." oninput="_filterEmpDir(this.value)">' +
         '</div>' +
-        '<select id="edDeptFlt" class="ana-sel" onchange="_filterEmpDir(document.getElementById(\'edSearch\').value)">' +
+        '<select id="edDeptFlt" class="ana-sel" style="min-width:130px" onchange="_filterEmpDir(document.getElementById(\'edSearch\').value)">' +
         '<option value="">All Departments</option>' +
         _getDeptOptions() +
         '</select>' +
-        '<select id="edRoleFlt" class="ana-sel" onchange="_filterEmpDir(document.getElementById(\'edSearch\').value)">' +
+        '<select id="edRoleFlt" class="ana-sel" style="min-width:110px" onchange="_filterEmpDir(document.getElementById(\'edSearch\').value)">' +
         '<option value="">All Roles</option>' +
         '<option value="OWNER">Owner</option>' +
         '<option value="MANAGER">Manager</option>' +
         '<option value="HR">HR</option>' +
         '<option value="STAFF">Staff</option>' +
         '</select>' +
-        '<select id="edView" class="ana-sel" onchange="_setEdView(this.value)">' +
+        '<select id="edView" class="ana-sel" style="min-width:110px" onchange="_setEdView(this.value)">' +
         '<option value="card">Card View</option>' +
         '<option value="table">Table View</option>' +
         '</select>' +
-        '</div>' +
-        '<div style="display:flex;align-items:center;gap:8px;margin-top:8px">' +
-        '<span id="edCount" style="font-size:12px;color:var(--tx3)"></span>' +
-        '<div class="fbar-spacer"></div>' +
+        '<div style="flex:1"></div>' +
+        '<span id="edCount" style="font-size:12px;color:var(--tx3);white-space:nowrap"></span>' +
         '<button class="btn btn-sm" onclick="_loadEmpDir()"><i class="fas fa-rotate-right"></i> Refresh</button>' +
-        '</div>' +
         '</div>' +
         '<div id="edGrid" style="margin-top:16px">' + _skel(6) + '</div>';
 
