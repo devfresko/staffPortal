@@ -13703,54 +13703,62 @@ function _loadSetupTasks() {
         '<div class="mod-head"><div><div class="mod-title">EM Dashboard</div>' +
         '<div class="mod-sub">Checklist + Delegation + Attendance — all doers in one view</div></div></div>' +
 
-        '<div class="fbar" style="flex-wrap:wrap;gap:8px;margin-bottom:8px">' +
-        '<select id="emPreset" class="ana-sel" onchange="_emApplyPreset()">' +
+        // ── Row 1: Date + Filters ─────────────────────────────────────────────
+        '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px;padding:10px 14px;background:var(--sur2);border-radius:12px;border:1px solid var(--bdr)">' +
+        '<select id="emPreset" class="ana-sel" style="min-width:110px;max-width:130px" onchange="_emApplyPreset()">' +
         '<option value="month">This Month</option>' +
         '<option value="lastmonth">Last Month</option>' +
         '<option value="quarter">This Quarter</option>' +
         '<option value="year">This Year</option>' +
-        '<option value="custom">Custom Range</option>' +
+        '<option value="custom">Custom</option>' +
         '</select>' +
-        '<input type="date" id="emFrom" class="ana-sel" value="'+defFrom+'" onchange="_emMarkCustom();_loadEM()">' +
-        '<span style="color:var(--tx3);font-size:12px">to</span>' +
-        '<input type="date" id="emTo" class="ana-sel" value="'+defTo+'" onchange="_emMarkCustom();_loadEM()">' +
-        _ssHtml('emDept','<option value="all">All Departments</option>'+_getDeptOptions(),'All Departments','_loadEM') +
+        '<input type="date" id="emFrom" class="ana-sel" style="max-width:130px" value="'+defFrom+'" onchange="_emMarkCustom();_loadEM()">' +
+        '<span style="color:var(--tx3);font-size:11px;font-weight:700">→</span>' +
+        '<input type="date" id="emTo" class="ana-sel" style="max-width:130px" value="'+defTo+'" onchange="_emMarkCustom();_loadEM()">' +
+        '<div style="width:1px;height:24px;background:var(--bdr);flex-shrink:0"></div>' +
+        '<div style="min-width:150px;max-width:200px;flex:1">' +
+        _ssHtml('emDept','<option value="all">All Departments</option>'+_getDeptOptions(),'All Depts','_loadEM') +
+        '</div>' +
+        '<div style="min-width:160px;max-width:220px;flex:1">' +
         _ssHtml('emEmp','<option value="all">All Employees</option>'+_getEmpOptions(),'All Employees','_loadEM') +
-        '<select id="emHeatDays" class="ana-sel" onchange="_loadEM()">' +
-        '<option value="7">Heatmap: 7 Days</option>' +
-        '<option value="14" selected>Heatmap: 14 Days</option>' +
-        '<option value="30">Heatmap: 30 Days</option>' +
+        '</div>' +
+        '<div style="width:1px;height:24px;background:var(--bdr);flex-shrink:0"></div>' +
+        '<select id="emHeatDays" class="ana-sel" style="max-width:130px" onchange="_loadEM()">' +
+        '<option value="7">Heat: 7d</option>' +
+        '<option value="14" selected>Heat: 14d</option>' +
+        '<option value="30">Heat: 30d</option>' +
         '</select>' +
-        '<button class="btn btn-sm" onclick="_loadEM()"><i class="fas fa-rotate-right"></i> Refresh</button>' +
-        '<button class="btn btn-sm" onclick="_exportEM()"><i class="fas fa-file-export"></i> Export</button>' +
+        '<button class="btn btn-sm btn-teal" onclick="_loadEM()" style="white-space:nowrap"><i class="fas fa-rotate-right"></i> Refresh</button>' +
+        '<button class="btn btn-sm" onclick="_exportEM()" style="white-space:nowrap"><i class="fas fa-file-export"></i> Export</button>' +
         '</div>' +
 
-        '<div class="fbar" style="flex-wrap:wrap;gap:8px;margin-bottom:14px">' +
-        '<input type="text" id="emSearch" class="ana-sel" placeholder="🔍 Search doer..." oninput="_renderEM()" style="min-width:170px">' +
-        '<select id="emBand" class="ana-sel" onchange="_renderEM()">' +
+        // ── Row 2: Search + Performance filters ───────────────────────────────
+        '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:14px">' +
+        '<input type="text" id="emSearch" class="ana-sel" placeholder="🔍 Search doer..." oninput="_renderEM()" style="min-width:160px;max-width:200px">' +
+        '<select id="emBand" class="ana-sel" style="max-width:180px" onchange="_renderEM()">' +
         '<option value="all">All Performance</option>' +
-        '<option value="good">🟢 Good (-20% to 0%)</option>' +
-        '<option value="warn">🟡 Warning (-50% to -21%)</option>' +
-        '<option value="crit">🔴 Critical (below -50%)</option>' +
+        '<option value="good">🟢 Good (≥-20%)</option>' +
+        '<option value="warn">🟡 Warning (-50 to -21%)</option>' +
+        '<option value="crit">🔴 Critical (&lt;-50%)</option>' +
         '</select>' +
-        '<select id="emSort" class="ana-sel" onchange="_renderEM()">' +
+        '<select id="emSort" class="ana-sel" style="max-width:170px" onchange="_renderEM()">' +
         '<option value="name">Sort: Name</option>' +
-        '<option value="score_asc">Sort: Worst Score First</option>' +
-        '<option value="score_desc">Sort: Best Score First</option>' +
+        '<option value="score_asc">Sort: Worst First</option>' +
+        '<option value="score_desc">Sort: Best First</option>' +
         '<option value="dept">Sort: Department</option>' +
         '</select>' +
-        '<select id="emTopN" class="ana-sel" onchange="_renderEM()">' +
+        '<select id="emTopN" class="ana-sel" style="max-width:120px" onchange="_renderEM()">' +
         '<option value="all">Show: All</option>' +
         '<option value="10">Show: Top 10</option>' +
         '<option value="25">Show: Top 25</option>' +
         '<option value="50">Show: Top 50</option>' +
         '</select>' +
-        '<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--tx2);cursor:pointer;white-space:nowrap">' +
+        '<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--tx2);cursor:pointer;white-space:nowrap;padding:0 4px">' +
         '<input type="checkbox" id="emHideZero" onchange="_renderEM()"> Hide zero-activity</label>' +
-        '<div class="fbar-spacer"></div>' +
-        '<div style="display:flex;gap:4px;background:var(--sur2);border-radius:8px;padding:3px" title="Summary view mode">' +
-        '<button class="btn btn-sm" id="emViewTableBtn" onclick="_emSetView(\'table\')" style="padding:5px 10px"><i class="fas fa-table"></i></button>' +
-        '<button class="btn btn-sm" id="emViewCardsBtn" onclick="_emSetView(\'cards\')" style="padding:5px 10px"><i class="fas fa-grip"></i></button>' +
+        '<div style="flex:1"></div>' +
+        '<div style="display:flex;gap:3px;background:var(--sur2);border-radius:8px;padding:3px;border:1px solid var(--bdr)">' +
+        '<button class="btn btn-sm" id="emViewTableBtn" onclick="_emSetView(\'table\')" style="padding:5px 10px" title="Table view"><i class="fas fa-table"></i></button>' +
+        '<button class="btn btn-sm" id="emViewCardsBtn" onclick="_emSetView(\'cards\')" style="padding:5px 10px" title="Cards view"><i class="fas fa-grip"></i></button>' +
         '</div>' +
         '</div>' +
 
