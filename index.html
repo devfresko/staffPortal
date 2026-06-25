@@ -4818,6 +4818,25 @@
       #content   { padding: 10px 10px calc(72px + env(safe-area-inset-bottom, 0px)); }
     }
 
+    /* ── Searchable Select ── */
+    .ss-wrap{position:relative;width:100%}
+    .ss-inp{width:100%;cursor:pointer;background:var(--sur)!important;caret-color:transparent;user-select:none}
+    .ss-inp.ss-open{border-color:var(--P)!important;box-shadow:0 0 0 3px rgba(99,102,241,.15)}
+    .ss-arr{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--tx3);pointer-events:none;font-size:11px;transition:transform .2s}
+    .ss-list{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:9999;background:var(--sur);border:1px solid var(--bdr2);border-radius:12px;box-shadow:var(--shad3);display:none;flex-direction:column;max-height:260px;overflow:hidden}
+    .ss-list.ss-open{display:flex}
+    .ss-sw{padding:8px;border-bottom:1px solid var(--bdr);flex-shrink:0}
+    .ss-si{width:100%;padding:7px 10px;border:1px solid var(--bdr);border-radius:8px;background:var(--bg);font-size:13px;color:var(--tx);outline:none}
+    .ss-opts{overflow-y:auto;max-height:195px}
+    .ss-opt{padding:9px 14px;font-size:13px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--tx);transition:background .1s}
+    .ss-opt:hover,.ss-opt.ss-hl{background:var(--Pl);color:var(--P)}
+    .ss-opt.ss-hi{display:none}
+    .ss-none{padding:10px 14px;font-size:12px;color:var(--tx3);text-align:center}
+    /* Attendance detail expand/collapse */
+    .adm-hd{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--sur2);border-radius:10px;cursor:pointer;border:1px solid var(--bdr);margin-bottom:4px;user-select:none;transition:background .15s}
+    .adm-hd:hover{background:var(--Pl)}
+    .adm-body{display:none}
+    .adm-body.adm-open{display:block}
   </style>
 </head>
 
@@ -5484,6 +5503,93 @@
       setTimeout(function () { _endSub(id); b.style.background = ''; b.style.color = ''; }, 1600);
     }
 
+    /* ── Searchable Select (ss) JS ─────────────────────────────────────────
+       Event-delegation approach: no onclick on individual options.
+       _ssHtml(id, optHtml, placeholder, cbName) — generates the HTML.
+       Hidden <input id="{id}"> holds the value — existing reads still work.
+    ─────────────────────────────────────────────────────────────────────── */
+    function _ssHtml(id, optHtml, ph, cb) {
+      var re = /<option([^>]*)>([\s\S]*?)<\/option>/gi, m, divs = '';
+      while ((m = re.exec(optHtml)) !== null) {
+        var a = m[1], lbl = m[2].trim();
+        var val = (a.match(/value="([^"]*)"/) || [,''])[1];
+        divs += '<div class="ss-opt" data-v="' + _esc(val) + '">' + _esc(lbl) + '</div>';
+      }
+      return '<div class="ss-wrap" data-id="' + _esc(id) + '" data-cb="' + _esc(cb||'') + '">' +
+        '<input class="ss-inp ana-sel" id="ssd_' + _esc(id) + '" placeholder="' + _esc(ph||'Select…') + '" readonly>' +
+        '<i class="fas fa-chevron-down ss-arr"></i>' +
+        '<div class="ss-list" id="ssl_' + _esc(id) + '">' +
+          '<div class="ss-sw"><input class="ss-si" placeholder="\uD83D\uDD0D Search…"></div>' +
+          '<div class="ss-opts">' + divs + '</div>' +
+        '</div>' +
+        '<input type="hidden" id="' + _esc(id) + '">' +
+      '</div>';
+    }
+    function _ssSetVal(id, val, lbl) {
+      var h=document.getElementById(id), d=document.getElementById('ssd_'+id);
+      if(h) h.value=val; if(d) d.value=lbl!==undefined?lbl:val;
+    }
+    function _ssVal(id){ var h=document.getElementById(id); return h?h.value:''; }
+
+    (function(){
+      function closeAll(except){
+        document.querySelectorAll('.ss-list.ss-open').forEach(function(l){
+          if(l!==except){
+            l.classList.remove('ss-open');
+            var i=l.closest('.ss-wrap').querySelector('.ss-inp');
+            if(i){i.classList.remove('ss-open'); var a=l.closest('.ss-wrap').querySelector('.ss-arr'); if(a) a.style.transform='translateY(-50%)';}
+          }
+        });
+      }
+      function filter(list,q){
+        var ql=(q||'').toLowerCase().trim(), any=false;
+        list.querySelectorAll('.ss-opt').forEach(function(o){
+          var h=ql&&o.textContent.toLowerCase().indexOf(ql)<0;
+          o.classList.toggle('ss-hi',h); if(!h) any=true;
+        });
+        var em=list.querySelector('.ss-none');
+        if(!any&&ql){ if(!em){em=document.createElement('div');em.className='ss-none';em.textContent='No results'; list.querySelector('.ss-opts').appendChild(em);}}
+        else if(em) em.remove();
+      }
+      document.addEventListener('click',function(e){
+        var inp=e.target.closest('.ss-inp');
+        if(inp){
+          var w=inp.closest('.ss-wrap'), id=w&&w.getAttribute('data-id');
+          var list=id&&document.getElementById('ssl_'+id);
+          if(!list) return;
+          var was=list.classList.contains('ss-open');
+          closeAll(null);
+          if(!was){
+            list.classList.add('ss-open'); inp.classList.add('ss-open');
+            var arr=w.querySelector('.ss-arr'); if(arr) arr.style.transform='translateY(-50%) rotate(180deg)';
+            var si=list.querySelector('.ss-si');
+            if(si){si.value=''; filter(list,''); setTimeout(function(){si.focus();},60);}
+          }
+          e.stopPropagation(); return;
+        }
+        var opt=e.target.closest('.ss-opt');
+        if(opt){
+          var list2=opt.closest('.ss-list'), w2=list2&&list2.closest('.ss-wrap');
+          if(!w2) return;
+          var id2=w2.getAttribute('data-id'), val=opt.getAttribute('data-v'), lbl=opt.textContent.trim();
+          var h=document.getElementById(id2), d=document.getElementById('ssd_'+id2);
+          if(h) h.value=val; if(d) d.value=lbl;
+          list2.querySelectorAll('.ss-opt').forEach(function(o){o.classList.toggle('ss-hl',o===opt);});
+          list2.classList.remove('ss-open'); if(d) d.classList.remove('ss-open');
+          var arr=w2.querySelector('.ss-arr'); if(arr) arr.style.transform='translateY(-50%)';
+          var cb=w2.getAttribute('data-cb');
+          if(cb){ try{window[cb]();}catch(ex){} }
+          e.stopPropagation(); return;
+        }
+        if(!e.target.closest('.ss-wrap')) closeAll(null);
+      });
+      document.addEventListener('input',function(e){
+        if(e.target.matches('.ss-si')){
+          var list=e.target.closest('.ss-list'); if(list) filter(list,e.target.value);
+        }
+      });
+    })();
+
     /* ══════════════════════════════════════════════════════════
        TOAST NOTIFICATION
     ══════════════════════════════════════════════════════════ */
@@ -5570,7 +5676,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbxJpnA45GXXVK5eOyx2t8yl4-4S0-chzBVlaC0KmFDpAVZunn1gKljm8Z-SiCcWBSeFFw/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbxUWXyCYzZIJCKZVLpFoS_nQC8yf3ohK69OLLe_Ir7GmcbEhEutNdQc_G9sb7efU18Xhg/exec';
     var _TOKEN  = '';
 
 function _gas(fn, args, onOk, onErr) {
@@ -7728,8 +7834,9 @@ function _loadSetupTasks() {
     ══════════════════════════════════════════════════════════ */
     function _vAttend() {
       var tabs = [
-        { id: 'amy',  lbl: '<i class="fas fa-user-clock"></i> My Attendance' },
-        { id: 'areg', lbl: '<i class="fas fa-pen-to-square"></i> Regularize' }
+        { id: 'amy',     lbl: '<i class="fas fa-user-clock"></i> My Attendance' },
+        { id: 'adetail', lbl: '<i class="fas fa-calendar-days"></i> Detailed View' },
+        { id: 'areg',    lbl: '<i class="fas fa-pen-to-square"></i> Regularize' }
       ];
       if (_isManager()) {
         tabs.push({ id: 'arega', lbl: '<i class="fas fa-clipboard-check"></i> Reg. Approvals' });
@@ -7743,15 +7850,16 @@ function _loadSetupTasks() {
         '</div>' +
         _mkTabs(tabs, at) +
         _mkPanes(tabs, at, [
-          '<div id="amyPane">'  + _amyForm()  + '</div>',
-          '<div id="aregPane">' + _aregForm() + '</div>',
-          (_isManager() ? '<div id="aregaPane">'  + _aregaForm() + '</div>' : ''),
+          '<div id="amyPane">'     + _amyForm()     + '</div>',
+          '<div id="adetailPane">' + _adetailForm() + '</div>',
+          '<div id="aregPane">'    + _aregForm()    + '</div>',
+          (_isManager() ? '<div id="aregaPane">' + _aregaForm() + '</div>' : ''),
           (_isManager() ? '<div id="amustPane">' + _amustForm() + '</div>' : ''),
-
         ]);
 
-      if (at === 'amy')  _loadMyAtt();
-      else if (at === 'areg') _loadMyRegularizations();
+      if (at === 'amy')          _loadMyAtt();
+      else if (at === 'adetail') _loadAttDetail();
+      else if (at === 'areg')    _loadMyRegularizations();
       else if (at === 'arega' && _isManager()) _loadRegApprovals();
       else if (at === 'amust' && _isManager()) _loadMustTab();
       if (_ST) setTimeout(function () { _switchTab(_ST); }, 30);
@@ -7766,6 +7874,122 @@ function _loadSetupTasks() {
         '<button class="btn btn-teal btn-sm" onclick="_openRegModal()"><i class="fas fa-plus"></i> New Request</button>' +
         '</div>' +
         '<div id="aregList">' + _skel(3) + '</div>';
+    }
+
+
+    /* ══════════════════════════════════════════════════════
+       ATTENDANCE DETAILED VIEW — monthly grouping with
+       expand/collapse per month, daily status rows.
+    ══════════════════════════════════════════════════════ */
+    function _adetailForm() {
+      return '<div class="fbar" style="flex-wrap:wrap;gap:8px;margin-bottom:12px">' +
+        '<label style="font-size:12px;font-weight:700">From:</label>' +
+        '<input type="date" id="adFrom" class="ana-sel" value="' + (_currMonth()+'-01') + '">' +
+        '<label style="font-size:12px;font-weight:700">To:</label>' +
+        '<input type="date" id="adTo" class="ana-sel" value="' + _today() + '">' +
+        (_isManager()
+          ? '<label style="font-size:12px;font-weight:700">Employee:</label>' +
+            '<div style="min-width:180px">' +
+            _ssHtml('adEmp','<option value="">My Attendance</option>'+_getEmpOptions(),'My Attendance','_loadAttDetail') +
+            '</div>'
+          : '') +
+        '<button class="btn btn-sm" onclick="_loadAttDetail()"><i class="fas fa-search"></i> Load</button>' +
+        '<div class="fbar-spacer"></div>' +
+        '<button class="btn btn-sm btn-outline" onclick="_adExpandAll(true)"><i class="fas fa-angles-down"></i> Expand All</button>' +
+        '<button class="btn btn-sm btn-outline" onclick="_adExpandAll(false)"><i class="fas fa-angles-right"></i> Collapse All</button>' +
+        '</div>' +
+        '<div id="adRoot">' + _skel(3,'sk-h6') + '</div>';
+    }
+
+    function _loadAttDetail() {
+      var root = document.getElementById('adRoot');
+      if (!root) return;
+      root.innerHTML = _skel(3,'sk-h6');
+      var from  = (document.getElementById('adFrom') || {}).value || (_currMonth()+'-01');
+      var to    = (document.getElementById('adTo')   || {}).value || _today();
+      var empId = _ssVal('adEmp') || _U.emp_code;
+      _gas('getMyAttendance',[empId, from.slice(0,7)], function(data) {
+        if (!root) return;
+        var recs = (data && data.records ? data.records : []).filter(function(r){
+          var d=String(r.date||''); return d>=from && d<=to;
+        });
+        if (!recs.length) {
+          root.innerHTML='<div class="empty-state" style="padding:24px"><i class="fas fa-calendar-xmark" style="font-size:28px;opacity:.2"></i><p style="color:var(--tx3);margin-top:8px">No records in this range.</p></div>';
+          return;
+        }
+        _renderAttDetail(root, recs, data.summary);
+      }, function(e){ root.innerHTML='<div class="te"><i class="fas fa-exclamation-triangle"></i> '+_esc(e.message)+'</div>'; });
+    }
+
+    function _renderAttDetail(root, records, summary) {
+      var months={}, mOrder=[];
+      records.forEach(function(r){
+        var m=String(r.date||'').slice(0,7);
+        if(!months[m]){months[m]=[];mOrder.push(m);}
+        months[m].push(r);
+      });
+      var html='';
+      if (summary) {
+        html+='<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px;padding:12px;background:var(--sur2);border-radius:12px;border:1px solid var(--bdr)">' +
+          [['full_days','Present','var(--G)'],['half_days','Half Day','var(--O)'],['absent','Absent','var(--R)']].map(function(p){
+            return '<div style="text-align:center;min-width:60px"><div style="font-size:20px;font-weight:900;color:'+p[2]+'">'+(summary[p[0]]||0)+'</div><div style="font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase">'+p[1]+'</div></div>';
+          }).join('<div style="width:1px;background:var(--bdr);align-self:stretch"></div>') +
+          '</div>';
+      }
+      mOrder.forEach(function(m,mi){
+        var rows=months[m];
+        var P=rows.filter(function(r){return r.status==='Present'||r.status==='P';}).length;
+        var HD=rows.filter(function(r){return r.status==='Half Day'||r.status==='HD';}).length;
+        var A=rows.filter(function(r){return r.status==='Absent'||r.status==='A';}).length;
+        var mLbl=new Date(m+'-01').toLocaleDateString('en-IN',{month:'long',year:'numeric'});
+        var uid='adm'+mi; var open=mi===0;
+        html+='<div style="margin-bottom:8px">' +
+          '<div class="adm-hd" onclick="_adToggle(\'' + uid + '\')" id="adh_' + uid + '">' +
+          '<i class="fas fa-chevron-'+(open?'down':'right')+'" id="adi_'+uid+'" style="color:var(--P);font-size:12px;width:14px"></i>' +
+          '<div style="font-weight:900;font-size:14px;flex:1">'+mLbl+'</div>' +
+          '<div style="display:flex;gap:10px;font-size:11.5px">' +
+          '<span style="color:var(--G);font-weight:700"><i class="fas fa-circle-check"></i> '+P+'</span>' +
+          (HD?'<span style="color:var(--O);font-weight:700"><i class="fas fa-circle-half-stroke"></i> '+HD+'</span>':'') +
+          (A?'<span style="color:var(--R);font-weight:700"><i class="fas fa-circle-xmark"></i> '+A+'</span>':'') +
+          '<span style="color:var(--tx3);font-weight:600">'+rows.length+' days</span>' +
+          '</div></div>' +
+          '<div class="adm-body'+(open?' adm-open':'')+'" id="'+uid+'">' +
+          '<div class="tw"><table style="margin-top:4px"><thead><tr>' +
+          '<th>Date</th><th>Day</th><th>Status</th>' +
+          '<th style="text-align:center">Check IN</th><th style="text-align:center">Check OUT</th><th style="text-align:center">Hours</th>' +
+          '</tr></thead><tbody>' +
+          rows.map(function(r){
+            var isP=r.status==='Present'||r.status==='P';
+            var isHD=r.status==='Half Day'||r.status==='HD';
+            var isA=r.status==='Absent'||r.status==='A';
+            var bg=isP?'var(--Gl)':isHD?'var(--Ol)':isA?'var(--Rl)':'var(--sur2)';
+            var fc=isP?'var(--G)':isHD?'var(--O)':isA?'var(--R)':'var(--tx3)';
+            var ci=(!r.check_in||r.check_in==='-')?'—':r.check_in;
+            var co=(!r.check_out||r.check_out==='-')?'—':r.check_out;
+            var hr=(!r.total_hours||r.total_hours==='-')?'—':r.total_hours;
+            return '<tr>'+
+              '<td style="font-weight:700">'+_fmtDateShort(r.date)+'</td>'+
+              '<td style="color:var(--tx3)">'+_esc(r.day_name||r.day||'')+'</td>'+
+              '<td><span style="padding:3px 8px;border-radius:6px;font-size:10.5px;font-weight:800;background:'+bg+';color:'+fc+';white-space:nowrap">'+_esc(r.status||'—')+'</span></td>'+
+              '<td style="text-align:center;font-weight:700;color:var(--G)">'+_esc(ci)+'</td>'+
+              '<td style="text-align:center;font-weight:700;color:var(--R)">'+_esc(co)+'</td>'+
+              '<td style="text-align:center;color:var(--P);font-weight:800">'+_esc(hr)+'</td>'+
+              '</tr>';
+          }).join('') +
+          '</tbody></table></div></div></div>';
+      });
+      root.innerHTML=html;
+    }
+
+    function _adToggle(uid){
+      var b=document.getElementById(uid), i=document.getElementById('adi_'+uid);
+      if(!b) return;
+      var open=b.classList.toggle('adm-open');
+      if(i) i.className='fas fa-chevron-'+(open?'down':'right')+' fa-fw';
+    }
+    function _adExpandAll(exp){
+      document.querySelectorAll('.adm-body').forEach(function(b){b.classList.toggle('adm-open',exp);});
+      document.querySelectorAll('[id^="adi_"]').forEach(function(i){i.className='fas fa-chevron-'+(exp?'down':'right')+' fa-fw';});
     }
 
     function _loadMyRegularizations() {
@@ -12877,7 +13101,7 @@ function _loadSetupTasks() {
         // Delegation
         dmine: _loadDelMine, dout: _loadDelOut, dall: _loadDelAll, dcr: _loadDelCreate,
         // Attendance — all tab IDs mapped to correct loader functions
-        amy: _loadMyAtt,
+        amy: _loadMyAtt, adetail: _loadAttDetail,
         areg: _loadMyRegularizations, ala: _loadLeaveApprovals,
         arega: _loadRegApprovals, amust: _loadMustTab, aana: _loadAttAnalytics,
         // legacy aliases kept for safety
@@ -13227,10 +13451,8 @@ function _loadSetupTasks() {
         '<input type="date" id="emFrom" class="ana-sel" value="'+defFrom+'" onchange="_emMarkCustom();_loadEM()">' +
         '<span style="color:var(--tx3);font-size:12px">to</span>' +
         '<input type="date" id="emTo" class="ana-sel" value="'+defTo+'" onchange="_emMarkCustom();_loadEM()">' +
-        '<select id="emDept" class="ana-sel" onchange="_loadEM()">' +
-        '<option value="all">All Departments</option>' + _getDeptOptions() + '</select>' +
-        '<select id="emEmp" class="ana-sel" onchange="_loadEM()">' +
-        '<option value="all">All Employees</option>' + _getEmpOptions() + '</select>' +
+        _ssHtml('emDept','<option value="all">All Departments</option>'+_getDeptOptions(),'All Departments','_loadEM') +
+        _ssHtml('emEmp','<option value="all">All Employees</option>'+_getEmpOptions(),'All Employees','_loadEM') +
         '<select id="emHeatDays" class="ana-sel" onchange="_loadEM()">' +
         '<option value="7">Heatmap: 7 Days</option>' +
         '<option value="14" selected>Heatmap: 14 Days</option>' +
@@ -13785,8 +14007,7 @@ function _loadSetupTasks() {
         '</div>' +
 
         '<div><label style="font-size:11px;font-weight:800;color:var(--tx2);text-transform:uppercase;display:block;margin-bottom:4px">Employee</label>' +
-        '<select id="wmEmp" class="ana-sel" style="width:100%" onchange="_wmPopulateScore()">' +
-        '<option value="">— Select Employee —</option>' + _getEmpOptions() + '</select></div>' +
+        _ssHtml('wmEmp','<option value="">— Select Employee —</option>'+_getEmpOptions(),'— Select Employee —','_wmPopulateScore') + '</div>' +
 
         '<div id="wmScorePreview" style="display:none;padding:12px;border-radius:10px;background:var(--sur2);border:1px solid var(--bdr)">' +
         '<div style="font-size:11px;font-weight:800;color:var(--tx2);text-transform:uppercase;margin-bottom:6px">Last Score (from current EM data)</div>' +
@@ -14079,8 +14300,7 @@ function _loadSetupTasks() {
         '<div style="display:flex;flex-direction:column;gap:12px">' +
 
         '<div><label style="font-size:11px;font-weight:800;color:var(--tx2);text-transform:uppercase;display:block;margin-bottom:4px">Employee</label>' +
-        '<select id="apEmp" class="ana-sel" style="width:100%" onchange="_apLoadHistory()">' +
-        '<option value="">— Select Employee —</option>' + _getEmpOptions() + '</select></div>' +
+        _ssHtml('apEmp','<option value="">— Select Employee —</option>'+_getEmpOptions(),'— Select Employee —','_apLoadHistory') + '</div>' +
 
         '<div><label style="font-size:11px;font-weight:800;color:var(--tx2);text-transform:uppercase;display:block;margin-bottom:4px">Trigger</label>' +
         '<select id="apTrigger" class="ana-sel" style="width:100%">' +
