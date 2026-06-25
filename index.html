@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="Fresko Portal">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-180.png">
-  <title>Fresko Staff Portal — v3.0</title>
+  <title>Fresko Staff Portal</title>
 
   <!-- External Assets -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -5676,7 +5676,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbxUWXyCYzZIJCKZVLpFoS_nQC8yf3ohK69OLLe_Ir7GmcbEhEutNdQc_G9sb7efU18Xhg/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbxCCgNYrMJYE2ZERAKrFww-B_GLN6AMwpaYLuzCLFVG44fdoKu8JC5Y88P6upJrXukGIA/exec';
     var _TOKEN  = '';
 
 function _gas(fn, args, onOk, onErr) {
@@ -7882,24 +7882,35 @@ function _loadSetupTasks() {
        expand/collapse per month, daily status rows.
     ══════════════════════════════════════════════════════ */
     function _adetailForm() {
-      return '<div class="fbar" style="flex-wrap:wrap;gap:8px;margin-bottom:12px">' +
-        '<label style="font-size:12px;font-weight:700">From:</label>' +
-        '<input type="date" id="adFrom" class="ana-sel" value="' + (_currMonth()+'-01') + '">' +
-        '<label style="font-size:12px;font-weight:700">To:</label>' +
-        '<input type="date" id="adTo" class="ana-sel" value="' + _today() + '">' +
+      return '<div class="card card-nohover" style="padding:14px 18px;margin-bottom:14px">' +
+        '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
+        '<div style="display:flex;align-items:center;gap:6px">' +
+        '<span style="font-size:11.5px;font-weight:700;color:var(--tx2);white-space:nowrap">From</span>' +
+        '<input type="date" id="adFrom" class="ana-sel" value="' + (_currMonth()+'-01') + '" style="min-width:130px"></div>' +
+        '<div style="display:flex;align-items:center;gap:6px">' +
+        '<span style="font-size:11.5px;font-weight:700;color:var(--tx2);white-space:nowrap">To</span>' +
+        '<input type="date" id="adTo" class="ana-sel" value="' + _today() + '" style="min-width:130px"></div>' +
         (_isManager()
-          ? '<label style="font-size:12px;font-weight:700">Employee:</label>' +
-            '<div style="min-width:180px">' +
-            _ssHtml('adEmp','<option value="">My Attendance</option>'+_getEmpOptions(),'My Attendance','_loadAttDetail') +
+          ? '<div style="display:flex;align-items:center;gap:6px;min-width:200px;flex:1;max-width:280px">' +
+            '<span style="font-size:11.5px;font-weight:700;color:var(--tx2);white-space:nowrap">Emp</span>' +
+            '<div style="flex:1">' + _ssHtml('adEmp','<option value="">My Attendance</option>'+_getEmpOptions(),'My Attendance','_loadAttDetail') + '</div>' +
             '</div>'
           : '') +
-        '<button class="btn btn-sm" onclick="_loadAttDetail()"><i class="fas fa-search"></i> Load</button>' +
-        '<div class="fbar-spacer"></div>' +
-        '<button class="btn btn-sm btn-outline" onclick="_adExpandAll(true)"><i class="fas fa-angles-down"></i> Expand All</button>' +
-        '<button class="btn btn-sm btn-outline" onclick="_adExpandAll(false)"><i class="fas fa-angles-right"></i> Collapse All</button>' +
-        '</div>' +
+        '<div style="display:flex;align-items:center;gap:6px">' +
+        '<span style="font-size:11.5px;font-weight:700;color:var(--tx2);white-space:nowrap">Status</span>' +
+        '<select id="adStatus" class="ana-sel" onchange="_adApplyFilter()">' +
+        '<option value="all">All</option><option value="Present">Present</option>' +
+        '<option value="Half Day">Half Day</option><option value="Absent">Absent</option>' +
+        '</select></div>' +
+        '<button class="btn btn-sm" onclick="_loadAttDetail()" style="white-space:nowrap"><i class="fas fa-search"></i> Load</button>' +
+        '<div style="flex:1"></div>' +
+        '<button class="btn btn-xs btn-outline" onclick="_adExpandAll(true)" title="Expand All"><i class="fas fa-angles-down"></i></button>' +
+        '<button class="btn btn-xs btn-outline" onclick="_adExpandAll(false)" title="Collapse All"><i class="fas fa-angles-right"></i></button>' +
+        '</div></div>' +
         '<div id="adRoot">' + _skel(3,'sk-h6') + '</div>';
     }
+
+    var _adAllRecords = []; // full dataset for client-side filtering
 
     function _loadAttDetail() {
       var root = document.getElementById('adRoot');
@@ -7907,89 +7918,163 @@ function _loadSetupTasks() {
       root.innerHTML = _skel(3,'sk-h6');
       var from  = (document.getElementById('adFrom') || {}).value || (_currMonth()+'-01');
       var to    = (document.getElementById('adTo')   || {}).value || _today();
-      var empId = _ssVal('adEmp') || _U.emp_code;
-      _gas('getMyAttendance',[empId, from.slice(0,7)], function(data) {
-        if (!root) return;
-        var recs = (data && data.records ? data.records : []).filter(function(r){
-          var d=String(r.date||''); return d>=from && d<=to;
-        });
-        if (!recs.length) {
-          root.innerHTML='<div class="empty-state" style="padding:24px"><i class="fas fa-calendar-xmark" style="font-size:28px;opacity:.2"></i><p style="color:var(--tx3);margin-top:8px">No records in this range.</p></div>';
-          return;
-        }
-        _renderAttDetail(root, recs, data.summary);
-      }, function(e){ root.innerHTML='<div class="te"><i class="fas fa-exclamation-triangle"></i> '+_esc(e.message)+'</div>'; });
+      var empId = _ssVal('adEmp') || (_U && _U.emp_code) || '';
+      // Load the full month range
+      var monthFrom = from.slice(0,7);
+      var monthTo   = to.slice(0,7);
+      // For multi-month ranges, load each month separately and merge
+      var months = [];
+      var d = new Date(monthFrom + '-01');
+      var end = new Date(monthTo + '-01');
+      while (d <= end) {
+        months.push(d.toISOString().slice(0,7));
+        d.setMonth(d.getMonth() + 1);
+      }
+      if (!months.length) months = [monthFrom];
+      var allRecs = [], pending = months.length;
+      months.forEach(function(m) {
+        _gas('getMyAttendance', [empId || _U.emp_code, m], function(data) {
+          var recs = (data && data.records ? data.records : []).filter(function(r){
+            var dt = String(r.date || ''); return dt >= from && dt <= to;
+          });
+          allRecs = allRecs.concat(recs);
+          pending--;
+          if (pending === 0) {
+            allRecs.sort(function(a,b){ return String(a.date||'').localeCompare(String(b.date||'')); });
+            _adAllRecords = allRecs;
+            _adApplyFilter();
+          }
+        }, function(e) { pending--; if (pending===0) _adApplyFilter(); });
+      });
     }
 
-    function _renderAttDetail(root, records, summary) {
-      var months={}, mOrder=[];
+    function _adApplyFilter() {
+      var root = document.getElementById('adRoot');
+      if (!root) return;
+      var stF = (document.getElementById('adStatus') || {}).value || 'all';
+      var recs = stF === 'all' ? _adAllRecords : _adAllRecords.filter(function(r){
+        var s = r.status || '';
+        if (stF==='Present') return s==='Present'||s==='P';
+        if (stF==='Half Day') return s==='Half Day'||s==='HD';
+        if (stF==='Absent') return s==='Absent'||s==='A';
+        return true;
+      });
+      if (!recs.length) {
+        root.innerHTML = '<div class="empty-state" style="padding:32px;text-align:center">' +
+          '<i class="fas fa-calendar-xmark" style="font-size:36px;opacity:.2;color:var(--P)"></i>' +
+          '<div style="margin-top:10px;font-size:13px;color:var(--tx3);font-weight:600">No records found for selected filters.</div></div>';
+        return;
+      }
+      _renderAttDetail(root, recs);
+    }
+
+    function _renderAttDetail(root, records) {
+      // Group by month
+      var months = {}, mOrder = [];
       records.forEach(function(r){
-        var m=String(r.date||'').slice(0,7);
-        if(!months[m]){months[m]=[];mOrder.push(m);}
+        var m = String(r.date||'').slice(0,7);
+        if (!months[m]) { months[m] = []; mOrder.push(m); }
         months[m].push(r);
       });
-      var html='';
-      if (summary) {
-        html+='<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px;padding:12px;background:var(--sur2);border-radius:12px;border:1px solid var(--bdr)">' +
-          [['full_days','Present','var(--G)'],['half_days','Half Day','var(--O)'],['absent','Absent','var(--R)']].map(function(p){
-            return '<div style="text-align:center;min-width:60px"><div style="font-size:20px;font-weight:900;color:'+p[2]+'">'+(summary[p[0]]||0)+'</div><div style="font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase">'+p[1]+'</div></div>';
-          }).join('<div style="width:1px;background:var(--bdr);align-self:stretch"></div>') +
-          '</div>';
-      }
-      mOrder.forEach(function(m,mi){
-        var rows=months[m];
-        var P=rows.filter(function(r){return r.status==='Present'||r.status==='P';}).length;
-        var HD=rows.filter(function(r){return r.status==='Half Day'||r.status==='HD';}).length;
-        var A=rows.filter(function(r){return r.status==='Absent'||r.status==='A';}).length;
-        var mLbl=new Date(m+'-01').toLocaleDateString('en-IN',{month:'long',year:'numeric'});
-        var uid='adm'+mi; var open=mi===0;
-        html+='<div style="margin-bottom:8px">' +
-          '<div class="adm-hd" onclick="_adToggle(\'' + uid + '\')" id="adh_' + uid + '">' +
-          '<i class="fas fa-chevron-'+(open?'down':'right')+'" id="adi_'+uid+'" style="color:var(--P);font-size:12px;width:14px"></i>' +
-          '<div style="font-weight:900;font-size:14px;flex:1">'+mLbl+'</div>' +
-          '<div style="display:flex;gap:10px;font-size:11.5px">' +
-          '<span style="color:var(--G);font-weight:700"><i class="fas fa-circle-check"></i> '+P+'</span>' +
-          (HD?'<span style="color:var(--O);font-weight:700"><i class="fas fa-circle-half-stroke"></i> '+HD+'</span>':'') +
-          (A?'<span style="color:var(--R);font-weight:700"><i class="fas fa-circle-xmark"></i> '+A+'</span>':'') +
-          '<span style="color:var(--tx3);font-weight:600">'+rows.length+' days</span>' +
+
+      // Overall summary strip
+      var totP=0, totHD=0, totA=0;
+      records.forEach(function(r){
+        var s=r.status||'';
+        if(s==='Present'||s==='P') totP++;
+        else if(s==='Half Day'||s==='HD') totHD++;
+        else if(s==='Absent'||s==='A') totA++;
+      });
+
+      var html = '<div style="display:flex;gap:0;margin-bottom:16px;border-radius:12px;overflow:hidden;border:1px solid var(--bdr)">' +
+        [['var(--G)','var(--Gl)','fa-circle-check','Present',totP],
+         ['var(--O)','var(--Ol)','fa-circle-half-stroke','Half Day',totHD],
+         ['var(--R)','var(--Rl)','fa-circle-xmark','Absent',totA],
+         ['var(--P)','var(--Pl)','fa-calendar-days','Total',records.length]]
+        .map(function(p){
+          return '<div style="flex:1;padding:12px 10px;text-align:center;background:'+p[1]+';border-right:1px solid var(--bdr)">' +
+            '<div style="font-size:22px;font-weight:900;color:'+p[0]+'">' + p[4] + '</div>' +
+            '<div style="font-size:10px;font-weight:800;color:'+p[0]+';text-transform:uppercase;opacity:.8">' +
+            '<i class="fas '+p[2]+'"></i> '+p[3]+'</div></div>';
+        }).join('') + '</div>';
+
+      mOrder.forEach(function(m, mi) {
+        var rows = months[m];
+        var mP=0, mHD=0, mA=0;
+        rows.forEach(function(r){
+          var s=r.status||'';
+          if(s==='Present'||s==='P') mP++;
+          else if(s==='Half Day'||s==='HD') mHD++;
+          else if(s==='Absent'||s==='A') mA++;
+        });
+        var mLbl = new Date(m+'-01T00:00:00').toLocaleDateString('en-IN',{month:'long',year:'numeric'});
+        var uid  = 'adm' + mi;
+        var open = mi === 0; // first month open
+
+        html += '<div style="margin-bottom:12px;border-radius:14px;overflow:hidden;border:1px solid var(--bdr);box-shadow:var(--shad)">' +
+
+          // ── Month header ─────────────────────────────────────────────
+          '<div id="adh_'+uid+'" onclick="_adToggle(\''+uid+'\')"' +
+          ' style="display:flex;align-items:center;gap:12px;padding:13px 16px;background:var(--sur2);cursor:pointer;user-select:none;transition:background .15s"' +
+          ' onmouseover="this.style.background=\'var(--Pl)\'" onmouseout="this.style.background=\'var(--sur2)\'">' +
+          '<i id="adi_'+uid+'" class="fas fa-chevron-'+(open?'down':'right')+' fa-fw" style="color:var(--P);font-size:12px"></i>' +
+          '<span style="font-weight:900;font-size:15px;flex:1">'+mLbl+'</span>' +
+          '<div style="display:flex;gap:12px;align-items:center">' +
+          '<span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:800;color:var(--G)"><i class="fas fa-circle-check"></i>' + mP + ' Present</span>' +
+          (mHD?'<span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:800;color:var(--O)"><i class="fas fa-circle-half-stroke"></i>' + mHD + ' Half Day</span>':'') +
+          (mA?'<span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:800;color:var(--R)"><i class="fas fa-circle-xmark"></i>' + mA + ' Absent</span>':'') +
+          '<span style="font-size:11px;color:var(--tx3);font-weight:600;background:var(--sur);padding:2px 8px;border-radius:6px;border:1px solid var(--bdr)">' + rows.length + ' days</span>' +
           '</div></div>' +
-          '<div class="adm-body'+(open?' adm-open':'')+'" id="'+uid+'">' +
-          '<div class="tw"><table style="margin-top:4px"><thead><tr>' +
-          '<th>Date</th><th>Day</th><th>Status</th>' +
-          '<th style="text-align:center">Check IN</th><th style="text-align:center">Check OUT</th><th style="text-align:center">Hours</th>' +
+
+          // ── Days table ───────────────────────────────────────────────
+          '<div id="'+uid+'" class="adm-body'+(open?' adm-open':'')+'">' +
+          '<table style="width:100%;border-collapse:collapse">' +
+          '<thead><tr style="background:var(--bg)">' +
+          '<th style="padding:10px 16px;font-size:11px;text-align:left;font-weight:800;color:var(--tx2);text-transform:uppercase;letter-spacing:.4px;width:100px;border-bottom:1px solid var(--bdr)">Date</th>' +
+          '<th style="padding:10px 12px;font-size:11px;text-align:left;font-weight:800;color:var(--tx2);text-transform:uppercase;letter-spacing:.4px;width:90px;border-bottom:1px solid var(--bdr)">Day</th>' +
+          '<th style="padding:10px 12px;font-size:11px;text-align:center;font-weight:800;color:var(--tx2);text-transform:uppercase;letter-spacing:.4px;width:90px;border-bottom:1px solid var(--bdr)">Status</th>' +
+          '<th style="padding:10px 12px;font-size:11px;text-align:center;font-weight:800;color:var(--G);text-transform:uppercase;letter-spacing:.4px;width:80px;border-bottom:1px solid var(--bdr)"><i class="fas fa-sign-in-alt"></i> In</th>' +
+          '<th style="padding:10px 12px;font-size:11px;text-align:center;font-weight:800;color:var(--R);text-transform:uppercase;letter-spacing:.4px;width:80px;border-bottom:1px solid var(--bdr)"><i class="fas fa-sign-out-alt"></i> Out</th>' +
+          '<th style="padding:10px 16px;font-size:11px;text-align:center;font-weight:800;color:var(--P);text-transform:uppercase;letter-spacing:.4px;width:80px;border-bottom:1px solid var(--bdr)"><i class="fas fa-clock"></i> Hours</th>' +
           '</tr></thead><tbody>' +
-          rows.map(function(r){
-            var isP=r.status==='Present'||r.status==='P';
-            var isHD=r.status==='Half Day'||r.status==='HD';
-            var isA=r.status==='Absent'||r.status==='A';
-            var bg=isP?'var(--Gl)':isHD?'var(--Ol)':isA?'var(--Rl)':'var(--sur2)';
-            var fc=isP?'var(--G)':isHD?'var(--O)':isA?'var(--R)':'var(--tx3)';
-            var ci=(!r.check_in||r.check_in==='-')?'—':r.check_in;
-            var co=(!r.check_out||r.check_out==='-')?'—':r.check_out;
-            var hr=(!r.total_hours||r.total_hours==='-')?'—':r.total_hours;
-            return '<tr>'+
-              '<td style="font-weight:700">'+_fmtDateShort(r.date)+'</td>'+
-              '<td style="color:var(--tx3)">'+_esc(r.day_name||r.day||'')+'</td>'+
-              '<td><span style="padding:3px 8px;border-radius:6px;font-size:10.5px;font-weight:800;background:'+bg+';color:'+fc+';white-space:nowrap">'+_esc(r.status||'—')+'</span></td>'+
-              '<td style="text-align:center;font-weight:700;color:var(--G)">'+_esc(ci)+'</td>'+
-              '<td style="text-align:center;font-weight:700;color:var(--R)">'+_esc(co)+'</td>'+
-              '<td style="text-align:center;color:var(--P);font-weight:800">'+_esc(hr)+'</td>'+
+          rows.map(function(r, ri){
+            var isP  = r.status==='Present'||r.status==='P';
+            var isHD = r.status==='Half Day'||r.status==='HD';
+            var isA  = r.status==='Absent'||r.status==='A';
+            var isWO = r.status==='Week Off'||r.status==='WO';
+            var stBg = isP?'var(--Gl)':isHD?'var(--Ol)':isA?'var(--Rl)':isWO?'var(--sur2)':'var(--sur2)';
+            var stFc = isP?'var(--G)' :isHD?'var(--O)' :isA?'var(--R)' :isWO?'var(--tx3)':'var(--tx3)';
+            var stLbl= isP?'Present':isHD?'Half Day':isA?'Absent':isWO?'Week Off':(r.status||'—');
+            var ci   = (!r.check_in ||r.check_in ==='-'||r.check_in ==='undefined')?'—':r.check_in;
+            var co   = (!r.check_out||r.check_out==='-'||r.check_out==='undefined')?'—':r.check_out;
+            var hr   = (!r.total_hours||r.total_hours==='-'||r.total_hours==='undefined')?'—':r.total_hours;
+            var rowBg= ri%2===0?'var(--bg)':'var(--sur2)';
+            return '<tr style="background:'+rowBg+';transition:background .1s" onmouseover="this.style.background=\'var(--Pl)\'" onmouseout="this.style.background=\''+rowBg+'\'">' +
+              '<td style="padding:10px 16px;font-weight:800;font-size:13px">'+_fmtDateShort(r.date)+'</td>' +
+              '<td style="padding:10px 12px;font-size:12px;color:var(--tx2);font-weight:600">'+_esc(r.day_name||r.day||'')+'</td>' +
+              '<td style="padding:10px 12px;text-align:center"><span style="display:inline-block;padding:3px 10px;border-radius:7px;font-size:11px;font-weight:800;background:'+stBg+';color:'+stFc+'">'+stLbl+'</span></td>' +
+              '<td style="padding:10px 12px;text-align:center;font-weight:800;font-size:13px;color:'+(ci==='—'?'var(--tx3)':'var(--G)')+'">'+_esc(ci)+'</td>' +
+              '<td style="padding:10px 12px;text-align:center;font-weight:800;font-size:13px;color:'+(co==='—'?'var(--tx3)':'var(--R)')+'">'+_esc(co)+'</td>' +
+              '<td style="padding:10px 16px;text-align:center;font-weight:800;font-size:13px;color:'+(hr==='—'?'var(--tx3)':'var(--P)')+'">'+_esc(hr)+'</td>' +
               '</tr>';
           }).join('') +
-          '</tbody></table></div></div></div>';
+          '</tbody></table></div>' +
+          '</div>';
       });
-      root.innerHTML=html;
+
+      root.innerHTML = html;
     }
 
     function _adToggle(uid){
-      var b=document.getElementById(uid), i=document.getElementById('adi_'+uid);
+      var b=document.getElementById(uid), ic=document.getElementById('adi_'+uid);
+      var hd=document.getElementById('adh_'+uid);
       if(!b) return;
       var open=b.classList.toggle('adm-open');
-      if(i) i.className='fas fa-chevron-'+(open?'down':'right')+' fa-fw';
+      if(ic) ic.className='fas fa-chevron-'+(open?'down':'right')+' fa-fw';
     }
     function _adExpandAll(exp){
       document.querySelectorAll('.adm-body').forEach(function(b){b.classList.toggle('adm-open',exp);});
-      document.querySelectorAll('[id^="adi_"]').forEach(function(i){i.className='fas fa-chevron-'+(exp?'down':'right')+' fa-fw';});
+      document.querySelectorAll('[id^="adi_adm"]').forEach(function(i){i.className='fas fa-chevron-'+(exp?'down':'right')+' fa-fw';});
     }
 
     function _loadMyRegularizations() {
