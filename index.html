@@ -5761,7 +5761,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbxCCgNYrMJYE2ZERAKrFww-B_GLN6AMwpaYLuzCLFVG44fdoKu8JC5Y88P6upJrXukGIA/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbxOg3uNIrqN3lJjT2Wl8hr2C4dzSUVxtLvod_kOzwr60z_X_w-OsV1u6qjCdkUS51Snow/exec';
     var _TOKEN  = '';
 
 function _gas(fn, args, onOk, onErr) {
@@ -13033,12 +13033,12 @@ function _loadSetupTasks() {
           if (!root) return;
           // Flatten all individual employee daily logs into one array
           var allRows = [];
-          (data.by_employee || []).forEach(function (emp) {
-            (emp.log || []).forEach(function (r) {
+          (data.by_employee || []).forEach(function (e) {
+            (e.log || []).forEach(function (r) {
               allRows.push({
-                emp_id:      emp.emp_id,
-                name:        emp.name,
-                dept:        emp.dept,
+                emp_id:      e.emp_id,
+                name:        e.name,
+                dept:        e.dept,
                 date:        r.date,
                 check_in:    r.check_in,
                 check_out:   r.check_out,
