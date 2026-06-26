@@ -13021,171 +13021,205 @@ function _loadSetupTasks() {
        with their Check IN / Check OUT / Hours / Status.
        Managers can see the full team picture per day.
     ══════════════════════════════════════════════════════════ */
+    var _adlData = [];
+    var _adlSort = { key: 'date', dir: 1 };
+
     function _loadAttDetailedLog(from, to, dept, emp, status) {
       var root = document.getElementById('attRoot');
       if (!root) return;
       root.innerHTML = _skel(4);
-
       _gasX('getAttendanceAnalyticsV2',
-        [{ from: from, to: to, dept: dept, empId: emp, status: status }],
-        45000,
+        [{ from: from, to: to, dept: dept, empId: emp, status: status }], 45000,
         function (data) {
           if (!root) return;
-          // Flatten all individual employee daily logs into one array
           var allRows = [];
           (data.by_employee || []).forEach(function (e) {
             (e.log || []).forEach(function (r) {
-              allRows.push({
-                emp_id:      e.emp_id,
-                name:        e.name,
-                dept:        e.dept,
-                date:        r.date,
-                check_in:    r.check_in,
-                check_out:   r.check_out,
-                total_hours: r.total_hours,
-                status:      r.status,
-                is_late:     r.is_late,
-                parsed_hours: r.parsed_hours
-              });
+              allRows.push({ emp_id: e.emp_id, name: e.name, dept: e.dept,
+                date: r.date, check_in: r.check_in, check_out: r.check_out,
+                total_hours: r.total_hours, status: r.status,
+                is_late: r.is_late, parsed_hours: r.parsed_hours });
             });
           });
-
           if (!allRows.length) {
-            root.innerHTML = '<div class="empty-state" style="padding:32px;text-align:center">' +
-              '<i class="fas fa-calendar-xmark" style="font-size:36px;opacity:.2;color:var(--P)"></i>' +
-              '<div style="margin-top:10px;font-size:13px;color:var(--tx3);font-weight:600">No attendance records found.</div></div>';
+            root.innerHTML = '<div class="empty-state" style="padding:40px;text-align:center">' +
+              '<i class="fas fa-calendar-xmark" style="font-size:40px;opacity:.15;color:var(--P)"></i>' +
+              '<div style="margin-top:12px;font-size:14px;color:var(--tx3);font-weight:600">No attendance records found</div>' +
+              '<div style="font-size:12px;color:var(--tx3);margin-top:4px">Adjust the date range or filters and click Analyze</div></div>';
             return;
           }
-
-          // Group by month → by date
-          var byMonth = {}, mOrder = [];
-          allRows.forEach(function (r) {
-            var m = String(r.date || '').slice(0, 7);
-            var d = String(r.date || '');
-            if (!byMonth[m]) { byMonth[m] = {}; mOrder.push(m); }
-            if (!byMonth[m][d]) byMonth[m][d] = [];
-            byMonth[m][d].push(r);
-          });
-          mOrder.sort();
-
-          // Total summary
-          var totP = allRows.filter(function(r){ return r.status==='P'; }).length;
-          var totHD= allRows.filter(function(r){ return r.status==='HD'; }).length;
-          var totA = allRows.filter(function(r){ return r.status==='A'; }).length;
-
-          var html = '<div style="display:flex;gap:0;margin-bottom:16px;border-radius:12px;overflow:hidden;border:1px solid var(--bdr)">' +
-            [['var(--G)','var(--Gl)','fa-circle-check','Present',totP],
-             ['var(--O)','var(--Ol)','fa-circle-half-stroke','Half Day',totHD],
-             ['var(--R)','var(--Rl)','fa-circle-xmark','Absent',totA],
-             ['var(--P)','var(--Pl)','fa-calendar-days','Total Entries',allRows.length]]
-            .map(function(p){
-              return '<div style="flex:1;padding:12px 10px;text-align:center;background:'+p[1]+'">' +
-                '<div style="font-size:22px;font-weight:900;color:'+p[0]+'">' + p[4] + '</div>' +
-                '<div style="font-size:10px;font-weight:800;color:'+p[0]+';text-transform:uppercase;opacity:.8"><i class="fas '+p[2]+'"></i> '+p[3]+'</div></div>';
-            }).join('<div style="width:1px;background:var(--bdr)"></div>') + '</div>';
-
-          mOrder.forEach(function (m, mi) {
-            var mDates = byMonth[m];
-            var dOrder = Object.keys(mDates).sort();
-            var mLbl = new Date(m+'-01T00:00:00').toLocaleDateString('en-IN',{month:'long',year:'numeric'});
-            var uid  = 'adl' + mi;
-            var open = mi === 0;
-
-            // Month totals
-            var mRecs = []; dOrder.forEach(function(d){ mRecs = mRecs.concat(mDates[d]); });
-            var mP=mRecs.filter(function(r){return r.status==='P';}).length;
-            var mHD=mRecs.filter(function(r){return r.status==='HD';}).length;
-            var mA=mRecs.filter(function(r){return r.status==='A';}).length;
-
-            html += '<div style="margin-bottom:12px;border-radius:14px;overflow:hidden;border:1px solid var(--bdr);box-shadow:var(--shad)">' +
-
-              // ── Month header ───────────────────────────────────────────
-              '<div id="adlh_'+uid+'" onclick="_adlToggle(\''+uid+'\')"' +
-              ' style="display:flex;align-items:center;gap:12px;padding:13px 16px;background:linear-gradient(135deg,var(--sur2),var(--bg));cursor:pointer;user-select:none"' +
-              ' onmouseover="this.style.opacity=\'.85\'" onmouseout="this.style.opacity=\'1\'">' +
-              '<i id="adli_'+uid+'" class="fas fa-chevron-'+(open?'down':'right')+' fa-fw" style="color:var(--P);font-size:12px"></i>' +
-              '<span style="font-weight:900;font-size:15px;flex:1">'+mLbl+'</span>' +
-              '<div style="display:flex;gap:10px;align-items:center">' +
-              '<span style="font-size:12px;font-weight:800;color:var(--G)"><i class="fas fa-circle-check"></i> '+mP+'</span>' +
-              (mHD?'<span style="font-size:12px;font-weight:800;color:var(--O)"><i class="fas fa-circle-half-stroke"></i> '+mHD+'</span>':'') +
-              (mA?'<span style="font-size:12px;font-weight:800;color:var(--R)"><i class="fas fa-circle-xmark"></i> '+mA+'</span>':'') +
-              '<span style="font-size:11px;color:var(--tx3);padding:2px 8px;border-radius:6px;background:var(--sur);border:1px solid var(--bdr)">'+dOrder.length+' days · '+mRecs.length+' entries</span>' +
-              '</div></div>' +
-
-              '<div id="'+uid+'" class="adm-body'+(open?' adm-open':'')+'" style="padding:0">';
-
-            // ── Date sub-groups ────────────────────────────────────────
-            dOrder.forEach(function (d, di) {
-              var dRecs = mDates[d];
-              var dDate = new Date(d + 'T00:00:00');
-              var dLbl  = dDate.toLocaleDateString('en-IN',{weekday:'short',day:'2-digit',month:'short'});
-              var dP    = dRecs.filter(function(r){return r.status==='P';}).length;
-              var dHD   = dRecs.filter(function(r){return r.status==='HD';}).length;
-              var dA    = dRecs.filter(function(r){return r.status==='A';}).length;
-              var duid  = uid + '_d' + di;
-              var isLastDate = di === dOrder.length - 1;
-
-              html +=
-                // Date sub-header
-                '<div id="adldh_'+duid+'" onclick="_adlToggle(\''+duid+'\')"' +
-                ' style="display:flex;align-items:center;gap:10px;padding:9px 16px 9px 28px;background:var(--bg);border-top:1px solid var(--bdr);cursor:pointer;user-select:none"' +
-                ' onmouseover="this.style.background=\'var(--Pl)\'" onmouseout="this.style.background=\'var(--bg)\'">' +
-                '<i id="adli_'+duid+'" class="fas fa-chevron-down fa-fw" style="color:var(--P);font-size:11px"></i>' +
-                '<span style="font-weight:800;font-size:13px;min-width:120px">'+dLbl+'</span>' +
-                '<div style="display:flex;gap:8px;align-items:center">' +
-                (dP?'<span style="font-size:11px;font-weight:800;color:var(--G)"><i class="fas fa-circle-check"></i> '+dP+' Present</span>':'') +
-                (dHD?'<span style="font-size:11px;font-weight:800;color:var(--O)"><i class="fas fa-circle-half-stroke"></i> '+dHD+' Half Day</span>':'') +
-                (dA?'<span style="font-size:11px;font-weight:800;color:var(--R)"><i class="fas fa-circle-xmark"></i> '+dA+' Absent</span>':'') +
-                '</div></div>' +
-
-                // Date staff rows
-                '<div id="'+duid+'" class="adm-body adm-open">' +
-                '<table style="width:100%;border-collapse:collapse">' +
-                '<thead><tr style="background:var(--sur2)">' +
-                '<th style="padding:7px 16px 7px 40px;font-size:10.5px;font-weight:800;color:var(--tx2);text-transform:uppercase;text-align:left;width:180px">Employee</th>' +
-                '<th style="padding:7px 10px;font-size:10.5px;font-weight:800;color:var(--tx2);text-transform:uppercase;text-align:left">Dept</th>' +
-                '<th style="padding:7px 10px;font-size:10.5px;font-weight:800;color:var(--G);text-transform:uppercase;text-align:center;width:70px"><i class="fas fa-sign-in-alt"></i> In</th>' +
-                '<th style="padding:7px 10px;font-size:10.5px;font-weight:800;color:var(--R);text-transform:uppercase;text-align:center;width:70px"><i class="fas fa-sign-out-alt"></i> Out</th>' +
-                '<th style="padding:7px 10px;font-size:10.5px;font-weight:800;color:var(--P);text-transform:uppercase;text-align:center;width:70px"><i class="fas fa-clock"></i> Hrs</th>' +
-                '<th style="padding:7px 16px;font-size:10.5px;font-weight:800;color:var(--tx2);text-transform:uppercase;text-align:center;width:90px">Status</th>' +
-                '</tr></thead><tbody>' +
-                dRecs.map(function(r, ri) {
-                  var isP  = r.status==='P';
-                  var isHD = r.status==='HD';
-                  var isA  = r.status==='A';
-                  var stBg = isP?'var(--Gl)':isHD?'var(--Ol)':isA?'var(--Rl)':'var(--sur2)';
-                  var stFc = isP?'var(--G)' :isHD?'var(--O)' :isA?'var(--R)' :'var(--tx3)';
-                  var stLbl= isP?'Present'  :isHD?'Half Day' :isA?'Absent'   :(r.status||'—');
-                  var ci = (!r.check_in||r.check_in==='-')?'—':r.check_in;
-                  var co = (!r.check_out||r.check_out==='-')?'—':r.check_out;
-                  var hr = r.parsed_hours != null ? (Math.round(r.parsed_hours * 10) / 10) + 'h' : ((!r.total_hours||r.total_hours==='-')?'—':r.total_hours);
-                  var isLate = r.is_late;
-                  var rowBg = ri%2===0?'var(--bg)':'var(--sur2)';
-                  return '<tr style="background:'+rowBg+'" onmouseover="this.style.background=\'var(--Pl)\'" onmouseout="this.style.background=\''+rowBg+'\'">' +
-                    '<td style="padding:9px 10px 9px 40px;font-weight:700;font-size:13px">' + _esc(r.name) +
-                    (isLate?'<span style="margin-left:6px;font-size:9px;padding:1px 5px;border-radius:4px;background:var(--Ol);color:var(--O);font-weight:800">LATE</span>':'') +
-                    '</td>' +
-                    '<td style="padding:9px 10px;font-size:11.5px;color:var(--tx2)">' + _esc(r.dept||'') + '</td>' +
-                    '<td style="padding:9px 10px;text-align:center;font-weight:700;font-size:13px;color:'+(ci==='—'?'var(--tx3)':'var(--G)')+'">'+ci+'</td>' +
-                    '<td style="padding:9px 10px;text-align:center;font-weight:700;font-size:13px;color:'+(co==='—'?'var(--tx3)':'var(--R)')+'">'+co+'</td>' +
-                    '<td style="padding:9px 10px;text-align:center;font-weight:700;font-size:13px;color:'+(hr==='—'?'var(--tx3)':'var(--P)')+'">'+_esc(String(hr))+'</td>' +
-                    '<td style="padding:9px 16px;text-align:center"><span style="display:inline-block;padding:3px 9px;border-radius:7px;font-size:10.5px;font-weight:800;background:'+stBg+';color:'+stFc+'">'+stLbl+'</span></td>' +
-                    '</tr>';
-                }).join('') +
-                '</tbody></table></div>' +
-                (isLastDate ? '' : '');
-            });
-
-            html += '</div></div>';
-          });
-
-          root.innerHTML = html;
+          _adlData = allRows;
+          _adlSort = { key: 'date', dir: 1 };
+          _renderAdl(root, allRows);
         },
         function (e) {
           if (root) root.innerHTML = '<div class="te"><i class="fas fa-exclamation-triangle"></i> ' + _esc(e.message) +
             '<br><br><button class="btn btn-sm" onclick="_loadAtt()"><i class="fas fa-rotate-right"></i> Retry</button></div>';
         }
       );
+    }
+
+    function _adlSortBy(key) {
+      if (_adlSort.key === key) { _adlSort.dir *= -1; }
+      else { _adlSort.key = key; _adlSort.dir = 1; }
+      var root = document.getElementById('attRoot');
+      if (root && _adlData.length) _renderAdl(root, _adlData);
+    }
+
+    function _adlExpandAllFn(exp) {
+      document.querySelectorAll('#attRoot .adm-body').forEach(function(b){ b.classList.toggle('adm-open', exp); });
+      document.querySelectorAll('#attRoot [id^="adli_"]').forEach(function(i){
+        i.className = 'fas fa-chevron-' + (exp ? 'down' : 'right') + ' fa-fw';
+      });
+    }
+
+    function _renderAdl(root, rows) {
+      var sorted = rows.slice().sort(function(a,b){
+        var va, vb;
+        if (_adlSort.key==='name')    { va=(a.name||'').toLowerCase();  vb=(b.name||'').toLowerCase(); }
+        else if (_adlSort.key==='dept')   { va=(a.dept||'').toLowerCase();  vb=(b.dept||'').toLowerCase(); }
+        else if (_adlSort.key==='checkin'){ va=a.check_in||'99:99';          vb=b.check_in||'99:99'; }
+        else if (_adlSort.key==='status') { va=a.status||'';                  vb=b.status||''; }
+        else                              { va=a.date||'';                     vb=b.date||''; }
+        return va<vb?-_adlSort.dir:va>vb?_adlSort.dir:0;
+      });
+      var totP=rows.filter(function(r){return r.status==='P';}).length;
+      var totHD=rows.filter(function(r){return r.status==='HD';}).length;
+      var totA=rows.filter(function(r){return r.status==='A';}).length;
+      var totL=rows.filter(function(r){return r.is_late;}).length;
+
+      function sortBtn(key, lbl, ico) {
+        var active=_adlSort.key===key;
+        var arr=active?(_adlSort.dir===1?' ↑':' ↓'):'';
+        return '<button onclick="_adlSortBy(\''+key+'\')" style="display:inline-flex;align-items:center;gap:4px;padding:5px 11px;border-radius:8px;font-size:11.5px;font-weight:700;cursor:pointer;border:1.5px solid '+(active?'var(--P)':'var(--bdr)')+';background:'+(active?'var(--Pl)':'var(--bg)')+';color:'+(active?'var(--P)':'var(--tx2)')+'"><i class="fas '+ico+'" style="font-size:10px"></i>'+lbl+arr+'</button>';
+      }
+
+      var html = '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:14px;padding:10px 14px;background:var(--sur);border:1px solid var(--bdr);border-radius:12px;position:sticky;top:0;z-index:10;box-shadow:0 2px 8px rgba(0,0,0,.06)">' +
+        '<span style="font-size:10.5px;font-weight:800;color:var(--tx3);text-transform:uppercase;letter-spacing:.4px;white-space:nowrap">Sort:</span>' +
+        sortBtn('date','Date','fa-calendar') + sortBtn('name','Name','fa-user') +
+        sortBtn('dept','Dept','fa-building') + sortBtn('checkin','Check-in','fa-sign-in-alt') +
+        sortBtn('status','Status','fa-circle-check') +
+        '<div style="width:1px;height:22px;background:var(--bdr);flex-shrink:0;margin:0 2px"></div>' +
+        '<button onclick="_adlExpandAllFn(true)" style="display:inline-flex;align-items:center;gap:4px;padding:5px 11px;border-radius:8px;font-size:11.5px;font-weight:700;cursor:pointer;border:1.5px solid var(--bdr);background:var(--bg);color:var(--tx2)"><i class="fas fa-angles-down" style="font-size:10px"></i>Expand All</button>' +
+        '<button onclick="_adlExpandAllFn(false)" style="display:inline-flex;align-items:center;gap:4px;padding:5px 11px;border-radius:8px;font-size:11.5px;font-weight:700;cursor:pointer;border:1.5px solid var(--bdr);background:var(--bg);color:var(--tx2)"><i class="fas fa-angles-right" style="font-size:10px"></i>Collapse All</button>' +
+        '<div style="flex:1"></div>' +
+        '<div style="display:flex;gap:5px">' +
+        '<span style="padding:4px 10px;border-radius:20px;background:var(--Gl);color:var(--G);font-size:11px;font-weight:800"><i class="fas fa-circle-check"></i> '+totP+'</span>' +
+        (totHD?'<span style="padding:4px 10px;border-radius:20px;background:var(--Ol);color:var(--O);font-size:11px;font-weight:800"><i class="fas fa-circle-half-stroke"></i> '+totHD+'</span>':'') +
+        (totA?'<span style="padding:4px 10px;border-radius:20px;background:var(--Rl);color:var(--R);font-size:11px;font-weight:800"><i class="fas fa-circle-xmark"></i> '+totA+'</span>':'') +
+        (totL?'<span style="padding:4px 10px;border-radius:20px;background:var(--Ol);color:var(--O);font-size:11px;font-weight:800"><i class="fas fa-clock"></i> '+totL+' Late</span>':'') +
+        '<span style="padding:4px 10px;border-radius:20px;background:var(--Pl);color:var(--P);font-size:11px;font-weight:800"><i class="fas fa-calendar-days"></i> '+rows.length+'</span>' +
+        '</div></div>';
+
+      var byMonth={}, mOrder=[];
+      sorted.forEach(function(r){
+        var m=String(r.date||'').slice(0,7), d=String(r.date||'');
+        if (!byMonth[m]){ byMonth[m]={}; mOrder.push(m); }
+        if (!byMonth[m][d]) byMonth[m][d]=[];
+        byMonth[m][d].push(r);
+      });
+      mOrder=mOrder.filter(function(m,i,a){ return a.indexOf(m)===i; });
+      if (_adlSort.key==='date' && _adlSort.dir===-1) mOrder.reverse();
+
+      mOrder.forEach(function(m,mi){
+        var mDates=byMonth[m], dOrder=Object.keys(mDates);
+        if (_adlSort.key==='date') dOrder.sort(function(a,b){return _adlSort.dir*(a<b?-1:a>b?1:0);});
+        var mRecs=[]; dOrder.forEach(function(d){mRecs=mRecs.concat(mDates[d]);});
+        var mP=mRecs.filter(function(r){return r.status==='P';}).length;
+        var mHD=mRecs.filter(function(r){return r.status==='HD';}).length;
+        var mA=mRecs.filter(function(r){return r.status==='A';}).length;
+        var mL=mRecs.filter(function(r){return r.is_late;}).length;
+        var mLbl=new Date(m+'-01T00:00:00').toLocaleDateString('en-IN',{month:'long',year:'numeric'});
+        var uid='adl'+mi, open=mi===0;
+
+        html+='<div style="margin-bottom:14px;border-radius:14px;overflow:hidden;border:1px solid var(--bdr2);box-shadow:0 2px 12px rgba(0,0,0,.06)">' +
+          '<div id="adlh_'+uid+'" onclick="_adlToggle(\''+uid+'\')" style="display:flex;align-items:center;gap:12px;padding:14px 18px;background:linear-gradient(135deg,var(--P),color-mix(in srgb,var(--P) 70%,var(--T)));cursor:pointer;user-select:none">' +
+          '<i id="adli_'+uid+'" class="fas fa-chevron-'+(open?'down':'right')+' fa-fw" style="color:rgba(255,255,255,.9);font-size:13px"></i>' +
+          '<span style="font-weight:900;font-size:16px;flex:1;color:#fff">'+mLbl+'</span>' +
+          '<div style="display:flex;gap:6px">' +
+          '<span style="padding:3px 10px;border-radius:20px;background:rgba(255,255,255,.2);color:#fff;font-size:11.5px;font-weight:800"><i class="fas fa-circle-check"></i> '+mP+'</span>' +
+          (mHD?'<span style="padding:3px 10px;border-radius:20px;background:rgba(255,255,255,.2);color:#fff;font-size:11.5px;font-weight:800"><i class="fas fa-circle-half-stroke"></i> '+mHD+'</span>':'')+
+          (mA?'<span style="padding:3px 10px;border-radius:20px;background:rgba(255,255,255,.2);color:#fff;font-size:11.5px;font-weight:800"><i class="fas fa-circle-xmark"></i> '+mA+'</span>':'')+
+          (mL?'<span style="padding:3px 10px;border-radius:20px;background:rgba(0,0,0,.15);color:#fff;font-size:11px;font-weight:700"><i class="fas fa-clock"></i> '+mL+' late</span>':'')+
+          '<span style="padding:3px 10px;border-radius:20px;background:rgba(0,0,0,.2);color:#fff;font-size:11px;font-weight:700">'+dOrder.length+' days</span></div></div>' +
+          '<div id="'+uid+'" class="adm-body'+(open?' adm-open':'')+'">';
+
+        dOrder.forEach(function(d,di){
+          var dRecs=mDates[d].slice();
+          if (_adlSort.key!=='date') dRecs.sort(function(a,b){
+            var va,vb;
+            if (_adlSort.key==='name')    {va=(a.name||'').toLowerCase();vb=(b.name||'').toLowerCase();}
+            else if (_adlSort.key==='dept')   {va=(a.dept||'').toLowerCase();vb=(b.dept||'').toLowerCase();}
+            else if (_adlSort.key==='checkin'){va=a.check_in||'99:99';vb=b.check_in||'99:99';}
+            else if (_adlSort.key==='status') {va=a.status||'';vb=b.status||'';}
+            return va<vb?-_adlSort.dir:va>vb?_adlSort.dir:0;
+          });
+          var dDate=new Date(d+'T00:00:00');
+          var dDay=dDate.toLocaleDateString('en-IN',{weekday:'long'});
+          var dShort=dDate.toLocaleDateString('en-IN',{day:'2-digit',month:'short'});
+          var dP=dRecs.filter(function(r){return r.status==='P';}).length;
+          var dHD=dRecs.filter(function(r){return r.status==='HD';}).length;
+          var dA=dRecs.filter(function(r){return r.status==='A';}).length;
+          var dL=dRecs.filter(function(r){return r.is_late;}).length;
+          var duid=uid+'_d'+di;
+          var isSun=dDate.getDay()===0;
+
+          html+=
+            '<div id="adldh_'+duid+'" onclick="_adlToggle(\''+duid+'\')"' +
+            ' style="display:flex;align-items:center;gap:10px;padding:9px 18px 9px 20px;background:'+(isSun?'rgba(239,68,68,.06)':'var(--bg)')+';border-top:1px solid var(--bdr);cursor:pointer;user-select:none;transition:background .12s"' +
+            ' onmouseover="this.style.background=\'var(--Pl)\'" onmouseout="this.style.background=\''+(isSun?'rgba(239,68,68,.06)':'var(--bg)')+'\'">' +
+            '<i id="adli_'+duid+'" class="fas fa-chevron-down fa-fw" style="color:var(--P);font-size:11px;flex-shrink:0"></i>' +
+            '<div style="flex-shrink:0;min-width:95px">' +
+            '<div style="font-weight:900;font-size:14px;color:'+(isSun?'var(--R)':'var(--tx)')+'">'+dShort+'</div>' +
+            '<div style="font-size:10px;font-weight:700;color:'+(isSun?'var(--R)':'var(--tx3)')+';text-transform:uppercase">'+dDay+'</div>' +
+            '</div>' +
+            '<div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap">' +
+            (dP?'<span style="padding:2px 8px;border-radius:12px;background:var(--Gl);color:var(--G);font-size:10.5px;font-weight:800">'+dP+' P</span>':'')+
+            (dHD?'<span style="padding:2px 8px;border-radius:12px;background:var(--Ol);color:var(--O);font-size:10.5px;font-weight:800">'+dHD+' HD</span>':'')+
+            (dA?'<span style="padding:2px 8px;border-radius:12px;background:var(--Rl);color:var(--R);font-size:10.5px;font-weight:800">'+dA+' A</span>':'')+
+            (dL?'<span style="padding:2px 8px;border-radius:12px;background:var(--Ol);color:var(--O);font-size:10.5px;font-weight:700"><i class="fas fa-clock" style="font-size:9px"></i> '+dL+'</span>':'')+
+            '</div><div style="flex:1"></div>' +
+            '<span style="font-size:11px;color:var(--tx3);font-weight:600">'+dRecs.length+' staff</span></div>' +
+            '<div id="'+duid+'" class="adm-body adm-open">' +
+            '<table style="width:100%;border-collapse:collapse">' +
+            '<thead><tr style="background:var(--sur2)">' +
+            '<th style="padding:8px 10px 8px 24px;font-size:10px;font-weight:800;color:var(--tx3);text-transform:uppercase;letter-spacing:.4px;text-align:left;min-width:160px">Employee</th>' +
+            '<th style="padding:8px 10px;font-size:10px;font-weight:800;color:var(--tx3);text-transform:uppercase;letter-spacing:.4px;text-align:left">Dept</th>' +
+            '<th style="padding:8px 10px;font-size:10px;font-weight:800;color:var(--G);text-transform:uppercase;letter-spacing:.4px;text-align:center;width:70px">In</th>' +
+            '<th style="padding:8px 10px;font-size:10px;font-weight:800;color:var(--R);text-transform:uppercase;letter-spacing:.4px;text-align:center;width:70px">Out</th>' +
+            '<th style="padding:8px 10px;font-size:10px;font-weight:800;color:var(--P);text-transform:uppercase;letter-spacing:.4px;text-align:center;width:70px">Hrs</th>' +
+            '<th style="padding:8px 16px;font-size:10px;font-weight:800;color:var(--tx3);text-transform:uppercase;letter-spacing:.4px;text-align:center;width:100px">Status</th>' +
+            '</tr></thead><tbody>' +
+            dRecs.map(function(r,ri){
+              var isP=r.status==='P',isHD=r.status==='HD',isA=r.status==='A';
+              var stBg=isP?'var(--Gl)':isHD?'var(--Ol)':isA?'var(--Rl)':'var(--sur2)';
+              var stFc=isP?'var(--G)':isHD?'var(--O)':isA?'var(--R)':'var(--tx3)';
+              var stLbl=isP?'Present':isHD?'Half Day':isA?'Absent':(r.status||'—');
+              var ci=(!r.check_in||r.check_in==='-')?'—':r.check_in;
+              var co=(!r.check_out||r.check_out==='-')?'—':r.check_out;
+              var hr=r.parsed_hours!=null?(Math.round(r.parsed_hours*10)/10)+'h':((!r.total_hours||r.total_hours==='-')?'—':r.total_hours);
+              var rowBg=ri%2===0?'var(--bg)':'var(--sur2)';
+              return '<tr style="background:'+rowBg+';transition:background .1s" onmouseover="this.style.background=\'var(--Pl)\'" onmouseout="this.style.background=\''+rowBg+'\'">' +
+                '<td style="padding:10px 10px 10px 24px;font-weight:700;font-size:13px">'+_esc(r.name||'')+
+                (r.is_late?'<span style="margin-left:6px;padding:1px 6px;border-radius:4px;background:var(--Ol);color:var(--O);font-size:9px;font-weight:900;vertical-align:middle">LATE</span>':'')+
+                '</td><td style="padding:10px;font-size:11.5px;color:var(--tx2)">'+_esc(r.dept||'')+'</td>' +
+                '<td style="padding:10px;text-align:center;font-weight:800;font-size:13px;color:'+(ci==='—'?'var(--tx3)':'var(--G)')+'">'+ci+'</td>' +
+                '<td style="padding:10px;text-align:center;font-weight:800;font-size:13px;color:'+(co==='—'?'var(--tx3)':'var(--R)')+'">'+co+'</td>' +
+                '<td style="padding:10px;text-align:center;font-weight:800;font-size:13px;color:'+(hr==='—'?'var(--tx3)':'var(--P)')+'">'+_esc(String(hr))+'</td>' +
+                '<td style="padding:10px 16px;text-align:center"><span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:800;background:'+stBg+';color:'+stFc+'">'+stLbl+'</span></td></tr>';
+            }).join('') +
+            '</tbody></table></div>';
+        });
+        html+='</div></div>';
+      });
+      root.innerHTML=html;
+    }
+
+    function _adlToggle(uid) {
+      var b=document.getElementById(uid), ic=document.getElementById('adli_'+uid);
+      if (!b) return;
+      var open=b.classList.toggle('adm-open');
+      if (ic) ic.className='fas fa-chevron-'+(open?'down':'right')+' fa-fw';
     }
 
     function _adlToggle(uid) {
