@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="Fresko Portal">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-180.png">
-  <title>Fresko Staff Portal</title>
+  <title>Fresko Staff Portal — v3.0</title>
 
   <!-- External Assets -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -5761,7 +5761,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbw1lZ78CSrMWOTcSQeRz_YdvWxtwXU0f9kf4OR0UNC4_h83Qq-k-od8vmczcybC6G8FVg/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbziaSfpT7AFg9-hepJ0lyIlQw6IQuf6IfwPhbl0LB5WAwJxmeBjVl-3zmS-OtUUIFtTuQ/exec';
     var _TOKEN  = '';
 
 function _gas(fn, args, onOk, onErr) {
@@ -7127,36 +7127,279 @@ function _gasX(fn, args, timeout, onOk, onErr) {
     ══════════════════════════════════════════════════════════ */
     var TABS_CHECK = [
       { id: 'ctoday', lbl: '<i class="fas fa-calendar-day"></i> Today' },
-      { id: 'cweek', lbl: '<i class="fas fa-calendar-week"></i> Week View' },
-      { id: 'chist', lbl: '<i class="fas fa-history"></i> History' },
+      { id: 'cweek',  lbl: '<i class="fas fa-calendar-week"></i> Week View' },
+      { id: 'chist',  lbl: '<i class="fas fa-history"></i> History' },
       { id: 'csetup', lbl: '<i class="fas fa-gear"></i> Task Setup' }
     ];
 
     function _vCheck() {
       var at = _ST || 'ctoday';
-      var tabs = _isManager() ? TABS_CHECK : TABS_CHECK.filter(function (t) { return t.id !== 'csetup'; });
+      var tabs = [], panes = [];
+
+      tabs.push({ id: 'ctoday', lbl: '<i class="fas fa-calendar-day"></i> Today' });
+      panes.push('<div id="ctodayPane">' + _ctodayForm() + '</div>');
+      tabs.push({ id: 'cweek', lbl: '<i class="fas fa-calendar-week"></i> Week View' });
+      panes.push('<div id="cweekPane">' + _cweekForm() + '</div>');
+      tabs.push({ id: 'chist', lbl: '<i class="fas fa-history"></i> History' });
+      panes.push('<div id="chistPane">' + _chistForm() + '</div>');
+      if (_isManager()) {
+        tabs.push({ id: 'csetup', lbl: '<i class="fas fa-gear"></i> Task Setup' });
+        panes.push('<div id="csetupPane">' + _csetupForm() + '</div>');
+      }
+      if (_isMarkAttendanceAllowed()) {
+        tabs.push({ id: 'cmteam', lbl: '<i class="fas fa-list-check"></i> Mark Team Checklist' });
+        panes.push('<div id="cmteamPane">' + _cmTeamForm() + '</div>');
+      }
 
       document.getElementById('content').innerHTML =
         '<div class="mod-head">' +
         '<div><div class="mod-title">Checklist</div><div class="mod-sub">KRA / KPI daily task tracker</div></div>' +
         '<div class="mod-head-right">' +
-        '<div class="search-inp" style="flex:1;min-width:0"><i class="fas fa-search"></i><input type="text" id="ckSearchInp" placeholder="Filter tasks..." oninput="_filterTaskCards(this.value)" style="padding:7px 7px 7px 30px;border:1.5px solid var(--bdr);border-radius:8px;font-size:12px;background:var(--bg);color:var(--tx);outline:none;width:100%"></div>' +
+        '<div class="search-inp" style="flex:1;min-width:0"><i class="fas fa-search"></i>' +
+        '<input type="text" id="ckSearchInp" placeholder="Filter tasks..." oninput="_filterTaskCards(this.value)" style="padding:7px 7px 7px 30px;border:1.5px solid var(--bdr);border-radius:8px;font-size:12px;background:var(--bg);color:var(--tx);outline:none;width:100%"></div>' +
         (_isManager() ? '<button class="btn btn-outline btn-sm" onclick="_loadV(\'check\',\'csetup\')"><i class="fas fa-gear"></i> Setup</button>' : '') +
-        '</div>' +
-        '</div>' +
-        _mkTabs(tabs, at) +
-        _mkPanes(tabs, at, [
-          '<div id="ctodayPane">' + _ctodayForm() + '</div>',
-          '<div id="cweekPane">' + _cweekForm() + '</div>',
-          '<div id="chistPane">' + _chistForm() + '</div>',
-          (_isManager() ? '<div id="csetupPane">' + _csetupForm() + '</div>' : '')
-        ]);
+        '</div></div>' +
+        _mkTabs(tabs, at) + _mkPanes(tabs, at, panes);
 
       if (at === 'ctoday') _loadToday();
       else if (at === 'cweek') _loadWeek();
       else if (at === 'chist') _loadHist();
       else if (at === 'csetup' && _isManager()) _loadSetupTasks();
+      else if (at === 'cmteam' && _isMarkAttendanceAllowed()) _loadTeamChecklist();
       if (_ST) setTimeout(function () { _switchTab(_ST); }, 30);
+    }
+
+    /* ══════════════════════════════════════════════════════════════════
+       MARK TEAM CHECKLIST — OWNER / MANAGER / COORDINATOR
+       Shows all staff's today's pending checklist tasks.
+       Grouped by employee with expand/collapse.
+       Manager can mark done or shift to tomorrow per task.
+    ══════════════════════════════════════════════════════════════════ */
+    function _cmTeamForm() {
+      return '<div id="cmteamRoot"><div style="padding:28px;text-align:center;color:var(--tx3)"><i class="fas fa-spinner fa-spin" style="font-size:22px;opacity:.25"></i></div></div>';
+    }
+
+    var _cmtData = [];  // loaded tasks
+    var _cmtDate = '';
+    var _cmtSort = { key: 'name', dir: 1 };
+
+    function _loadTeamChecklist() {
+      var root = document.getElementById('cmteamRoot');
+      if (!root) return;
+      _cmtDate = _today();
+
+      root.innerHTML =
+        // ── Filter bar ─────────────────────────────────────────────────
+        '<div id="cmtFilters" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px;padding:10px 14px;background:var(--sur2);border-radius:12px;border:1px solid var(--bdr)">' +
+        '<input type="date" id="cmtDate" class="ana-sel" style="max-width:132px" value="'+_cmtDate+'">' +
+        '<div style="width:1px;height:24px;background:var(--bdr);flex-shrink:0"></div>' +
+        '<select id="cmtDept" class="ana-sel" style="min-width:130px"><option value="all">All Departments</option></select>' +
+        '<select id="cmtStatus" class="ana-sel" style="min-width:130px">' +
+        '<option value="pending">Pending Only</option>' +
+        '<option value="all">All Tasks</option>' +
+        '<option value="Done">Done</option>' +
+        '</select>' +
+        '<input type="text" id="cmtSearch" class="ana-sel" placeholder="Search name / task..." style="min-width:150px">' +
+        '<div style="flex:1"></div>' +
+        '<button class="btn btn-sm" onclick="_cmtReload()" style="white-space:nowrap"><i class="fas fa-rotate-right"></i> Reload</button>' +
+        '</div>' +
+
+        // ── Sort + expand/collapse toolbar ──────────────────────────────
+        '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px">' +
+        '<span style="font-size:10.5px;font-weight:800;color:var(--tx3);text-transform:uppercase;letter-spacing:.4px;white-space:nowrap">Sort:</span>' +
+        '<button id="ctsb_name"  onclick="_cmtSort(\'name\')"  class="ctsb ctsb-a" style="padding:5px 10px;border-radius:8px;font-size:11.5px;font-weight:700;cursor:pointer;border:1.5px solid var(--P);background:var(--Pl);color:var(--P)">Name ↑</button>' +
+        '<button id="ctsb_dept"  onclick="_cmtSort(\'dept\')"  class="ctsb"        style="padding:5px 10px;border-radius:8px;font-size:11.5px;font-weight:700;cursor:pointer;border:1.5px solid var(--bdr);background:var(--bg);color:var(--tx2)"><i class="fas fa-building" style="font-size:10px"></i> Dept</button>' +
+        '<button id="ctsb_pend"  onclick="_cmtSort(\'pend\')"  class="ctsb"        style="padding:5px 10px;border-radius:8px;font-size:11.5px;font-weight:700;cursor:pointer;border:1.5px solid var(--bdr);background:var(--bg);color:var(--tx2)"><i class="fas fa-clock" style="font-size:10px"></i> Pending Count</button>' +
+        '<div style="width:1px;height:22px;background:var(--bdr);flex-shrink:0;margin:0 2px"></div>' +
+        '<button onclick="_cmtExpandAll(true)"  style="padding:5px 10px;border-radius:8px;font-size:11.5px;font-weight:700;cursor:pointer;border:1.5px solid var(--bdr);background:var(--bg);color:var(--tx2)"><i class="fas fa-angles-down" style="font-size:10px"></i> Expand All</button>' +
+        '<button onclick="_cmtExpandAll(false)" style="padding:5px 10px;border-radius:8px;font-size:11.5px;font-weight:700;cursor:pointer;border:1.5px solid var(--bdr);background:var(--bg);color:var(--tx2)"><i class="fas fa-angles-right" style="font-size:10px"></i> Collapse All</button>' +
+        '</div>' +
+
+        '<div id="cmtStats" style="display:flex;gap:8px;margin-bottom:12px"></div>' +
+        '<div id="cmtList">' + _skel(3) + '</div>';
+
+      _gas('getTeamChecklistToday', [_cmtDate, 'all'], function(rows) {
+        _cmtData = rows || [];
+        // Populate dept filter
+        var depts = _cmtData.reduce(function(a,r){ if(r.dept&&a.indexOf(r.dept)<0) a.push(r.dept); return a; },[]).sort();
+        var dsel = document.getElementById('cmtDept');
+        if (dsel) {
+          dsel.innerHTML = '<option value="all">All Departments</option>' +
+            depts.map(function(d){ return '<option value="'+_esc(d)+'">'+_esc(d)+'</option>'; }).join('');
+        }
+        // Wire filters
+        ['cmtDate','cmtDept','cmtStatus','cmtSearch'].forEach(function(id) {
+          var el = document.getElementById(id);
+          if (!el) return;
+          el.addEventListener('change', _renderCmtList);
+          el.addEventListener('input',  _renderCmtList);
+        });
+        _renderCmtList();
+      }, function(e) {
+        var l = document.getElementById('cmtList');
+        if (l) l.innerHTML = '<div class="te"><i class="fas fa-exclamation-triangle"></i> ' + _esc(e.message) + '</div>';
+      });
+    }
+
+    function _renderCmtList() {
+      var list = document.getElementById('cmtList');
+      if (!list) return;
+
+      var dept   = (document.getElementById('cmtDept')  ||{}).value||'all';
+      var stFlt  = (document.getElementById('cmtStatus')||{}).value||'pending';
+      var q      = ((document.getElementById('cmtSearch')||{}).value||'').toLowerCase().trim();
+
+      var rows = _cmtData.filter(function(r) {
+        if (dept !== 'all' && r.dept !== dept) return false;
+        if (stFlt === 'pending' && r.status === 'Done') return false;
+        if (stFlt === 'Done'    && r.status !== 'Done') return false;
+        if (q && (r.emp_name+' '+r.task_name+' '+r.dept).toLowerCase().indexOf(q) < 0) return false;
+        return true;
+      });
+
+      var totPend = rows.filter(function(r){ return r.status !== 'Done'; }).length;
+      var totDone = rows.filter(function(r){ return r.status === 'Done'; }).length;
+      var statsEl = document.getElementById('cmtStats');
+      if (statsEl) {
+        statsEl.innerHTML =
+          '<div style="flex:1;padding:10px;background:var(--Rl);border-radius:10px;text-align:center"><div style="font-size:20px;font-weight:900;color:var(--R)">'+totPend+'</div><div style="font-size:10px;font-weight:800;color:var(--R);text-transform:uppercase">Pending</div></div>' +
+          '<div style="flex:1;padding:10px;background:var(--Gl);border-radius:10px;text-align:center"><div style="font-size:20px;font-weight:900;color:var(--G)">'+totDone+'</div><div style="font-size:10px;font-weight:800;color:var(--G);text-transform:uppercase">Done</div></div>' +
+          '<div style="flex:1;padding:10px;background:var(--Pl);border-radius:10px;text-align:center"><div style="font-size:20px;font-weight:900;color:var(--P)">'+rows.length+'</div><div style="font-size:10px;font-weight:800;color:var(--P);text-transform:uppercase">Total</div></div>';
+      }
+
+      if (!rows.length) {
+        list.innerHTML = '<div class="empty-state" style="padding:28px;text-align:center">' +
+          '<i class="fas fa-list-check" style="font-size:32px;opacity:.15;color:var(--G)"></i>' +
+          '<div style="margin-top:10px;font-size:14px;color:var(--tx3);font-weight:600">' +
+          (stFlt==='pending'?'All tasks done for today ✓':'No tasks match this filter') + '</div></div>';
+        return;
+      }
+
+      // Group by employee
+      var byEmp = {}, eOrder = [];
+      rows.forEach(function(r) {
+        var key = r.emp_id + '|' + r.emp_name;
+        if (!byEmp[key]) { byEmp[key] = { emp_id:r.emp_id, name:r.emp_name, dept:r.dept, role:r.role, tasks:[] }; eOrder.push(key); }
+        byEmp[key].tasks.push(r);
+      });
+
+      // Sort employees
+      var empKeys = eOrder.filter(function(k,i,a){ return a.indexOf(k)===i; });
+      empKeys.sort(function(a,b){
+        var ea=byEmp[a], eb=byEmp[b];
+        if (_cmtSort.key==='dept') { var va=ea.dept.toLowerCase(), vb=eb.dept.toLowerCase(); return va<vb?-_cmtSort.dir:va>vb?_cmtSort.dir:0; }
+        if (_cmtSort.key==='pend') { var pa=ea.tasks.filter(function(t){return t.status!=='Done';}).length, pb=eb.tasks.filter(function(t){return t.status!=='Done';}).length; return (pb-pa)*_cmtSort.dir; }
+        return ea.name.toLowerCase()<eb.name.toLowerCase()?-_cmtSort.dir:ea.name.toLowerCase()>eb.name.toLowerCase()?_cmtSort.dir:0;
+      });
+
+      var html = empKeys.map(function(k, ki) {
+        var emp = byEmp[k];
+        var pend = emp.tasks.filter(function(t){ return t.status !== 'Done'; }).length;
+        var done = emp.tasks.length - pend;
+        var uid = 'cmt_e' + ki;
+        var initials = (emp.name||'?').split(' ').map(function(w){return w[0]||'';}).slice(0,2).join('').toUpperCase();
+
+        var eHtml = '<div style="margin-bottom:8px;border-radius:12px;overflow:hidden;border:1px solid var(--bdr2)">' +
+          '<div id="cmth_'+uid+'" onclick="_cmtToggle(\''+uid+'\')" style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--sur2);cursor:pointer;user-select:none">' +
+          '<i id="cmti_'+uid+'" class="fas fa-chevron-down fa-fw" style="color:var(--P);font-size:11px"></i>' +
+          '<div style="width:34px;height:34px;border-radius:50%;background:var(--Pl);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:var(--P);flex-shrink:0">'+_esc(initials)+'</div>' +
+          '<div style="flex:1;min-width:0">' +
+          '<div style="font-weight:800;font-size:13.5px">'+_esc(emp.name)+'</div>' +
+          '<div style="font-size:11px;color:var(--tx3)">'+_esc(emp.dept)+' · '+_esc(emp.role)+'</div>' +
+          '</div>' +
+          '<div style="display:flex;gap:6px;align-items:center">' +
+          (pend?'<span style="padding:2px 8px;border-radius:12px;background:var(--Rl);color:var(--R);font-size:10.5px;font-weight:800">'+pend+' Pending</span>':'') +
+          (done?'<span style="padding:2px 8px;border-radius:12px;background:var(--Gl);color:var(--G);font-size:10.5px;font-weight:800">'+done+' Done</span>':'') +
+          '</div></div>' +
+          '<div id="'+uid+'" class="adm-body adm-open">';
+
+        eHtml += emp.tasks.map(function(t, ti) {
+          var isDone = t.status === 'Done';
+          var rowBg  = ti%2===0?'var(--bg)':'var(--sur2)';
+          return '<div style="display:flex;align-items:center;gap:10px;padding:9px 14px 9px 60px;background:'+rowBg+';border-top:'+(ti>0?'1px solid var(--bdr)':'none')+'">' +
+            '<div style="flex:1;min-width:0">' +
+            '<div style="font-size:13px;font-weight:700;'+(isDone?'text-decoration:line-through;color:var(--tx3)':'')+'">' + _esc(t.task_name) + '</div>' +
+            '<div style="font-size:10.5px;color:var(--tx3);margin-top:2px">' +
+            (t.frequency?'<span style="padding:1px 6px;border-radius:4px;background:var(--sur2);border:1px solid var(--bdr);font-size:10px">'+_esc(t.frequency)+'</span> ':'') +
+            (isDone?'<span style="color:var(--G);font-weight:700"><i class="fas fa-circle-check"></i> Done</span>':'<span style="color:var(--R);font-weight:700"><i class="fas fa-circle-xmark"></i> Pending</span>') +
+            '</div></div>' +
+            (isDone ? '' :
+              '<div style="display:flex;gap:5px;align-items:center;flex-shrink:0">' +
+              '<button id="cmtb_'+_esc(t.task_id)+'_'+_esc(emp.emp_id)+'" onclick="_cmtMarkDone(\''+_esc(t.task_id)+'\',\''+_esc(emp.emp_id)+'\',\''+_esc(emp.name)+'\')" style="padding:4px 10px;border-radius:7px;background:var(--G);color:#fff;font-size:11.5px;font-weight:800;border:none;cursor:pointer;white-space:nowrap"><i class="fas fa-check"></i> Done</button>' +
+              '<button onclick="_cmtShiftTask(\''+_esc(t.task_id)+'\',\''+_esc(emp.emp_id)+'\')" style="padding:4px 10px;border-radius:7px;background:var(--Ol);color:var(--O);font-size:11.5px;font-weight:800;border:1.5px solid var(--O);cursor:pointer;white-space:nowrap"><i class="fas fa-forward"></i> Shift</button>' +
+              '</div>'
+            ) +
+            '</div>';
+        }).join('');
+
+        eHtml += '</div></div>';
+        return eHtml;
+      }).join('');
+
+      list.innerHTML = html;
+    }
+
+    function _cmtToggle(uid) {
+      var b=document.getElementById(uid), ic=document.getElementById('cmti_'+uid);
+      if(!b) return; var open=b.classList.toggle('adm-open');
+      if(ic) ic.className='fas fa-chevron-'+(open?'down':'right')+' fa-fw';
+    }
+    function _cmtExpandAll(exp) {
+      document.querySelectorAll('#cmtList .adm-body').forEach(function(b){ b.classList.toggle('adm-open',exp); });
+      document.querySelectorAll('#cmtList [id^="cmti_"]').forEach(function(i){ i.className='fas fa-chevron-'+(exp?'down':'right')+' fa-fw'; });
+    }
+    function _cmtSort(key) {
+      if (_cmtSort.key===key) { _cmtSort.dir*=-1; } else { _cmtSort.key=key; _cmtSort.dir=1; }
+      document.querySelectorAll('.ctsb').forEach(function(b) {
+        var active = b.id === 'ctsb_'+key;
+        b.style.border='1.5px solid '+(active?'var(--P)':'var(--bdr)');
+        b.style.background=active?'var(--Pl)':'var(--bg)';
+        b.style.color=active?'var(--P)':'var(--tx2)';
+        if (active) { var lbls={name:'Name',dept:'Dept',pend:'Pending Count'}; b.textContent=lbls[key]+(_cmtSort.dir===1?' ↑':' ↓'); }
+      });
+      _renderCmtList();
+    }
+    function _cmtReload() {
+      var root=document.getElementById('cmteamRoot'); if(!root) return;
+      _cmtDate=(document.getElementById('cmtDate')||{}).value||_today();
+      var dept=(document.getElementById('cmtDept')||{}).value||'all';
+      var l=document.getElementById('cmtList'); if(l) l.innerHTML=_skel(3);
+      _gas('getTeamChecklistToday',[_cmtDate,dept], function(rows){
+        _cmtData=rows||[]; _renderCmtList();
+      }, function(e){ if(l) l.innerHTML='<div class="te">'+_esc(e.message)+'</div>'; });
+    }
+    function _cmtMarkDone(taskId, empId, empName) {
+      var btn=document.getElementById('cmtb_'+taskId+'_'+empId);
+      if(btn){btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i>';}
+      _gas('markTeamTaskDone',[taskId,empId,_cmtDate,''], function(){
+        _cmtData.forEach(function(r){ if(r.task_id===taskId&&r.emp_id===empId) r.status='Done'; });
+        _toast('✓ Task marked done for '+empName,'ok');
+        _renderCmtList();
+      }, function(e){
+        _toast(e.message,'err');
+        if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-check"></i> Done';}
+      });
+    }
+    function _cmtShiftTask(taskId, empId) {
+      _openModal('<i class="fas fa-forward" style="color:var(--O)"></i> Shift Task',
+        '<div style="display:flex;flex-direction:column;gap:12px">' +
+        '<div><label style="font-size:12px;font-weight:800;color:var(--tx2);display:block;margin-bottom:4px">Shift to Date</label>' +
+        '<input type="date" id="cmtShiftTo" class="ana-sel" value="'+_tomorrow()+'" style="width:100%"></div>' +
+        '<div><label style="font-size:12px;font-weight:800;color:var(--tx2);display:block;margin-bottom:4px">Reason (optional)</label>' +
+        '<input type="text" id="cmtShiftReason" class="ana-sel" placeholder="Why shifting?" style="width:100%"></div>' +
+        '</div>',
+        function(){
+          var to=(document.getElementById('cmtShiftTo')||{}).value||_tomorrow();
+          var rsn=(document.getElementById('cmtShiftReason')||{}).value||'';
+          _gas('managerShiftTask',[taskId,empId,_cmtDate,to],function(){
+            _cmtData=_cmtData.filter(function(r){return !(r.task_id===taskId&&r.emp_id===empId);});
+            _closeModal(); _toast('✓ Task shifted to '+to,'ok'); _renderCmtList();
+          }, function(e){ _toast(e.message,'err'); });
+        }, '<i class="fas fa-forward"></i> Shift');
+    }
+    function _tomorrow() {
+      var d=new Date(); d.setDate(d.getDate()+1);
+      return d.getFullYear()+'-'+(d.getMonth()<9?'0':'')+(d.getMonth()+1)+'-'+(d.getDate()<10?'0':'')+d.getDate();
     }
 
     function _ctodayForm() {
@@ -7844,6 +8087,11 @@ function _loadSetupTasks() {
                   '<button class="btn btn-outline btn-sm" data-tid="' + _esc(d.task_id) + '" onclick="_dShift(this)"><i class="fas fa-calendar-days"></i> Request Shift</button>' : '') +
                 (isOut && d.status !== 'Completed' && d.status !== 'Cancelled' ?
                   '<button class="btn btn-outline btn-sm" data-tid="' + _esc(d.task_id) + '" onclick="_dCancel(this)"><i class="fas fa-times"></i> Cancel</button>' : '') +
+                // Manager can directly complete or shift ANY pending task
+                (_isMarkAttendanceAllowed() && isOut && d.status !== 'Completed' && d.status !== 'Cancelled' ?
+                  '<button class="btn btn-green btn-sm" data-tid="' + _esc(d.task_id) + '" onclick="_dMgrComplete(this)"><i class="fas fa-check-double"></i> Mark Done</button>' +
+                  '<button class="btn btn-sm" style="background:var(--Ol);color:var(--O);border:none" data-tid="' + _esc(d.task_id) + '" onclick="_dMgrShift(this)"><i class="fas fa-forward"></i> Shift</button>'
+                : '') +
                 '</div>' +
                 '</div>' +
                 '</div>';
@@ -7879,6 +8127,43 @@ function _loadSetupTasks() {
       document.querySelectorAll('.dgc').forEach(function(c) {
         c.style.transform = expand ? 'rotate(180deg)' : '';
       });
+    }
+
+    function _dMgrComplete(btn) {
+      var tid = btn.getAttribute('data-tid');
+      _openModal('<i class="fas fa-check-double" style="color:var(--G)"></i> Manager: Mark Task Done',
+        '<div style="font-size:13.5px;color:var(--tx2);line-height:1.7;margin-bottom:12px">You are marking this task as completed on behalf of the assignee.</div>' +
+        '<div><label style="font-size:12px;font-weight:800;color:var(--tx2);display:block;margin-bottom:4px">Completion Notes (optional)</label>' +
+        '<input type="text" id="mgrCmplNotes" class="ana-sel" placeholder="Any notes..." style="width:100%"></div>',
+        function () {
+          var notes = (document.getElementById('mgrCmplNotes')||{}).value || '';
+          _closeModal();
+          _gas('managerCompleteDelegation', [tid, notes], function () {
+            _toast('✓ Task marked as Completed', 'ok');
+            _loadDOut();
+          }, function (e) { _toast('Error: ' + e.message, 'err'); });
+        }, '<i class="fas fa-check-double"></i> Confirm Complete');
+    }
+
+    function _dMgrShift(btn) {
+      var tid = btn.getAttribute('data-tid');
+      _openModal('<i class="fas fa-forward" style="color:var(--O)"></i> Manager: Shift Due Date',
+        '<div style="display:flex;flex-direction:column;gap:12px">' +
+        '<div><label style="font-size:12px;font-weight:800;color:var(--tx2);display:block;margin-bottom:4px">New Due Date <span style="color:var(--R)">★</span></label>' +
+        '<input type="date" id="mgrShiftDate" class="ana-sel" value="'+_tomorrow()+'" min="'+_today()+'" style="width:100%"></div>' +
+        '<div><label style="font-size:12px;font-weight:800;color:var(--tx2);display:block;margin-bottom:4px">Reason</label>' +
+        '<input type="text" id="mgrShiftReason" class="ana-sel" placeholder="Why shifting?" style="width:100%"></div>' +
+        '</div>',
+        function () {
+          var newDate = (document.getElementById('mgrShiftDate')||{}).value || '';
+          var reason  = (document.getElementById('mgrShiftReason')||{}).value || '';
+          if (!newDate) { _toast('Please select a new date', 'warn'); return; }
+          _closeModal();
+          _gas('managerShiftDelegation', [tid, newDate, reason], function () {
+            _toast('✓ Task shifted to ' + newDate, 'ok');
+            _loadDOut();
+          }, function (e) { _toast('Error: ' + e.message, 'err'); });
+        }, '<i class="fas fa-forward"></i> Shift Task');
     }
 
     function _dComplete(btn) {
@@ -7962,30 +8247,33 @@ function _loadSetupTasks() {
     ══════════════════════════════════════════════════════════ */
     function _vAttend() {
       var needsAtt = !_U || _U.need_attendance !== false;
-      var tabs = [];
-      if (needsAtt) tabs.push({ id: 'amy', lbl: '<i class="fas fa-user-clock"></i> My Attendance' });
+      var tabs = [], panes = [];
+
+      if (needsAtt) {
+        tabs.push({ id: 'amy',  lbl: '<i class="fas fa-user-clock"></i> My Attendance' });
+        panes.push('<div id="amyPane">' + _amyForm() + '</div>');
+      }
       tabs.push({ id: 'areg', lbl: '<i class="fas fa-pen-to-square"></i> Regularize' });
+      panes.push('<div id="aregPane">' + _aregForm() + '</div>');
+
       if (_isManager()) {
         tabs.push({ id: 'arega', lbl: '<i class="fas fa-clipboard-check"></i> Reg. Approvals' });
+        panes.push('<div id="aregaPane">' + _aregaForm() + '</div>');
         tabs.push({ id: 'amust', lbl: '<i class="fas fa-users"></i> Muster' });
+        panes.push('<div id="amustPane">' + _amustForm() + '</div>');
       }
       if (_isMarkAttendanceAllowed()) {
         tabs.push({ id: 'amteam', lbl: '<i class="fas fa-user-check"></i> Mark Team Attendance' });
+        panes.push('<div id="amteamPane">' + _amTeamForm() + '</div>');
       }
+
       var at = _ST || (needsAtt ? 'amy' : 'areg');
 
       document.getElementById('content').innerHTML =
         '<div class="mod-head">' +
-        '<div><div class="mod-title">Attendance & Leave</div><div class="mod-sub">Punch records, leave requests & muster reports</div></div>' +
-        '</div>' +
-        _mkTabs(tabs, at) +
-        _mkPanes(tabs, at, [
-          (needsAtt ? '<div id="amyPane">'   + _amyForm()   + '</div>' : ''),
-          '<div id="aregPane">'  + _aregForm()  + '</div>',
-          (_isManager() ? '<div id="aregaPane">'  + _aregaForm() + '</div>' : ''),
-          (_isManager() ? '<div id="amustPane">'  + _amustForm() + '</div>' : ''),
-          (_isMarkAttendanceAllowed() ? '<div id="amteamPane">' + _amTeamForm() + '</div>' : '')
-        ]);
+        '<div><div class="mod-title">Attendance & Leave</div>' +
+        '<div class="mod-sub">Punch records, leave requests & muster reports</div></div></div>' +
+        _mkTabs(tabs, at) + _mkPanes(tabs, at, panes);
 
       if (at === 'amy' && needsAtt) _loadMyAtt();
       else if (at === 'areg') _loadMyRegularizations();
@@ -13865,6 +14153,7 @@ function _loadSetupTasks() {
         amy: _loadMyAtt,
         areg: _loadMyRegularizations, ala: _loadLeaveApprovals,
         arega: _loadRegApprovals, amust: _loadMustTab, aana: _loadAttAnalytics,
+        cmteam: _loadTeamChecklist,
         amteam: _loadTeamAtt,
         // legacy aliases kept for safety
         amyatt: _loadMyAtt, amstr: _loadMustTab,
