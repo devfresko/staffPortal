@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="Fresko Portal">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-180.png">
-  <title>Fresko Staff Portal — v3.0</title>
+  <title>Fresko Staff Portal</title>
 
   <!-- External Assets -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -8213,189 +8213,341 @@ function _loadSetupTasks() {
        OWNER / MANAGER / COORDINATOR can mark attendance for staff who
        have NeedAttendance = Yes and haven't punched in yet today.
     ══════════════════════════════════════════════════════════════════ */
+    /* ══════════════════════════════════════════════════════════════════
+       MARK TEAM ATTENDANCE — OWNER / MANAGER / COORDINATOR
+       Key design: filter bar is rendered ONCE and never re-rendered,
+       so filter values persist. Only the staff list refreshes.
+       Groups by Department with expand/collapse per dept.
+       Sort by: Name | Dept | Check-in | Status.
+       Each staff row: IN time + OUT time + Status + Mark button.
+    ══════════════════════════════════════════════════════════════════ */
     function _amTeamForm() {
-      return '<div id="amteamRoot">' + _skel(3) + '</div>';
+      return '<div id="amteamRoot"><div style="padding:32px;text-align:center;color:var(--tx3)"><i class="fas fa-spinner fa-spin" style="font-size:24px;opacity:.3"></i></div></div>';
     }
 
-    var _teamAttData  = [];   // full loaded list for client-side filter
-    var _teamAttDate  = '';   // which date is loaded
+    var _teamAttData = [];
+    var _teamAttDate = '';
+    var _teamAttSort = { key: 'name', dir: 1 };
 
     function _loadTeamAtt() {
       var root = document.getElementById('amteamRoot');
       if (!root) return;
       _teamAttDate = _today();
-      root.innerHTML = _skel(3);
+
+      // Render the stable frame (filter bar + stat strip + list container)
+      var curTime = _nowTime();
+      root.innerHTML =
+        // ── Filter bar (rendered ONCE — never re-rendered on filter change) ──
+        '<div id="tamFilters" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px;padding:10px 14px;background:var(--sur2);border-radius:12px;border:1px solid var(--bdr)">' +
+        '<input type="date" id="tamDate" class="ana-sel" style="max-width:132px" value="'+_teamAttDate+'">' +
+        '<div style="width:1px;height:24px;background:var(--bdr);flex-shrink:0"></div>' +
+        '<select id="tamDept" class="ana-sel" style="min-width:130px"><option value="all">All Departments</option></select>' +
+        '<select id="tamShow" class="ana-sel" style="min-width:140px">' +
+        '<option value="unmarked">Not Marked Only</option>' +
+        '<option value="all">All Staff</option>' +
+        '<option value="marked">Already Marked</option>' +
+        '</select>' +
+        '<input type="text" id="tamSearch" class="ana-sel" placeholder="Search name..." style="min-width:150px">' +
+        '<div style="flex:1"></div>' +
+        '<button class="btn btn-sm" onclick="_tamReload()" style="white-space:nowrap"><i class="fas fa-rotate-right"></i> Reload</button>' +
+        '</div>' +
+
+        // ── Sort + expand/collapse toolbar ──────────────────────────────
+        '<div id="tamSortBar" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px">' +
+        '<span style="font-size:10.5px;font-weight:800;color:var(--tx3);text-transform:uppercase;letter-spacing:.4px;white-space:nowrap">Sort:</span>' +
+        '<button id="tsb_name"   onclick="_tamSort(\'name\')"   class="tsb tsb-active" style="padding:5px 10px;border-radius:8px;font-size:11.5px;font-weight:700;cursor:pointer;border:1.5px solid var(--P);background:var(--Pl);color:var(--P)">Name ↑</button>' +
+        '<button id="tsb_dept"   onclick="_tamSort(\'dept\')"   class="tsb"            style="padding:5px 10px;border-radius:8px;font-size:11.5px;font-weight:700;cursor:pointer;border:1.5px solid var(--bdr);background:var(--bg);color:var(--tx2)"><i class="fas fa-building" style="font-size:10px"></i> Dept</button>' +
+        '<button id="tsb_checkin" onclick="_tamSort(\'checkin\')" class="tsb"          style="padding:5px 10px;border-radius:8px;font-size:11.5px;font-weight:700;cursor:pointer;border:1.5px solid var(--bdr);background:var(--bg);color:var(--tx2)"><i class="fas fa-clock" style="font-size:10px"></i> Check-in</button>' +
+        '<button id="tsb_status" onclick="_tamSort(\'status\')" class="tsb"            style="padding:5px 10px;border-radius:8px;font-size:11.5px;font-weight:700;cursor:pointer;border:1.5px solid var(--bdr);background:var(--bg);color:var(--tx2)"><i class="fas fa-circle-check" style="font-size:10px"></i> Status</button>' +
+        '<div style="width:1px;height:22px;background:var(--bdr);flex-shrink:0;margin:0 2px"></div>' +
+        '<button onclick="_tamExpandAll(true)"  style="padding:5px 10px;border-radius:8px;font-size:11.5px;font-weight:700;cursor:pointer;border:1.5px solid var(--bdr);background:var(--bg);color:var(--tx2)"><i class="fas fa-angles-down" style="font-size:10px"></i> Expand All</button>' +
+        '<button onclick="_tamExpandAll(false)" style="padding:5px 10px;border-radius:8px;font-size:11.5px;font-weight:700;cursor:pointer;border:1.5px solid var(--bdr);background:var(--bg);color:var(--tx2)"><i class="fas fa-angles-right" style="font-size:10px"></i> Collapse All</button>' +
+        '</div>' +
+
+        // ── Summary stats ────────────────────────────────────────────────
+        '<div id="tamStats" style="display:flex;gap:8px;margin-bottom:12px"></div>' +
+
+        // ── Bulk mark bar ────────────────────────────────────────────────
+        '<div id="tamBulkBar" style="display:none;align-items:center;gap:8px;margin-bottom:12px;padding:10px 14px;background:var(--Pl);border-radius:10px;border:1px solid var(--bdr2)">' +
+        '<i class="fas fa-bolt" style="color:var(--P)"></i>' +
+        '<span id="tamBulkLbl" style="font-size:13px;font-weight:700;color:var(--P);flex:1"></span>' +
+        '<input type="time" id="tamBulkIn"  value="'+curTime+'" style="padding:5px 8px;border-radius:7px;border:1.5px solid var(--bdr2);background:var(--bg);font-size:12px;color:var(--tx)">' +
+        '<input type="time" id="tamBulkOut" placeholder="Out (opt)" style="padding:5px 8px;border-radius:7px;border:1.5px solid var(--bdr2);background:var(--bg);font-size:12px;color:var(--tx)">' +
+        '<button onclick="_tamMarkAll()" style="padding:6px 14px;border-radius:8px;background:var(--P);color:#fff;font-size:12px;font-weight:800;border:none;cursor:pointer;white-space:nowrap"><i class="fas fa-check-double"></i> Mark All Present</button>' +
+        '</div>' +
+
+        // ── Staff list ───────────────────────────────────────────────────
+        '<div id="tamList">' + _skel(3) + '</div>';
+
+      // Populate dept filter then load data
       _gas('getTeamAttendanceStatus', [_teamAttDate], function(rows) {
         _teamAttData = rows || [];
-        _renderTeamAtt(root);
+        // Populate dept options
+        var depts = _teamAttData.reduce(function(acc, r) {
+          if (r.dept && acc.indexOf(r.dept) < 0) acc.push(r.dept);
+          return acc;
+        }, []).sort();
+        var sel = document.getElementById('tamDept');
+        if (sel) {
+          sel.innerHTML = '<option value="all">All Departments</option>' +
+            depts.map(function(d){ return '<option value="'+_esc(d)+'">'+_esc(d)+'</option>'; }).join('');
+        }
+        // Wire up event listeners AFTER render
+        ['tamDate','tamDept','tamShow','tamSearch'].forEach(function(id) {
+          var el = document.getElementById(id);
+          if (!el) return;
+          el.addEventListener('change', _renderTeamList);
+          el.addEventListener('input',  _renderTeamList);
+        });
+        _renderTeamList();
       }, function(e) {
-        root.innerHTML = '<div class="te"><i class="fas fa-exclamation-triangle"></i> ' + _esc(e.message) + '</div>';
+        var l = document.getElementById('tamList');
+        if (l) l.innerHTML = '<div class="te"><i class="fas fa-exclamation-triangle"></i> ' + _esc(e.message) + '</div>';
       });
     }
 
-    function _renderTeamAtt(root) {
-      if (!root) { root = document.getElementById('amteamRoot'); if (!root) return; }
+    function _renderTeamList() {
+      var list = document.getElementById('tamList');
+      if (!list) return;
 
-      var date   = _teamAttDate || _today();
-      var dept   = (document.getElementById('tamDept')   || {}).value || 'all';
-      var showF  = (document.getElementById('tamShow')   || {}).value || 'unmarked';
-      var q      = ((document.getElementById('tamSearch') || {}).value || '').toLowerCase().trim();
+      var date  = (document.getElementById('tamDate')   || {}).value || _teamAttDate;
+      var dept  = (document.getElementById('tamDept')   || {}).value || 'all';
+      var showF = (document.getElementById('tamShow')   || {}).value || 'unmarked';
+      var q     = ((document.getElementById('tamSearch') || {}).value || '').toLowerCase().trim();
 
-      var rows = _teamAttData.slice().filter(function(r) {
+      // Update stats
+      var totAll    = _teamAttData.length;
+      var totMarked = _teamAttData.filter(function(r){ return r.marked; }).length;
+      var totUnmark = totAll - totMarked;
+      var statsEl = document.getElementById('tamStats');
+      if (statsEl) {
+        statsEl.innerHTML =
+          '<div style="flex:1;padding:10px;background:var(--Gl);border-radius:10px;text-align:center"><div style="font-size:20px;font-weight:900;color:var(--G)">'+totMarked+'</div><div style="font-size:10px;font-weight:800;color:var(--G);text-transform:uppercase">Marked</div></div>' +
+          '<div style="flex:1;padding:10px;background:var(--Rl);border-radius:10px;text-align:center"><div style="font-size:20px;font-weight:900;color:var(--R)">'+totUnmark+'</div><div style="font-size:10px;font-weight:800;color:var(--R);text-transform:uppercase">Not Marked</div></div>' +
+          '<div style="flex:1;padding:10px;background:var(--Pl);border-radius:10px;text-align:center"><div style="font-size:20px;font-weight:900;color:var(--P)">'+totAll+'</div><div style="font-size:10px;font-weight:800;color:var(--P);text-transform:uppercase">Total</div></div>';
+      }
+
+      // Filter
+      var rows = _teamAttData.filter(function(r) {
         if (dept !== 'all' && r.dept !== dept) return false;
         if (showF === 'unmarked' && r.marked) return false;
-        if (showF === 'present'  && r.status !== 'P') return false;
-        if (showF === 'absent'   && r.status !== 'A') return false;
-        if (q && (r.name + ' ' + r.dept).toLowerCase().indexOf(q) < 0) return false;
+        if (showF === 'marked'   && !r.marked) return false;
+        if (q && (r.name+' '+r.dept).toLowerCase().indexOf(q) < 0) return false;
         return true;
       });
 
-      var totalAll    = _teamAttData.length;
-      var totalMarked = _teamAttData.filter(function(r){ return r.marked; }).length;
-      var unmarked    = totalAll - totalMarked;
+      // Sort
+      rows = rows.slice().sort(function(a,b){
+        var va, vb;
+        if (_teamAttSort.key==='dept')    { va=a.dept||'';     vb=b.dept||''; }
+        else if (_teamAttSort.key==='checkin') { va=a.check_in||'99:99'; vb=b.check_in||'99:99'; }
+        else if (_teamAttSort.key==='status') { va=a.status||'zzz'; vb=b.status||'zzz'; }
+        else                              { va=a.name||'';    vb=b.name||''; }
+        va=va.toLowerCase(); vb=vb.toLowerCase();
+        return va<vb?-_teamAttSort.dir:va>vb?_teamAttSort.dir:0;
+      });
 
-      // ── Dept options from loaded data ─────────────────────────────────
-      var depts = _teamAttData.reduce(function(acc, r) {
-        if (r.dept && acc.indexOf(r.dept) < 0) acc.push(r.dept);
-        return acc;
-      }, []).sort();
-      var deptOptHtml = '<option value="all">All Departments</option>' +
-        depts.map(function(d){ return '<option value="'+_esc(d)+'">'+_esc(d)+'</option>'; }).join('');
-
-      var curTime = (function(){ var n=new Date(); return (n.getHours()<10?'0':'')+n.getHours()+':'+(n.getMinutes()<10?'0':'')+n.getMinutes(); })();
-
-      var html =
-        // ── Filter bar ───────────────────────────────────────────────────
-        '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px;padding:10px 14px;background:var(--sur2);border-radius:12px;border:1px solid var(--bdr)">' +
-        '<input type="date" id="tamDate" class="ana-sel" style="max-width:135px" value="'+date+'" onchange="_tamReload()">' +
-        '<div style="width:1px;height:24px;background:var(--bdr);flex-shrink:0"></div>' +
-        '<select id="tamDept" class="ana-sel" style="min-width:130px" onchange="_renderTeamAtt()">' + deptOptHtml + '</select>' +
-        '<select id="tamShow" class="ana-sel" style="min-width:130px" onchange="_renderTeamAtt()">' +
-        '<option value="unmarked">Not Marked Only</option>' +
-        '<option value="all">All Staff</option>' +
-        '<option value="present">Present</option>' +
-        '<option value="absent">Absent</option>' +
-        '</select>' +
-        '<input type="text" id="tamSearch" class="ana-sel" placeholder="Search name..." style="min-width:150px" oninput="_renderTeamAtt()">' +
-        '<div style="flex:1"></div>' +
-        '<button class="btn btn-sm" onclick="_tamReload()"><i class="fas fa-rotate-right"></i> Refresh</button>' +
-        '</div>' +
-
-        // ── Summary strip ────────────────────────────────────────────────
-        '<div style="display:flex;gap:10px;margin-bottom:14px">' +
-        '<div style="flex:1;padding:12px;background:var(--Gl);border-radius:10px;text-align:center"><div style="font-size:22px;font-weight:900;color:var(--G)">'+totalMarked+'</div><div style="font-size:10px;font-weight:800;color:var(--G);text-transform:uppercase">Marked</div></div>' +
-        '<div style="flex:1;padding:12px;background:var(--Rl);border-radius:10px;text-align:center"><div style="font-size:22px;font-weight:900;color:var(--R)">'+unmarked+'</div><div style="font-size:10px;font-weight:800;color:var(--R);text-transform:uppercase">Not Marked</div></div>' +
-        '<div style="flex:1;padding:12px;background:var(--Pl);border-radius:10px;text-align:center"><div style="font-size:22px;font-weight:900;color:var(--P)">'+totalAll+'</div><div style="font-size:10px;font-weight:800;color:var(--P);text-transform:uppercase">Total Staff</div></div>' +
-        '</div>';
-
-      if (!rows.length) {
-        html += '<div class="empty-state" style="padding:32px;text-align:center">' +
-          '<i class="fas fa-user-check" style="font-size:36px;opacity:.15;color:var(--G)"></i>' +
-          '<div style="margin-top:10px;font-size:14px;color:var(--tx3);font-weight:600">' +
-          (showF==='unmarked' ? 'All staff attendance is marked for today! ✓' : 'No staff match this filter') +
-          '</div></div>';
-        root.innerHTML = html;
-        return;
-      }
-
-      // ── Bulk Mark All button (only for unmarked filter) ──────────────
-      if (showF === 'unmarked' || showF === 'all') {
-        var unmarkedRows = rows.filter(function(r){ return !r.marked; });
-        if (unmarkedRows.length) {
-          html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:10px 14px;background:var(--Pl);border-radius:10px;border:1px solid var(--bdr2)">' +
-            '<i class="fas fa-bolt" style="color:var(--P)"></i>' +
-            '<span style="font-size:13px;font-weight:700;color:var(--P);flex:1">' + unmarkedRows.length + ' staff unmarked — mark all as Present now?</span>' +
-            '<input type="time" id="tamBulkTime" value="'+curTime+'" style="padding:6px 8px;border-radius:8px;border:1.5px solid var(--bdr2);background:var(--bg);font-size:13px;color:var(--tx)">' +
-            '<button class="btn btn-sm" style="background:var(--P);color:#fff;border:none;white-space:nowrap" onclick="_tamMarkAll()"><i class="fas fa-check-double"></i> Mark All Present</button>' +
-            '</div>';
+      // Update bulk bar
+      var unmarkedFilt = rows.filter(function(r){ return !r.marked; });
+      var bulkBar = document.getElementById('tamBulkBar');
+      var bulkLbl = document.getElementById('tamBulkLbl');
+      if (bulkBar) {
+        if (unmarkedFilt.length && (showF==='unmarked'||showF==='all')) {
+          bulkBar.style.display = 'flex';
+          if (bulkLbl) bulkLbl.textContent = unmarkedFilt.length + ' unmarked staff — mark all as Present?';
+        } else {
+          bulkBar.style.display = 'none';
         }
       }
 
-      // ── Staff cards ──────────────────────────────────────────────────
-      html += rows.map(function(r) {
-        var marked  = r.marked;
-        var stBg    = r.status==='P'?'var(--Gl)':r.status==='HD'?'var(--Ol)':r.status==='A'?'var(--Rl)':'var(--sur2)';
-        var stFc    = r.status==='P'?'var(--G)' :r.status==='HD'?'var(--O)' :r.status==='A'?'var(--R)' :'var(--tx3)';
-        var stLbl   = r.status==='P'?'Present'  :r.status==='HD'?'Half Day' :r.status==='A'?'Absent'   :'—';
-        var initials= (r.name||'?').split(' ').map(function(w){return w[0]||'';}).slice(0,2).join('').toUpperCase();
-        var cardId  = 'tac_' + r.emp_id;
-
-        return '<div class="card card-nohover anim-item" id="'+cardId+'" style="margin-bottom:8px;padding:12px 16px">' +
-          '<div style="display:flex;align-items:center;gap:12px">' +
-          // Avatar
-          '<div style="width:42px;height:42px;border-radius:50%;background:var(--Pl);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:var(--P);flex-shrink:0">'+_esc(initials)+'</div>' +
-          // Name + dept
-          '<div style="flex:1;min-width:0">' +
-          '<div style="font-weight:800;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_esc(r.name)+'</div>' +
-          '<div style="font-size:11.5px;color:var(--tx2)">'+_esc(r.dept)+' &middot; <span style="color:var(--tx3)">'+_esc(r.role)+'</span></div>' +
-          '</div>' +
-          // Status / mark area
-          (marked
-            ? // Already marked — show status + time
-              '<div style="text-align:right">' +
-              '<span style="padding:4px 12px;border-radius:20px;font-size:11.5px;font-weight:800;background:'+stBg+';color:'+stFc+'">'+stLbl+'</span>' +
-              (r.check_in ? '<div style="font-size:11px;color:var(--G);margin-top:4px;font-weight:700"><i class="fas fa-sign-in-alt"></i> '+_esc(r.check_in)+(r.check_out?' &nbsp;<i class="fas fa-sign-out-alt" style="color:var(--R)"></i> '+_esc(r.check_out):'')+'</div>' : '') +
-              '</div>'
-            : // Not marked — show mark controls
-              '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">' +
-              '<input type="time" id="ti_'+r.emp_id+'" value="'+curTime+'" style="padding:5px 8px;border-radius:8px;border:1.5px solid var(--bdr);background:var(--bg);font-size:13px;color:var(--tx);width:95px">' +
-              '<select id="st_'+r.emp_id+'" style="padding:5px 8px;border-radius:8px;border:1.5px solid var(--bdr);background:var(--bg);font-size:13px;color:var(--tx)">' +
-              '<option value="P">Present</option>' +
-              '<option value="HD">Half Day</option>' +
-              '<option value="A">Absent</option>' +
-              '</select>' +
-              '<button class="btn btn-sm" style="background:var(--G);color:#fff;border:none;white-space:nowrap" onclick="_tamMark1(\''+r.emp_id+'\',\''+_esc(r.name)+'\',\''+_esc(r.dept)+'\')"><i class="fas fa-check"></i> Mark</button>' +
-              '</div>'
-          ) +
+      if (!rows.length) {
+        list.innerHTML = '<div class="empty-state" style="padding:28px;text-align:center">' +
+          '<i class="fas fa-user-check" style="font-size:32px;opacity:.15;color:var(--G)"></i>' +
+          '<div style="margin-top:10px;font-size:14px;color:var(--tx3);font-weight:600">' +
+          (showF==='unmarked' ? 'All staff attendance is marked ✓' : 'No staff match this filter') +
           '</div></div>';
+        return;
+      }
+
+      var curTime = _nowTime();
+
+      // Group by dept
+      var byDept = {}, deptOrder = [];
+      rows.forEach(function(r) {
+        var d = r.dept || 'Other';
+        if (!byDept[d]) { byDept[d] = []; deptOrder.push(d); }
+        byDept[d].push(r);
+      });
+
+      var html = deptOrder.map(function(d, di) {
+        var dRows = byDept[d];
+        var dMarked  = dRows.filter(function(r){ return r.marked; }).length;
+        var dUnmark  = dRows.length - dMarked;
+        var uid = 'tam_d' + di;
+        var open = true;
+
+        var dHtml = '<div style="margin-bottom:10px;border-radius:12px;overflow:hidden;border:1px solid var(--bdr2)">' +
+          // Dept header
+          '<div id="tamh_'+uid+'" onclick="_tamToggle(\''+uid+'\')" style="display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--sur2);cursor:pointer;user-select:none;border-bottom:1px solid var(--bdr)">' +
+          '<i id="tami_'+uid+'" class="fas fa-chevron-down fa-fw" style="color:var(--P);font-size:11px"></i>' +
+          '<span style="font-weight:800;font-size:14px;flex:1">'+_esc(d)+'</span>' +
+          '<div style="display:flex;gap:6px;align-items:center">' +
+          (dMarked?'<span style="padding:2px 8px;border-radius:12px;background:var(--Gl);color:var(--G);font-size:10.5px;font-weight:800">'+dMarked+' Marked</span>':'') +
+          (dUnmark?'<span style="padding:2px 8px;border-radius:12px;background:var(--Rl);color:var(--R);font-size:10.5px;font-weight:800">'+dUnmark+' Pending</span>':'') +
+          '<span style="font-size:11px;color:var(--tx3);font-weight:600">'+dRows.length+' staff</span>' +
+          '</div></div>' +
+          '<div id="'+uid+'" class="adm-body adm-open">';
+
+        dHtml += dRows.map(function(r, ri) {
+          var marked   = r.marked;
+          var initials = (r.name||'?').split(' ').map(function(w){return w[0]||'';}).slice(0,2).join('').toUpperCase();
+          var stBg = r.status==='P'?'var(--Gl)':r.status==='HD'?'var(--Ol)':r.status==='A'?'var(--Rl)':'var(--sur2)';
+          var stFc = r.status==='P'?'var(--G)' :r.status==='HD'?'var(--O)' :r.status==='A'?'var(--R)' :'var(--tx3)';
+          var stLbl= r.status==='P'?'Present'  :r.status==='HD'?'Half Day' :r.status==='A'?'Absent'   :'—';
+          var rowBg = ri%2===0?'var(--bg)':'var(--sur2)';
+
+          return '<div style="display:flex;align-items:center;gap:12px;padding:10px 16px;background:'+rowBg+';border-top:'+(ri>0?'1px solid var(--bdr)':'none')+';transition:background .1s" onmouseover="this.style.background=\'var(--Pl)\'" onmouseout="this.style.background=\''+rowBg+'\'">' +
+            // Avatar
+            '<div style="width:38px;height:38px;border-radius:50%;background:var(--Pl);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:var(--P);flex-shrink:0">'+_esc(initials)+'</div>' +
+            // Name + role
+            '<div style="flex:1;min-width:0">' +
+            '<div style="font-weight:800;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_esc(r.name)+'</div>' +
+            '<div style="font-size:11px;color:var(--tx3)">'+_esc(r.role)+(r.phone?'  ·  '+_esc(r.phone):'')+'</div>' +
+            '</div>' +
+            // Already marked — show status + times
+            (marked
+              ? '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
+                '<span style="padding:3px 10px;border-radius:20px;font-size:11.5px;font-weight:800;background:'+stBg+';color:'+stFc+'">'+stLbl+'</span>' +
+                (r.check_in?'<span style="font-size:12px;font-weight:700;color:var(--G)"><i class="fas fa-arrow-right-to-bracket"></i> '+_esc(r.check_in)+'</span>':'') +
+                (r.check_out?'<span style="font-size:12px;font-weight:700;color:var(--R)"><i class="fas fa-arrow-right-from-bracket"></i> '+_esc(r.check_out)+'</span>':'') +
+                '</div>'
+              // Not marked — IN + OUT + Status + Mark button
+              : '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">' +
+                '<div style="display:flex;align-items:center;gap:4px">' +
+                '<span style="font-size:10.5px;font-weight:700;color:var(--G)"><i class="fas fa-sign-in-alt"></i></span>' +
+                '<input type="time" id="ti_'+r.emp_id+'" value="'+curTime+'" style="padding:4px 7px;border-radius:7px;border:1.5px solid var(--bdr);background:var(--bg);font-size:12px;color:var(--tx);width:90px">' +
+                '</div>' +
+                '<div style="display:flex;align-items:center;gap:4px">' +
+                '<span style="font-size:10.5px;font-weight:700;color:var(--R)"><i class="fas fa-sign-out-alt"></i></span>' +
+                '<input type="time" id="to_'+r.emp_id+'" style="padding:4px 7px;border-radius:7px;border:1.5px solid var(--bdr);background:var(--bg);font-size:12px;color:var(--tx);width:90px">' +
+                '</div>' +
+                '<select id="st_'+r.emp_id+'" style="padding:4px 8px;border-radius:7px;border:1.5px solid var(--bdr);background:var(--bg);font-size:12px;color:var(--tx)">' +
+                '<option value="P">Present</option><option value="HD">Half Day</option><option value="A">Absent</option>' +
+                '</select>' +
+                '<button id="mb_'+r.emp_id+'" onclick="_tamMark1(\''+_esc(r.emp_id)+'\',\''+_esc(r.name)+'\',\''+_esc(d)+'\')" style="padding:5px 12px;border-radius:7px;background:var(--G);color:#fff;font-size:12px;font-weight:800;border:none;cursor:pointer;white-space:nowrap"><i class="fas fa-check"></i> Mark</button>' +
+                '</div>'
+            ) +
+            '</div>';
+        }).join('');
+
+        dHtml += '</div></div>';
+        return dHtml;
       }).join('');
 
-      root.innerHTML = html;
+      list.innerHTML = html;
+    }
+
+    function _nowTime() {
+      var n=new Date(); return (n.getHours()<10?'0':'')+n.getHours()+':'+(n.getMinutes()<10?'0':'')+n.getMinutes();
+    }
+
+    function _tamSort(key) {
+      if (_teamAttSort.key===key) { _teamAttSort.dir*=-1; }
+      else { _teamAttSort.key=key; _teamAttSort.dir=1; }
+      // Update sort button styles
+      document.querySelectorAll('.tsb').forEach(function(b) {
+        var isActive = b.id === 'tsb_'+key;
+        b.style.border    = '1.5px solid '+(isActive?'var(--P)':'var(--bdr)');
+        b.style.background= isActive?'var(--Pl)':'var(--bg)';
+        b.style.color     = isActive?'var(--P)':'var(--tx2)';
+        if (isActive) {
+          var lbl = {name:'Name',dept:'Dept',checkin:'Check-in',status:'Status'}[key]||key;
+          b.textContent = lbl + (_teamAttSort.dir===1?' ↑':' ↓');
+        }
+      });
+      _renderTeamList();
+    }
+
+    function _tamToggle(uid) {
+      var b=document.getElementById(uid), ic=document.getElementById('tami_'+uid);
+      if (!b) return;
+      var open=b.classList.toggle('adm-open');
+      if (ic) ic.className='fas fa-chevron-'+(open?'down':'right')+' fa-fw';
+    }
+
+    function _tamExpandAll(exp) {
+      document.querySelectorAll('#tamList .adm-body').forEach(function(b){ b.classList.toggle('adm-open',exp); });
+      document.querySelectorAll('#tamList [id^="tami_"]').forEach(function(i){ i.className='fas fa-chevron-'+(exp?'down':'right')+' fa-fw'; });
     }
 
     function _tamReload() {
       var root = document.getElementById('amteamRoot');
       if (!root) return;
-      _teamAttDate = (document.getElementById('tamDate') || {}).value || _today();
-      root.innerHTML = _skel(3);
+      _teamAttDate = (document.getElementById('tamDate')||{}).value || _today();
+      var l = document.getElementById('tamList');
+      if (l) l.innerHTML = _skel(3);
       _gas('getTeamAttendanceStatus', [_teamAttDate], function(rows) {
         _teamAttData = rows || [];
-        _renderTeamAtt(root);
+        // Refresh dept options
+        var depts = _teamAttData.reduce(function(acc,r){ if(r.dept&&acc.indexOf(r.dept)<0) acc.push(r.dept); return acc; },[]).sort();
+        var sel = document.getElementById('tamDept');
+        if (sel) {
+          var cur = sel.value;
+          sel.innerHTML = '<option value="all">All Departments</option>' + depts.map(function(d){ return '<option value="'+_esc(d)+'">'+_esc(d)+'</option>'; }).join('');
+          sel.value = cur;
+        }
+        _renderTeamList();
       }, function(e) {
-        root.innerHTML = '<div class="te"><i class="fas fa-exclamation-triangle"></i> ' + _esc(e.message) + '</div>';
+        if (l) l.innerHTML = '<div class="te"><i class="fas fa-exclamation-triangle"></i> '+_esc(e.message)+'</div>';
       });
     }
 
     function _tamMark1(empId, empName, dept) {
-      var btn = document.querySelector('#tac_'+empId+' button');
-      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
-      var ti = (document.getElementById('ti_'+empId) || {}).value || '';
-      var st = (document.getElementById('st_'+empId) || {}).value || 'P';
-      _gas('markStaffAttendance', [[{ emp_id: empId, emp_name: empName, dept: dept,
-        date: _teamAttDate, check_in: ti, status: st }]], function() {
-        // Update local cache
+      var btn = document.getElementById('mb_'+empId);
+      if (btn) { btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin"></i>'; }
+      var inT  = (document.getElementById('ti_'+empId)||{}).value || '';
+      var outT = (document.getElementById('to_'+empId)||{}).value || '';
+      var st   = (document.getElementById('st_'+empId)||{}).value || 'P';
+      _gas('markStaffAttendance', [[{ emp_id:empId, emp_name:empName, dept:dept,
+        date:_teamAttDate, check_in:inT, check_out:outT, status:st }]], function() {
         _teamAttData.forEach(function(r) {
-          if (r.emp_id === empId) { r.marked = true; r.check_in = ti; r.status = st; }
+          if (r.emp_id===empId){ r.marked=true; r.check_in=inT; r.check_out=outT; r.status=st; }
         });
-        _toast('✓ ' + empName + ' marked ' + (st==='P'?'Present':st==='HD'?'Half Day':'Absent'), 'ok');
-        _renderTeamAtt(document.getElementById('amteamRoot'));
-      }, function(e) { _toast(e.message, 'err'); if (btn) { btn.disabled=false; btn.innerHTML='<i class="fas fa-check"></i> Mark'; } });
+        _toast('✓ '+empName+' marked '+(st==='P'?'Present':st==='HD'?'Half Day':'Absent'), 'ok');
+        _renderTeamList();
+      }, function(e) {
+        _toast(e.message,'err');
+        if (btn){ btn.disabled=false; btn.innerHTML='<i class="fas fa-check"></i> Mark'; }
+      });
     }
 
     function _tamMarkAll() {
-      var bulkTime = (document.getElementById('tamBulkTime') || {}).value || '';
-      var unmarked = _teamAttData.filter(function(r) { return !r.marked; });
-      if (!unmarked.length) { _toast('All staff already marked', 'warn'); return; }
-      var btn = document.querySelector('[onclick="_tamMarkAll()"]');
-      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Marking…'; }
-      var records = unmarked.map(function(r) {
-        return { emp_id: r.emp_id, emp_name: r.name, dept: r.dept, date: _teamAttDate, check_in: bulkTime, status: 'P' };
+      var bulkIn  = (document.getElementById('tamBulkIn') ||{}).value || '';
+      var bulkOut = (document.getElementById('tamBulkOut')||{}).value || '';
+      var dept  = (document.getElementById('tamDept')||{}).value||'all';
+      var showF = (document.getElementById('tamShow')||{}).value||'unmarked';
+      var q     = ((document.getElementById('tamSearch')||{}).value||'').toLowerCase().trim();
+      var unmarked = _teamAttData.filter(function(r){
+        if (r.marked) return false;
+        if (dept!=='all'&&r.dept!==dept) return false;
+        if (q&&(r.name+' '+r.dept).toLowerCase().indexOf(q)<0) return false;
+        return true;
+      });
+      if (!unmarked.length){ _toast('No unmarked staff in current filter','warn'); return; }
+      var btn = document.querySelector('#tamBulkBar button');
+      if (btn){ btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Marking…'; }
+      var records = unmarked.map(function(r){
+        return { emp_id:r.emp_id, emp_name:r.name, dept:r.dept, date:_teamAttDate, check_in:bulkIn, check_out:bulkOut, status:'P' };
       });
       _gas('markStaffAttendance', [records], function(res) {
-        unmarked.forEach(function(r) { r.marked = true; r.check_in = bulkTime; r.status = 'P'; });
-        _toast('✓ ' + (res.saved||records.length) + ' staff marked Present', 'ok');
-        _renderTeamAtt(document.getElementById('amteamRoot'));
-      }, function(e) { _toast(e.message, 'err'); if (btn) { btn.disabled=false; btn.innerHTML='<i class="fas fa-check-double"></i> Mark All Present'; } });
+        unmarked.forEach(function(r){ r.marked=true; r.check_in=bulkIn; r.check_out=bulkOut; r.status='P'; });
+        _toast('✓ '+(res.saved||records.length)+' staff marked Present','ok');
+        _renderTeamList();
+        if (btn){ btn.disabled=false; btn.innerHTML='<i class="fas fa-check-double"></i> Mark All Present'; }
+      }, function(e){
+        _toast(e.message,'err');
+        if (btn){ btn.disabled=false; btn.innerHTML='<i class="fas fa-check-double"></i> Mark All Present'; }
+      });
     }
 
     function _loadMyRegularizations() {
