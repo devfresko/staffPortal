@@ -5761,7 +5761,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbySs6a0ox8ZHnKPTHhCX3N4MnnA5FQT6jK_kdDVSIkqyp1BRf-AHxp0HcqdA6gEKMvUUQ/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbxf0J6IMqU-vD5eAsXBXYft-GY407G2Ii05MYbfQn85TDxwRKgSFH-VtXHGdjo5OSuQyA/exec';
     var _TOKEN  = '';
 
 function _gas(fn, args, onOk, onErr) {
@@ -14751,10 +14751,10 @@ function _loadSetupTasks() {
             var c2 = _emScoreColor(score);
             return '<div class="card card-nohover" style="cursor:pointer" onclick="_emShowDoerDetail(\'' + _esc(e.emp_id) + '\')">' +
               _emAvatar(e) +
-              '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;font-size:11px;text-align:center;margin:12px 0">' +
+              '<div style="display:grid;grid-template-columns:' + (e.need_att !== false ? '1fr 1fr 1fr' : '1fr 1fr') + ';gap:6px;font-size:11px;text-align:center;margin:12px 0">' +
               '<div><div style="color:var(--tx3)">Checklist</div><div style="font-weight:800">' + e.cl_actual + '/' + e.cl_plan + '</div></div>' +
               '<div><div style="color:var(--tx3)">Delegation</div><div style="font-weight:800">' + e.dl_actual + '/' + e.dl_plan + '</div></div>' +
-              '<div><div style="color:var(--tx3)">Attendance</div><div style="font-weight:800">' + e.at_actual + '/' + e.at_plan + '</div></div>' +
+              (e.need_att !== false ? '<div><div style="color:var(--tx3)">Attendance</div><div style="font-weight:800">' + e.at_actual + '/' + e.at_plan + '</div></div>' : '') +
               '</div>' +
               '<div style="display:flex;align-items:center;gap:6px"><div class="pbar-wrap" style="flex:1"><div class="pbar" style="width:' + _emBarWidth(score) + '%;background:' + c2 + '"></div></div><span style="font-size:11px;font-weight:800;color:' + c2 + ';white-space:nowrap">' + _emScoreLabel(score) + '</span></div>' +
               '</div>';
@@ -14783,7 +14783,9 @@ function _loadSetupTasks() {
             '<td>' + _emAvatar(e) + '</td>' +
             '<td style="text-align:center">' + e.cl_plan + '</td><td style="text-align:center;color:var(--G);font-weight:700">' + e.cl_actual + '</td>' +
             '<td style="text-align:center">' + e.dl_plan + '</td><td style="text-align:center;color:var(--G);font-weight:700">' + e.dl_actual + '</td>' +
-            '<td style="text-align:center">' + e.at_plan + '</td><td style="text-align:center;color:var(--G);font-weight:700">' + e.at_actual + '</td>' +
+            (e.need_att !== false
+              ? '<td style="text-align:center">' + e.at_plan + '</td><td style="text-align:center;color:var(--G);font-weight:700">' + e.at_actual + '</td>'
+              : '<td style="text-align:center;color:var(--tx3)">—</td><td style="text-align:center;color:var(--tx3)">—</td>') +
             '<td><div style="display:flex;align-items:center;gap:6px"><div class="pbar-wrap" style="width:60px"><div class="pbar" style="width:' + _emBarWidth(score) + '%;background:' + c2 + '"></div></div><span style="font-size:11px;font-weight:800;color:' + c2 + '">' + _emScoreLabel(score) + '</span></div></td>' +
             e.heat.map(function (hd) {
               var clr = hd.label === '—' ? 'var(--tx3)' : hd.label === '-' ? 'var(--R)' : hd.label === 'OK' ? 'var(--G)' : 'var(--O)';
@@ -14886,7 +14888,7 @@ function _loadSetupTasks() {
 
         row('Checklist', 'fa-list-check', e.cl_plan, e.cl_actual, scCl, 'var(--V)', 'cl') +
         row('Delegation', 'fa-diagram-project', e.dl_plan, e.dl_actual, scDl, 'var(--T)', 'dl') +
-        row('Attendance', 'fa-user-clock', e.at_plan, e.at_actual, scAt, 'var(--O)', 'at') +
+        (e.need_att !== false ? row('Attendance', 'fa-user-clock', e.at_plan, e.at_actual, scAt, 'var(--O)', 'at') : '') +
 
         '<div style="margin-top:16px">' +
         '<div style="font-weight:700;font-size:12px;color:var(--tx2);margin-bottom:8px"><i class="fas fa-calendar-days"></i> Daily Activity (last ' + e.heat.length + ' days)</div>' +
