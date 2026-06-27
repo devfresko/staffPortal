@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="Fresko Portal">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-180.png">
-  <title>Fresko Staff Portal — v3.0</title>
+  <title>Fresko Staff Portal</title>
 
   <!-- External Assets -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -5761,7 +5761,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbziaSfpT7AFg9-hepJ0lyIlQw6IQuf6IfwPhbl0LB5WAwJxmeBjVl-3zmS-OtUUIFtTuQ/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbxdRIOTJo3gyHJ-HOQ3Gqn22fhCLDiHacf5w2el7D0OGsIlEXkE9NU0cD675MV-LRDdhg/exec';
     var _TOKEN  = '';
 
 function _gas(fn, args, onOk, onErr) {
@@ -6099,6 +6099,14 @@ function _gasX(fn, args, timeout, onOk, onErr) {
 
       document.getElementById('sbName').textContent = _U.name || 'User';
       document.getElementById('sbRole').textContent = (_U.role || 'STAFF') + ' · ' + (_U.dept || '');
+
+      // ── NeedAttendance = No: hide ALL attendance UI ──
+      if (_U.need_attendance === false) {
+        var mbnAtt = document.getElementById('mbn-attend');
+        if (mbnAtt) mbnAtt.style.display = 'none';
+        var nvAtt  = document.getElementById('nv-attend');
+        if (nvAtt)  nvAtt.style.display  = 'none';
+      }
 
       if (_isManager()) document.getElementById('mgrNav').style.display = '';
       if (_dark) document.getElementById('darkIco').className = 'fas fa-sun';
@@ -6885,7 +6893,9 @@ function _gasX(fn, args, timeout, onOk, onErr) {
         '<div style="display:grid;grid-template-columns:' + (mob ? '1fr' : '1fr 1fr 1fr') + ';gap:' + (mob ? '12px' : '16px') + '">' +
         '<div class="card card-nohover"><div class="sec-head"><div class="sec-title"><i class="fas fa-bullhorn" style="color:var(--O)"></i> Announcements</div><button class="btn btn-ghost btn-xs" onclick="_loadV(\'ann\')">View all <i class="fas fa-arrow-right"></i></button></div><div id="dashAnnList">' + _skel(2, 'sk-h5') + '</div></div>' +
         '<div class="card card-nohover"><div class="sec-head"><div class="sec-title"><i class="fas fa-inbox" style="color:var(--P)"></i> My Delegations</div><button class="btn btn-ghost btn-xs" onclick="_loadV(\'deleg\')">View all <i class="fas fa-arrow-right"></i></button></div><div id="dashDelList">' + _skel(2, 'sk-h5') + '</div></div>' +
-        '<div class="card card-nohover"><div class="sec-head"><div class="sec-title"><i class="fas fa-calendar-check" style="color:var(--T)"></i> This Month</div><button class="btn btn-ghost btn-xs" onclick="_loadV(\'attend\')">Details <i class="fas fa-arrow-right"></i></button></div><div id="dashAttSum">' + _skel(1, 'sk-h6') + '</div></div>' +
+        (!_U || _U.need_attendance !== false
+          ? '<div class="card card-nohover"><div class="sec-head"><div class="sec-title"><i class="fas fa-calendar-check" style="color:var(--T)"></i> This Month</div><button class="btn btn-ghost btn-xs" onclick="_loadV(\'attend\')">Details <i class="fas fa-arrow-right"></i></button></div><div id="dashAttSum">' + _skel(1, 'sk-h6') + '</div></div>'
+          : '') +
         '</div>';
 
       /* ── Load Dashboard Data ── */
@@ -8043,11 +8053,11 @@ function _loadSetupTasks() {
           return '<div style="margin-bottom:14px">' +
             // Group header
             '<div style="display:flex;align-items:center;gap:8px;padding:7px 12px;background:var(--sur2);border-radius:8px;margin-bottom:6px;cursor:pointer;user-select:none" ' +
-            'onclick="var b=document.getElementById(\'' + gid + '\');var isHidden=b.style.display===\'none\';b.style.display=isHidden?\'\':\'none\';this.querySelector(\'.dgc\').style.transform=isHidden?\'rotate(180deg)\':\'\'">' +
+            'onclick="_delegGrpToggle(' + JSON.stringify(gid) + ')">' +
             '<i class="fas ' + g.icon + '" style="color:' + g.color + ';font-size:12px"></i>' +
             '<span style="font-size:12px;font-weight:800;color:' + g.color + '">' + g.label + '</span>' +
             '<span style="font-size:11px;color:var(--tx3);margin-left:4px">(' + g.items.length + ')</span>' +
-            '<i class="fas fa-chevron-down dgc" style="margin-left:auto;font-size:10px;color:var(--tx3);transition:transform .2s;' + (defaultCollapsed ? '' : 'transform:rotate(180deg)') + '"></i>' +
+            '<i class="fas fa-chevron-down dgc" id="dgc_' + gid + '" style="margin-left:auto;font-size:10px;color:var(--tx3);transition:transform .2s;' + (defaultCollapsed ? '' : 'transform:rotate(180deg)') + '"></i>' +
             '</div>' +
             // Cards container
             '<div id="' + gid + '" style="display:' + (defaultCollapsed ? 'none' : '') + '">' +
@@ -8100,6 +8110,15 @@ function _loadSetupTasks() {
         }).join('');
     }
 
+    function _delegGrpToggle(gid) {
+      var b = document.getElementById(gid);
+      if (!b) return;
+      var isHidden = b.style.display === 'none';
+      b.style.display = isHidden ? '' : 'none';
+      var ic = document.getElementById('dgc_' + gid);
+      if (ic) ic.style.transform = isHidden ? 'rotate(180deg)' : '';
+    }
+
     function _delegToggle(cardId) {
       var card = document.getElementById(cardId);
       if (!card) return;
@@ -8112,21 +8131,13 @@ function _loadSetupTasks() {
     }
 
     function _delegExpandAll(expand) {
-      // Expand/collapse all group containers
       document.querySelectorAll('[id^="dlg_grp_"]').forEach(function(g) {
         g.style.display = expand ? '' : 'none';
+        var ic = document.getElementById('dgc_' + g.id);
+        if (ic) ic.style.transform = expand ? 'rotate(180deg)' : '';
       });
-      // Expand/collapse all card bodies
-      document.querySelectorAll('.dcard .dc-body').forEach(function(b) {
-        b.style.display = expand ? '' : 'none';
-      });
-      // Rotate chevrons
-      document.querySelectorAll('.dcard .dc-chev').forEach(function(c) {
-        c.style.transform = expand ? 'rotate(180deg)' : '';
-      });
-      document.querySelectorAll('.dgc').forEach(function(c) {
-        c.style.transform = expand ? 'rotate(180deg)' : '';
-      });
+      document.querySelectorAll('.dcard .dc-body').forEach(function(b) { b.style.display = expand ? '' : 'none'; });
+      document.querySelectorAll('.dcard .dc-chev').forEach(function(c) { c.style.transform = expand ? 'rotate(180deg)' : ''; });
     }
 
     function _dMgrComplete(btn) {
@@ -16973,7 +16984,7 @@ function _deactivateTask(uid) {
         <span class="mob-nav-pill"><i class="fas fa-list-check"></i></span>
         <span>Tasks</span>
       </button>
-      <button class="mob-nav-item" id="mbn-attend" onclick="_mbNav('attend')" aria-label="Attendance">
+      <button class="mob-nav-item" id="mbn-attend" onclick="_mbNav('attend')" aria-label="Attendance" style="display:none">
         <span class="mob-nav-pill"><i class="fas fa-clock"></i></span>
         <span>Attendance</span>
       </button>
