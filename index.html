@@ -5761,7 +5761,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbyyoPo1NzZ9hBLJ6pbA6NKI7EVdHCCjnlkwshLXQZLGWxxl-__pIWa7iVAiZ1p6c1qlnA/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbwcq3KNPiZHQLfUcHZNfaGSdXO-cQahDVON0RsSToXbnVeV7iRKn-DaRBeUVowaCdIAMg/exec';
     var _TOKEN  = '';
 
 function _gas(fn, args, onOk, onErr) {
@@ -7336,7 +7336,6 @@ function _gasX(fn, args, timeout, onOk, onErr) {
             (isDone ? '' :
               '<div style="display:flex;gap:5px;align-items:center;flex-shrink:0">' +
               '<button id="cmtb_'+_esc(t.task_id)+'_'+_esc(emp.emp_id)+'" onclick="_cmtMarkDone(\''+_esc(t.task_id)+'\',\''+_esc(emp.emp_id)+'\',\''+_esc(emp.name)+'\')" style="padding:4px 10px;border-radius:7px;background:var(--G);color:#fff;font-size:11.5px;font-weight:800;border:none;cursor:pointer;white-space:nowrap"><i class="fas fa-check"></i> Done</button>' +
-              '<button onclick="_cmtShiftTask(\''+_esc(t.task_id)+'\',\''+_esc(emp.emp_id)+'\')" style="padding:4px 10px;border-radius:7px;background:var(--Ol);color:var(--O);font-size:11.5px;font-weight:800;border:1.5px solid var(--O);cursor:pointer;white-space:nowrap"><i class="fas fa-forward"></i> Shift</button>' +
               '</div>'
             ) +
             '</div>';
@@ -16433,6 +16432,8 @@ function _loadSetupTasks() {
     function _loadEmpDetailData(empId, from, to, presetVal) {
       var el = document.getElementById('empDetailBody');
       var emp = (_D.empDir || []).find(function (e) { return e.emp_id === empId; }) || {};
+      // Store current empId in data attribute so _renderEmpDetailModules can find it
+      if (el) el.setAttribute('data-emp-id', empId);
       var rClr = emp.role === 'OWNER' ? 'var(--R)' : emp.role === 'MANAGER' ? 'var(--V)' : 'var(--P)';
       var rBg  = emp.role === 'OWNER' ? 'var(--Rl)' : emp.role === 'MANAGER' ? 'var(--Vl)' : 'var(--Pl)';
 
@@ -16460,9 +16461,9 @@ function _loadSetupTasks() {
       if (el) el.innerHTML = headerHtml + '<div id="edModules" style="margin-top:14px">' + _skel(3) + '</div>';
 
       _gasX('getEmployeeDetailV2', [empId, { from: from, to: to }], 30000, function (data) {
-        _renderEmpDetailModules({ cl: data.checklist, dl: data.delegation, at: data.attendance });
+        _renderEmpDetailModules({ cl: data.checklist, dl: data.delegation, at: data.attendance }, empId, data.need_attendance);
       }, function () {
-        _renderEmpDetailModules({ cl: null, dl: null, at: null });
+        _renderEmpDetailModules({ cl: null, dl: null, at: null }, empId, true);
       });
     }
 
@@ -16495,12 +16496,23 @@ function _loadSetupTasks() {
         '</div>';
     }
 
-    function _renderEmpDetailModules(results) {
+    function _renderEmpDetailModules(results, empId, needAttParam) {
       var el = document.getElementById('edModules');
       if (!el) return;
       var cl = results.cl, dl = results.dl, at = results.at;
 
-      var h = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">';
+      // needAttParam comes directly from getEmployeeDetailV2 — no empDir cache dependency.
+      // Fallback to empDir if not provided (e.g. on error path).
+      var needsAtt;
+      if (typeof needAttParam !== 'undefined') {
+        needsAtt = needAttParam !== false;
+      } else {
+        var eid = empId || (document.getElementById('empDetailBody') || {}).getAttribute('data-emp-id') || '';
+        var emp = (_D.empDir || []).find(function(e) { return e.emp_id === eid; }) || {};
+        needsAtt = emp.need_attendance !== false;
+      }
+
+      var h = '<div style="display:grid;grid-template-columns:' + (needsAtt ? 'repeat(3,1fr)' : 'repeat(2,1fr)') + ';gap:10px">';
       h += _empModCard({
         title: 'Checklist', ico: 'fa-list-check', clr: 'var(--P)', route: 'clana',
         rate: cl ? (cl.avg_completion || 0) : null,
@@ -16513,15 +16525,17 @@ function _loadSetupTasks() {
         stats: dl ? [{ l: 'Assigned', v: dl.total_assigned || 0 }, { l: 'Done', v: dl.total_completed || 0 }, { l: 'Overdue', v: dl.total_overdue || 0 }] : null,
         subStats: dl ? [{ l: 'On-time', v: (dl.on_time_rate || 0) + '%' }, { l: 'Avg delay', v: (dl.avg_lag_days || 0) + 'd' }] : null
       });
-      h += _empModCard({
-        title: 'Attendance', ico: 'fa-user-clock', clr: 'var(--T)', route: 'attana',
-        rate: at ? (at.presence_pct || 0) : null,
-        stats: at ? [{ l: 'Present', v: at.total_present || 0 }, { l: 'Absent', v: at.total_absent || 0 }, { l: 'Late', v: at.total_late || 0 }] : null,
-        subStats: at ? [{ l: 'Avg hrs', v: (at.avg_hours || 0) + 'h' }] : null
-      });
+      if (needsAtt) {
+        h += _empModCard({
+          title: 'Attendance', ico: 'fa-user-clock', clr: 'var(--T)', route: 'attana',
+          rate: at ? (at.presence_pct || 0) : null,
+          stats: at ? [{ l: 'Present', v: at.total_present || 0 }, { l: 'Absent', v: at.total_absent || 0 }, { l: 'Late', v: at.total_late || 0 }] : null,
+          subStats: at ? [{ l: 'Avg hrs', v: (at.avg_hours || 0) + 'h' }] : null
+        });
+      }
       h += '</div>';
 
-      h += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px">';
+      h += '<div style="display:grid;grid-template-columns:' + (needsAtt ? 'repeat(3,1fr)' : 'repeat(2,1fr)') + ';gap:10px;margin-top:10px">';
       h += _empActivityList('Recent Tasks', (cl && cl.employee_detail) ? cl.employee_detail.log.slice(0, 5) : [], function (r) {
         return '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:11px;padding:5px 0;border-bottom:1px solid var(--bdr)">' +
           '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + _esc(r.task) + '">' + _esc(r.task) + '</span>' + _statusBadge(r.status) + '</div>';
@@ -16530,10 +16544,12 @@ function _loadSetupTasks() {
         return '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:11px;padding:5px 0;border-bottom:1px solid var(--bdr)">' +
           '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + _esc(r.task) + '">' + _esc(r.task) + '</span>' + _statusBadge(r.status) + '</div>';
       });
-      h += _empActivityList('Recent Attendance', (at && at.employee_detail) ? at.employee_detail.log.slice(0, 5) : [], function (r) {
-        return '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:11px;padding:5px 0;border-bottom:1px solid var(--bdr)">' +
-          '<span>' + _fmtDateShort(r.date) + '</span><div style="display:flex;gap:5px;align-items:center">' + (_lateBadge(r.is_late, r.status, r.office_in_used)) + _statusBadge(r.status) + '</div></div>';
-      });
+      if (needsAtt) {
+        h += _empActivityList('Recent Attendance', (at && at.employee_detail) ? at.employee_detail.log.slice(0, 5) : [], function (r) {
+          return '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:11px;padding:5px 0;border-bottom:1px solid var(--bdr)">' +
+            '<span>' + _fmtDateShort(r.date) + '</span><div style="display:flex;gap:5px;align-items:center">' + (_lateBadge(r.is_late, r.status, r.office_in_used)) + _statusBadge(r.status) + '</div></div>';
+        });
+      }
       h += '</div>';
 
       el.innerHTML = h;
