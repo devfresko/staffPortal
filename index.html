@@ -2328,7 +2328,27 @@
       background-size: 300%;
       animation: shimmer 1.6s ease-in-out infinite;
       border-radius: 8px;
+      position: relative;
+      overflow: hidden;
     }
+    /* Shimmer glow overlay on skeletons */
+    .sk::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,.18) 50%, transparent 60%);
+      background-size: 200% 100%;
+      animation: skelGlow 1.6s ease-in-out infinite;
+    }
+    @keyframes skelGlow {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    body.dark .sk::after {
+      background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,.06) 50%, transparent 60%);
+      background-size: 200% 100%;
+    }
+
     /* Stagger animation for list items appearing */
     @keyframes fadeSlideUp {
       from { opacity: 0; transform: translateY(14px); }
@@ -2343,6 +2363,7 @@
     .anim-item:nth-child(4) { animation-delay: .18s; }
     .anim-item:nth-child(5) { animation-delay: .24s; }
     .anim-item:nth-child(n+6) { animation-delay: .28s; }
+
     /* KPI counter count-up glow on first load */
     @keyframes kpiPop {
       0%   { opacity:0; transform: scale(.7) translateY(8px); }
@@ -2350,6 +2371,155 @@
       100% { opacity:1; transform: scale(1) translateY(0); }
     }
     .kpi-anim { animation: kpiPop .4s cubic-bezier(.34,1.56,.64,1) both; }
+
+    /* ── Content section entrance animation ── */
+    @keyframes contentIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .content-section {
+      animation: contentIn .35s cubic-bezier(.4,0,.2,1) both;
+    }
+    /* Grid item stagger for cards */
+    @keyframes cardPop {
+      from { opacity: 0; transform: scale(.95) translateY(10px); }
+      to   { opacity: 1; transform: scale(1)   translateY(0); }
+    }
+    .card-anim { animation: cardPop .3s cubic-bezier(.34,1.2,.64,1) both; }
+    .card-anim:nth-child(1) { animation-delay: .00s; }
+    .card-anim:nth-child(2) { animation-delay: .06s; }
+    .card-anim:nth-child(3) { animation-delay: .12s; }
+    .card-anim:nth-child(4) { animation-delay: .18s; }
+    .card-anim:nth-child(5) { animation-delay: .22s; }
+    .card-anim:nth-child(n+6) { animation-delay: .26s; }
+
+    /* ── KPI number count-up highlight ── */
+    @keyframes numFlash {
+      0%   { color: var(--kc, var(--P)); filter: brightness(1.4); }
+      100% { color: inherit; filter: brightness(1); }
+    }
+    .num-loaded { animation: numFlash .5s ease both; }
+
+    /* ── Table row entrance ── */
+    @keyframes rowIn {
+      from { opacity: 0; transform: translateX(-8px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    tbody tr { animation: rowIn .2s ease both; }
+    tbody tr:nth-child(1)  { animation-delay: .00s; }
+    tbody tr:nth-child(2)  { animation-delay: .04s; }
+    tbody tr:nth-child(3)  { animation-delay: .07s; }
+    tbody tr:nth-child(4)  { animation-delay: .10s; }
+    tbody tr:nth-child(5)  { animation-delay: .13s; }
+    tbody tr:nth-child(6)  { animation-delay: .16s; }
+    tbody tr:nth-child(7)  { animation-delay: .18s; }
+    tbody tr:nth-child(n+8){ animation-delay: .20s; }
+
+    /* ── Toast enhanced slide-in ── */
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateX(100%) scale(.9); }
+      to   { opacity: 1; transform: translateX(0)    scale(1); }
+    }
+    @keyframes toastOut {
+      from { opacity: 1; transform: translateX(0)    scale(1); }
+      to   { opacity: 0; transform: translateX(60%)  scale(.95); }
+    }
+
+    /* ── Button ripple on click ── */
+    @keyframes ripple {
+      from { transform: scale(0); opacity: .4; }
+      to   { transform: scale(3); opacity: 0;  }
+    }
+    .btn-ripple {
+      position: absolute;
+      border-radius: 50%;
+      width: 60px; height: 60px;
+      margin-top: -30px; margin-left: -30px;
+      background: rgba(255,255,255,.35);
+      animation: ripple .45s linear forwards;
+      pointer-events: none;
+    }
+
+    /* ── Module header slide-in ── */
+    @keyframes modHeadIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .mod-head { animation: modHeadIn .28s cubic-bezier(.4,0,.2,1) both; }
+
+    /* ── Feed item stagger ── */
+    .feed-item { animation: fadeSlideUp .28s cubic-bezier(.4,0,.2,1) both; }
+    .feed-item:nth-child(1) { animation-delay: .00s; }
+    .feed-item:nth-child(2) { animation-delay: .05s; }
+    .feed-item:nth-child(3) { animation-delay: .10s; }
+    .feed-item:nth-child(4) { animation-delay: .15s; }
+    .feed-item:nth-child(n+5){ animation-delay: .18s; }
+
+    /* ── Announcement card entrance ── */
+    .ann-card { animation: fadeSlideUp .3s cubic-bezier(.4,0,.2,1) both; }
+    .ann-card:nth-child(1) { animation-delay: .00s; }
+    .ann-card:nth-child(2) { animation-delay: .07s; }
+    .ann-card:nth-child(3) { animation-delay: .13s; }
+    .ann-card:nth-child(n+4){ animation-delay: .17s; }
+
+    /* ── KPI bar animated fill — handled via JS _animateBars ── */
+
+    /* ── Weekly grid day entrance ── */
+    .wkday { animation: cardPop .28s cubic-bezier(.34,1.2,.64,1) both; }
+    .wkday:nth-child(1) { animation-delay: .00s; }
+    .wkday:nth-child(2) { animation-delay: .05s; }
+    .wkday:nth-child(3) { animation-delay: .09s; }
+    .wkday:nth-child(4) { animation-delay: .13s; }
+    .wkday:nth-child(5) { animation-delay: .17s; }
+    .wkday:nth-child(6) { animation-delay: .20s; }
+    .wkday:nth-child(7) { animation-delay: .23s; }
+
+    /* ── Employee card entrance ── */
+    .emp-card { animation: cardPop .3s cubic-bezier(.34,1.2,.64,1) both; }
+    .emp-card:nth-child(1) { animation-delay: .00s; }
+    .emp-card:nth-child(2) { animation-delay: .05s; }
+    .emp-card:nth-child(3) { animation-delay: .10s; }
+    .emp-card:nth-child(4) { animation-delay: .14s; }
+    .emp-card:nth-child(5) { animation-delay: .18s; }
+    .emp-card:nth-child(n+6){ animation-delay: .21s; }
+
+    /* ── Delegation card entrance ── */
+    .dcard { animation: fadeSlideUp .28s cubic-bezier(.4,0,.2,1) both; }
+    .dcard:nth-child(1) { animation-delay: .00s; }
+    .dcard:nth-child(2) { animation-delay: .07s; }
+    .dcard:nth-child(3) { animation-delay: .13s; }
+    .dcard:nth-child(n+4){ animation-delay: .17s; }
+
+    /* ── Task card entrance ── */
+    .tcard { animation: fadeSlideUp .26s cubic-bezier(.4,0,.2,1) both; }
+    .tcard:nth-child(1) { animation-delay: .00s; }
+    .tcard:nth-child(2) { animation-delay: .05s; }
+    .tcard:nth-child(3) { animation-delay: .10s; }
+    .tcard:nth-child(4) { animation-delay: .14s; }
+    .tcard:nth-child(n+5){ animation-delay: .18s; }
+
+    /* ── Attendance KPI entrance ── */
+    .att-kpi { animation: cardPop .3s cubic-bezier(.34,1.2,.64,1) both; }
+    .att-kpi:nth-child(1) { animation-delay: .00s; }
+    .att-kpi:nth-child(2) { animation-delay: .06s; }
+    .att-kpi:nth-child(3) { animation-delay: .12s; }
+    .att-kpi:nth-child(4) { animation-delay: .17s; }
+    .att-kpi:nth-child(5) { animation-delay: .22s; }
+
+    /* ── Loading spinner overlay for content refresh ── */
+    .content-loading-bar {
+      position: fixed; top: 0; left: 0; right: 0; height: 2.5px; z-index: 9999;
+      background: linear-gradient(90deg, var(--P), var(--Pd), var(--T), var(--G));
+      background-size: 300% 100%;
+      animation: loadBar 1.2s ease-in-out infinite;
+      opacity: 0;
+      transition: opacity .15s;
+    }
+    .content-loading-bar.on { opacity: 1; }
+    @keyframes loadBar {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -100% 0; }
+    }
 
     .sk-h1 {
       height: 12px;
@@ -5137,6 +5307,8 @@
   </div>
 
   <!-- Toast notification -->
+  <!-- Progress loading bar (top of screen) -->
+  <div id="fkLoadBar" class="content-loading-bar"></div>
   <div id="toast"></div>
 
   <!-- ═══════════════════════════════════════════════════════════
@@ -6229,6 +6401,10 @@ function _gasX(fn, args, timeout, onOk, onErr) {
       var cont = document.getElementById('content');
       if (cont) cont.scrollTop = 0;
       if (cont) cont.innerHTML = _skelKpi(4) + _skel(3);
+
+      // Show top loading bar on every view switch
+      var _lb = document.getElementById('fkLoadBar');
+      if (_lb) { _lb.classList.add('on'); clearTimeout(_lb._lbT); _lb._lbT = setTimeout(function(){ _lb.classList.remove('on'); }, 1800); }
 
       var views = {
         dash: _vDash,
@@ -16591,8 +16767,9 @@ function _loadSetupTasks() {
 
       if (_D.dashStats) {
         _renderDashStats(_D.dashStats);
+        setTimeout(function() { _kpiCountUp(kEl); }, 50);
       } else {
-        _gas('getDashboardStats', [], function(stats) { _D.dashStats = stats; _renderDashStats(stats); },
+        _gas('getDashboardStats', [], function(stats) { _D.dashStats = stats; _renderDashStats(stats); setTimeout(function(){ _kpiCountUp(kEl); }, 50); },
           function() { if (kEl) kEl.innerHTML = '<div class="te" style="grid-column:1/-1"><i class="fas fa-wifi"></i> Could not load stats.</div>'; });
       }
 
@@ -16739,12 +16916,99 @@ function _loadSetupTasks() {
         '<span>' + _esc(msg) + '</span>' +
         '</div>';
       el.style.background = cfg.bg;
+      // Reset animation so it replays on every toast
+      el.style.animation = 'none';
+      void el.offsetWidth; // force reflow
+      el.style.animation = 'toastIn .35s cubic-bezier(.34,1.2,.64,1) both';
       el.classList.add('show');
 
       clearTimeout(_toast._t);
-      _toast._t = setTimeout(function () { el.classList.remove('show'); }, 3500);
+      _toast._t = setTimeout(function () {
+        el.style.animation = 'toastOut .28s ease forwards';
+        setTimeout(function() { el.classList.remove('show'); el.style.animation = ''; }, 280);
+      }, 3200);
     }
     _toast._t = null;
+
+    /* ── Button Ripple Effect ── */
+    document.addEventListener('click', function(e) {
+      var btn = e.target.closest('.btn, .l-btn, .btn-checkin, .ico-btn');
+      if (!btn) return;
+      var rect = btn.getBoundingClientRect();
+      var ripple = document.createElement('span');
+      ripple.className = 'btn-ripple';
+      ripple.style.top  = (e.clientY - rect.top)  + 'px';
+      ripple.style.left = (e.clientX - rect.left) + 'px';
+      btn.style.position = btn.style.position || 'relative';
+      btn.style.overflow = 'hidden';
+      btn.appendChild(ripple);
+      setTimeout(function() { if (ripple.parentNode) ripple.remove(); }, 480);
+    }, { passive: true });
+
+    /* ── KPI number count-up animation ── */
+    function _animateNum(el, target, duration) {
+      var start = 0;
+      var startT = null;
+      var isFloat = String(target).indexOf('.') !== -1;
+      function step(ts) {
+        if (!startT) startT = ts;
+        var prog = Math.min((ts - startT) / (duration || 700), 1);
+        var ease = 1 - Math.pow(1 - prog, 3); // cubic ease-out
+        var cur = start + (target - start) * ease;
+        el.textContent = isFloat ? cur.toFixed(1) : Math.round(cur);
+        if (prog < 1) requestAnimationFrame(step);
+        else el.textContent = isFloat ? target.toFixed(1) : target;
+      }
+      requestAnimationFrame(step);
+    }
+    /* Called after KPI data is loaded — wraps numeric values in count-up */
+    function _kpiCountUp(containerEl) {
+      if (!containerEl) return;
+      containerEl.querySelectorAll('.kpi-val, .ps-val, .att-kpi .val, .ana-kpi-val, .da-kpi-val').forEach(function(el) {
+        var raw = el.textContent.replace(/[^0-9.]/g, '');
+        var num = parseFloat(raw);
+        if (!isNaN(num) && num > 0) {
+          el.classList.add('num-loaded');
+          _animateNum(el, num, 600);
+        }
+      });
+    }
+
+    /* ── Animated progress bars — set actual width after a tick ── */
+    function _animateBars(root) {
+      var container = root || document.getElementById('content');
+      if (!container) return;
+      container.querySelectorAll('.kpi-bar, .pbar').forEach(function(bar) {
+        var targetW = bar.style.width || bar.getAttribute('data-w');
+        if (!targetW) return;
+        bar.setAttribute('data-w', targetW);
+        bar.style.width = '0%';
+        requestAnimationFrame(function() {
+          requestAnimationFrame(function() {
+            bar.style.transition = 'width .8s cubic-bezier(.4,0,.2,1)';
+            bar.style.width = targetW;
+          });
+        });
+      });
+    }
+
+    /* Hook _animateBars after every innerHTML assignment in content */
+    var _origContent = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML');
+    if (_origContent && _origContent.set) {
+      var _patchedInner = false;
+      function _patchContentInner() {
+        if (_patchedInner) return; _patchedInner = true;
+        var contentEl = document.getElementById('content');
+        if (!contentEl) return;
+        var _cset = _origContent.set;
+        var _mutObs = new MutationObserver(function() {
+          setTimeout(function() { _animateBars(contentEl); }, 80);
+        });
+        _mutObs.observe(contentEl, { childList: true, subtree: false });
+      }
+      document.addEventListener('DOMContentLoaded', _patchContentInner);
+      setTimeout(_patchContentInner, 500);
+    }
 
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js').catch(function(){});
