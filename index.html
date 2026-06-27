@@ -14809,6 +14809,11 @@ function _loadSetupTasks() {
       var ico   = mod === 'cl' ? 'fa-list-check' : mod === 'dl' ? 'fa-diagram-project' : 'fa-user-clock';
       var doers = _emFilteredDoers();
 
+      // For Attendance tab: exclude employees who don't need attendance tracking
+      if (mod === 'at') {
+        doers = doers.filter(function(e) { return e.need_att !== false; });
+      }
+
       var totalPlan = doers.reduce(function (s, e) { return s + e[planKey]; }, 0);
       var totalAct  = doers.reduce(function (s, e) { return s + e[actKey]; }, 0);
       var pct = totalPlan > 0 ? Math.round((totalAct / totalPlan) * 100) : 100;
