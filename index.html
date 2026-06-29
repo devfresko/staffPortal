@@ -6614,7 +6614,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbwZ2PqAtKDFtFc7fXboR01dcXRCrIYzckwWE-x4iNQg5_zIf9v4xVuLJmYbajE3h4w-ug/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbygRSaGM95wYFFV7Wr3S0ZE8EEsulxQza636POWfOayFaAwSTpSaw1mgBpjnQToAb-B4g/exec';
     var _TOKEN  = '';
 
     var _gasActive = 0; // count of concurrent GAS calls in flight
@@ -8117,13 +8117,26 @@ function _gasX(fn, args, timeout, onOk, onErr) {
           dsel.innerHTML = '<option value="all">All Departments</option>' +
             depts.map(function(d){ return '<option value="'+_esc(d)+'">'+_esc(d)+'</option>'; }).join('');
         }
-        // Wire filters
-        ['cmtDate','cmtDept','cmtStatus','cmtSearch'].forEach(function(id) {
+        // Wire up event listeners AFTER render
+        // cmtDate → full reload (new backend call needed for new date)
+        // dept/status/search → client-side filter only
+        var dateEl = document.getElementById('cmtDate');
+        if (dateEl) dateEl.addEventListener('change', _cmtReload);
+
+        ['cmtDept','cmtStatus','cmtSearch'].forEach(function(id) {
           var el = document.getElementById(id);
           if (!el) return;
           el.addEventListener('change', _renderCmtList);
           el.addEventListener('input',  _renderCmtList);
         });
+
+        // Pre-load empDir so Transfer button is instant (no wait on click)
+        if (!_D.empDir || !_D.empDir.length) {
+          _gas('getEmployeeDirectory', [], function(dir) {
+            _D.empDir = dir || [];
+          }, function() {}); // silent fail — will retry on Transfer click
+        }
+
         _renderCmtList();
       }, function(e) {
         var l = document.getElementById('cmtList');
@@ -8322,9 +8335,15 @@ function _gasX(fn, args, timeout, onOk, onErr) {
           var toEmpId = (document.getElementById('cmtTransTo') || {}).value || '';
           if (!toEmpId) { _toast('Pehle employee select karo', 'warn'); return; }
           var reason  = (document.getElementById('cmtTransReason') || {}).value || '';
-          _closeModal();
+          // Show loading state on confirm button
+          var confirmBtn = document.getElementById('mConfirmBtn');
+          if (confirmBtn) {
+            confirmBtn.disabled = true;
+            confirmBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Transferring…';
+          }
           _gas('transferChecklistTask', [taskId, taskName, empId, date || _cmtDate, toEmpId, reason],
             function(res) {
+              _closeModal();
               _cmtData.forEach(function(r) {
                 if ((r.task_id === taskId || r.task_name === taskName) && r.emp_id === empId) {
                   r.is_transferred = true; r.transferred_to = toEmpId;
@@ -8333,10 +8352,17 @@ function _gasX(fn, args, timeout, onOk, onErr) {
                   r.status         = 'Transferred';
                 }
               });
-              _toast('✓ Task transferred to ' + (res.to_emp_name || toEmpId), 'ok');
+              _toast('✅ Task transferred to ' + (res.to_emp_name || toEmpId), 'ok');
               _renderCmtList();
             },
-            function(e) { _toast('Error: ' + e.message, 'err'); }
+            function(e) {
+              // Re-enable button on error
+              if (confirmBtn) {
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = '<i class="fas fa-arrow-right-arrow-left"></i> Transfer Task';
+              }
+              _toast('❌ Error: ' + e.message, 'err');
+            }
           );
         },
         '<i class="fas fa-arrow-right-arrow-left"></i> Transfer Task'
