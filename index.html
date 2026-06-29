@@ -5576,6 +5576,275 @@
     }
 
     /* ── reduce-motion: kill all animations ── */
+    /* ════════════════════════════════════════════════════════════════════════
+       RESPONSIVE OVERHAUL v2 — Fresko Staff Portal
+       Three breakpoints:
+         Desktop  : > 1024px  — default styles
+         Tablet   : 641-1024px — already handled above
+         Mobile   : ≤ 640px   — comprehensive fixes below
+       ════════════════════════════════════════════════════════════════════ */
+
+    /* ── Universal: scrollable table wrapper ─────────────────────────────── */
+    .tw { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 0 0 var(--r) var(--r); }
+    .tw table { min-width: 480px; border-collapse: collapse; width: 100%; }
+    .tw thead th {
+      background: var(--sur2); color: var(--tx2); font-size: 10.5px;
+      font-weight: 800; text-transform: uppercase; letter-spacing: .4px;
+      padding: 9px 12px; border-bottom: 2px solid var(--bdr2); white-space: nowrap;
+    }
+    .tw tbody td { padding: 10px 12px; border-bottom: 1px solid var(--bdr); font-size: 13px; }
+    .tw tbody tr:last-child td { border-bottom: none; }
+    .tw tbody tr:hover { background: var(--sur2); }
+    .tw::-webkit-scrollbar { height: 4px; }
+    .tw::-webkit-scrollbar-thumb { background: var(--bdr2); border-radius: 2px; }
+
+    /* ── Universal: filter bar responsive ───────────────────────────────── */
+    .filter-bar {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      padding: 10px 14px; background: var(--sur2);
+      border-radius: 12px; border: 1px solid var(--bdr); margin-bottom: 14px;
+    }
+    .filter-bar .fb-sep { width: 1px; height: 22px; background: var(--bdr); flex-shrink: 0; }
+    .filter-bar .fb-spacer { flex: 1; }
+    .ana-sel {
+      padding: 7px 10px; border: 1.5px solid var(--bdr); border-radius: 8px;
+      font-size: 12.5px; background: var(--bg); color: var(--tx); outline: none;
+      transition: border-color .15s; cursor: pointer;
+    }
+    .ana-sel:focus { border-color: var(--P); }
+
+    /* ── Universal: sort button strip ───────────────────────────────────── */
+    .sort-bar {
+      display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;
+    }
+    .sort-bar .sort-lbl {
+      font-size: 10.5px; font-weight: 800; color: var(--tx3);
+      text-transform: uppercase; letter-spacing: .4px; white-space: nowrap;
+    }
+    .sort-btn {
+      padding: 5px 10px; border-radius: 8px; font-size: 11.5px; font-weight: 700;
+      cursor: pointer; border: 1.5px solid var(--bdr); background: var(--bg); color: var(--tx2);
+      white-space: nowrap; transition: all .15s;
+    }
+    .sort-btn.active { border-color: var(--P); background: var(--Pl); color: var(--P); }
+    .sort-btn:active { transform: scale(.96); }
+
+    /* ── Universal: stat strip (3-col) ──────────────────────────────────── */
+    .stat-strip { display: flex; gap: 8px; margin-bottom: 12px; }
+    .stat-pill {
+      flex: 1; padding: 10px; border-radius: 10px; text-align: center;
+    }
+    .stat-pill .val { font-size: 20px; font-weight: 900; }
+    .stat-pill .lbl { font-size: 10px; font-weight: 800; text-transform: uppercase; margin-top: 2px; }
+
+    /* ── Universal: group/dept collapse row ─────────────────────────────── */
+    .grp-hdr {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 16px; background: var(--sur2);
+      cursor: pointer; user-select: none; border-bottom: 1px solid var(--bdr);
+    }
+    .grp-hdr:hover { background: var(--Pl); }
+    .adm-body { display: none; }
+    .adm-body.adm-open { display: block; }
+
+    /* ── Universal: empty state ──────────────────────────────────────────── */
+    .empty-state {
+      padding: 40px 20px; text-align: center;
+    }
+    .empty-state i { font-size: 36px; opacity: .14; color: var(--P); }
+    .empty-state .msg { margin-top: 12px; font-size: 14px; color: var(--tx3); font-weight: 600; }
+
+    /* ── mod-head responsive ────────────────────────────────────────────── */
+    .mod-title { font-size: 20px; font-weight: 900; line-height: 1.2; }
+    .mod-sub   { font-size: 12px; color: var(--tx3); margin-top: 2px; font-weight: 500; }
+
+    /* ── Delegation card mobile ─────────────────────────────────────────── */
+    .dc-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .dc-act  { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+
+    /* ════════════════════════════════════════════════════════════════════
+       TABLET — 641px to 1024px
+       ════════════════════════════════════════════════════════════════ */
+    @media (min-width: 641px) and (max-width: 1024px) {
+      :root { --sbw: 200px; }
+      .mod-title { font-size: 18px; }
+      .krow { grid-template-columns: repeat(3, 1fr); }
+      .krow-5, .krow-6 { grid-template-columns: repeat(3, 1fr); }
+      .filter-bar { gap: 6px; padding: 8px 12px; }
+      .ana-sel { font-size: 12px; padding: 6px 9px; }
+      .card { padding: 16px; }
+      /* EM dashboard: allow table scroll */
+      #emTableWrap { overflow-x: auto; }
+      /* Analytics: 3-col grids → 2-col */
+      .ana-charts-grid { grid-template-columns: repeat(2,1fr) !important; }
+      .da-grid3 { grid-template-columns: repeat(2,1fr) !important; }
+      /* Profile grid */
+      #edModules > div { grid-template-columns: repeat(2,1fr) !important; }
+    }
+
+    /* ════════════════════════════════════════════════════════════════════
+       MOBILE — ≤ 640px
+       All views: stack, full-width, touch-friendly
+       ════════════════════════════════════════════════════════════════ */
+    @media (max-width: 640px) {
+
+      /* ── mod-head: stack title + actions ── */
+      .mod-head {
+        flex-direction: column; align-items: stretch; gap: 10px; margin-bottom: 14px;
+      }
+      .mod-head-right { justify-content: flex-start; flex-wrap: wrap; }
+      .mod-title { font-size: 17px; }
+
+      /* ── Filter bar: stack to 2-col grid on mobile ── */
+      .filter-bar {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+        padding: 10px;
+      }
+      .filter-bar .fb-sep, .filter-bar .fb-spacer { display: none; }
+      .filter-bar input[type="text"],
+      .filter-bar input[type="search"] { grid-column: 1 / -1; }
+      .filter-bar .fb-reload,
+      .filter-bar button:last-child { grid-column: 1 / -1; }
+
+      /* All inline filter bars (non .filter-bar class) */
+      [id$="Filters"], [id$="filters"],
+      div[style*="display:flex"][style*="gap:6px"][style*="flex-wrap:wrap"] {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 6px !important;
+      }
+      .ana-sel { font-size: 14px !important; min-height: 44px; width: 100%; }
+
+      /* ── Sort bar: horizontal scroll ── */
+      .sort-bar { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
+      .sort-bar::-webkit-scrollbar { display: none; }
+      .sort-btn { flex-shrink: 0; }
+
+      /* ── Stat strip: 3-equal on mobile ── */
+      .stat-strip { gap: 6px; }
+      .stat-pill { padding: 8px 4px; border-radius: 10px; }
+      .stat-pill .val { font-size: 18px; }
+      .stat-pill .lbl { font-size: 9px; }
+
+      /* ── Tables: always scrollable ── */
+      .tw { border-radius: var(--r2); }
+      .tw table { min-width: 420px; }
+      .tw thead th { font-size: 9.5px; padding: 8px 10px; }
+      .tw tbody td  { font-size: 12px; padding: 8px 10px; }
+      .table-card { border-radius: var(--r); overflow: hidden; border: 1px solid var(--bdr); }
+
+      /* ── KPI strips ── */
+      .krow   { grid-template-columns: repeat(2,1fr) !important; gap: 8px !important; }
+      .krow-3 { grid-template-columns: repeat(2,1fr) !important; }
+      .krow-5, .krow-6 { grid-template-columns: repeat(2,1fr) !important; }
+      .kpi { padding: 14px 12px; border-radius: 12px; }
+      .kpi-icon { width: 34px; height: 34px; font-size: 14px; }
+      .kpi-val  { font-size: 24px; }
+      .kpi-lbl  { font-size: 10px; }
+
+      /* ── Cards: tighter on mobile ── */
+      .card { padding: 14px; border-radius: 14px; }
+      .card-anim { animation-duration: .2s; }
+
+      /* ── Tabs: horizontal scroll ── */
+      .tabs { gap: 0; padding-bottom: 0; }
+      .tab  { font-size: 11.5px; padding: 9px 10px; white-space: nowrap; flex-shrink: 0; }
+
+      /* ── Modals: bottom sheet on mobile ── */
+      .modal-box {
+        position: fixed !important;
+        bottom: 0 !important; left: 0 !important; right: 0 !important;
+        top: auto !important;
+        transform: none !important;
+        width: 100% !important; max-width: 100% !important;
+        border-radius: 24px 24px 0 0 !important;
+        max-height: 90svh; overflow-y: auto;
+        padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px)) !important;
+        animation: sheetUp .28s cubic-bezier(.4,0,.2,1) both !important;
+      }
+      .modal-ov { align-items: flex-end !important; }
+
+      /* ── EM Dashboard ── */
+      #emTableWrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .em-table th, .em-table td { font-size: 11px; padding: 7px 8px; white-space: nowrap; }
+      /* Hide heat columns on small mobile (keep name + scores) */
+      .em-heat-col { display: none !important; }
+
+      /* ── Employee Directory ── */
+      .emp-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 10px !important; }
+      .emp-card { padding: 14px 10px !important; }
+
+      /* ── Profile modal ── */
+      #edModules > div { grid-template-columns: 1fr !important; }
+      #edModules > div + div { grid-template-columns: 1fr !important; }
+
+      /* ── Analytics filter rows (inline rendered) ── */
+      [id$="Root"] > div:first-child { flex-wrap: wrap !important; }
+
+      /* ── Mark Team Attendance/Checklist filter bars ── */
+      #tamFilters, #cmtFilters {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 6px !important;
+      }
+      #tamFilters input[type="date"], #cmtFilters input[type="date"] { grid-column: 1 / -1; }
+      #tamFilters button, #cmtFilters button { grid-column: 1 / -1; }
+
+      /* ── Mark Team Attendance: staff card layout ── */
+      #tamList .adm-body > div {
+        flex-wrap: wrap !important;
+      }
+      #tamList .adm-body > div > div:last-child {
+        width: 100%; display: flex; flex-wrap: wrap; gap: 5px;
+      }
+      #tamList input[type="time"] { flex: 1; min-width: 90px; }
+
+      /* ── Delegation cards ── */
+      .dcard { border-radius: 12px !important; }
+      .dc-act .btn-sm { flex: 1; text-align: center; }
+
+      /* ── Attendance analytics ── */
+      .att-sum { grid-template-columns: repeat(2,1fr) !important; }
+      .wkgrid  { grid-template-columns: repeat(3,1fr) !important; }
+
+      /* ── Checklist today cards ── */
+      .ck-card { border-radius: 12px !important; padding: 12px !important; }
+
+      /* ── Muster grid: compact ── */
+      .muster-table th, .muster-table td { font-size: 10px !important; padding: 5px 6px !important; }
+
+      /* ── Holiday calendar ── */
+      .hol-grid { grid-template-columns: repeat(2,1fr) !important; gap: 8px !important; }
+      .cal-grid  { gap: 3px !important; }
+      .cal-day   { font-size: 11px !important; padding: 6px 4px !important; }
+
+      /* ── Dashboard grid ── */
+      #dashGrid { grid-template-columns: 1fr !important; }
+
+      /* ── Summary section ── */
+      .dash-sum-grid { grid-template-columns: 1fr !important; }
+
+      /* ── EM Dashboard sort/expand bar ── */
+      #emSortBar { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
+      #emSortBar::-webkit-scrollbar { display: none; }
+      #emSortBar button { flex-shrink: 0; }
+
+      /* ── Doer detail KPI boxes ── */
+      .doer-kpi-grid { grid-template-columns: repeat(2,1fr) !important; }
+    }
+
+    /* ── Tiny phones (≤380px) ── */
+    @media (max-width: 380px) {
+      .tab { font-size: 10.5px; padding: 8px 7px; }
+      .krow, .krow-3, .ana-kpi-row { grid-template-columns: 1fr !important; }
+      .kpi { padding: 12px; }
+      .stat-strip { flex-direction: column; }
+      .stat-pill { padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; border-radius: 10px; }
+      .stat-pill .val { font-size: 20px; }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
         animation-duration: .001ms !important;
@@ -5670,7 +5939,7 @@
             onerror="this.style.display='none'">
           <div>
             <div class="sb-brand-txt">Fresko</div>
-            <div class="sb-brand-ver">Portal v3.0</div>
+            <div class="sb-brand-ver">Portal</div>
           </div>
         </div>
         <div class="sb-prof" onclick="_loadV('profile')">
@@ -7042,7 +7311,8 @@ function _gasX(fn, args, timeout, onOk, onErr) {
       // 50ms delay ensures the view function's innerHTML has been fully set first.
       setTimeout(function() {
         _initSearchSelects(document.getElementById('content'));
-      }, 50);
+        _responsivePostRender();
+      }, 80);
     }
 
     // MutationObserver: fires _initSearchSelects whenever new <select> elements
@@ -14985,6 +15255,63 @@ function _loadSetupTasks() {
       if (loaders[tabId]) {
         try { loaders[tabId](); } catch (e) { console.warn('[_switchTab] loader error for ' + tabId + ': ' + e.message); }
       }
+      // Apply responsive post-render fixes after tab switches
+      setTimeout(_responsivePostRender, 60);
+    }
+
+    /* ── _responsivePostRender ───────────────────────────────────────────────
+       Called after every view/tab load. Ensures all dynamically rendered
+       content is properly wrapped for mobile responsiveness.
+    ── */
+    function _responsivePostRender() {
+      var content = document.getElementById('content');
+      if (!content) return;
+
+      // 1. Wrap bare <table> elements not already inside .tw
+      content.querySelectorAll('table').forEach(function(tbl) {
+        if (tbl.closest('.tw')) return; // already wrapped
+        var wrapper = document.createElement('div');
+        wrapper.className = 'tw';
+        tbl.parentNode.insertBefore(wrapper, tbl);
+        wrapper.appendChild(tbl);
+      });
+
+      // 2. Add .table-card wrapper for tables inside cards (if not there)
+      content.querySelectorAll('.tw').forEach(function(tw) {
+        if (!tw.closest('.table-card') && !tw.closest('.card')) {
+          if (!tw.parentNode.classList.contains('table-card')) {
+            var tc = document.createElement('div');
+            tc.className = 'table-card';
+            tw.parentNode.insertBefore(tc, tw);
+            tc.appendChild(tw);
+          }
+        }
+      });
+
+      // 3. On mobile: make sort button containers scrollable
+      if (window.innerWidth <= 640) {
+        content.querySelectorAll('[id$="SortBar"], .sort-bar').forEach(function(bar) {
+          bar.style.flexWrap = 'nowrap';
+          bar.style.overflowX = 'auto';
+          bar.style.paddingBottom = '4px';
+          bar.style.msOverflowStyle = 'none';
+          bar.style.scrollbarWidth = 'none';
+        });
+
+        // 4. Stack multi-input filter rows
+        content.querySelectorAll('[id$="Filters"], [id$="filters"]').forEach(function(fb) {
+          if (fb.style.display !== 'grid') {
+            fb.style.display = 'grid';
+            fb.style.gridTemplateColumns = '1fr 1fr';
+            fb.style.gap = '6px';
+          }
+        });
+
+        // 5. EM Dashboard: hide heat map columns to prevent overflow
+        content.querySelectorAll('.em-heat-col, th[data-heat], td[data-heat]').forEach(function(el) {
+          el.style.display = 'none';
+        });
+      }
     }
 
     /* Muster tab within attendance — reads mustDept/mustMonth elements */
@@ -15576,7 +15903,7 @@ function _loadSetupTasks() {
         '<th style="text-align:center">DL Plan</th><th style="text-align:center">DL Actual</th>' +
         '<th style="text-align:center">Att Plan</th><th style="text-align:center">Att Actual</th>' +
         '<th>Score</th>' +
-        heatDates.map(function (dt) { return '<th style="text-align:center;font-size:10px">' + _esc(_fmtDateShort(dt)) + '</th>'; }).join('') +
+        heatDates.map(function (dt) { return '<th class="em-heat-col" style="text-align:center;font-size:10px">' + _esc(_fmtDateShort(dt)) + '</th>'; }).join('') +
         '</tr></thead><tbody>' +
         doers.map(function (e, i) {
           var score = _emScore(e);
@@ -15593,7 +15920,7 @@ function _loadSetupTasks() {
             e.heat.map(function (hd) {
               var clr = hd.label === '—' ? 'var(--tx3)' : hd.label === '-' ? 'var(--R)' : hd.label === 'OK' ? 'var(--G)' : 'var(--O)';
               var bg  = hd.label === '—' ? 'transparent' : hd.label === '-' ? 'var(--Rl)' : hd.label === 'OK' ? 'var(--Gl)' : 'var(--Ol)';
-              return '<td style="text-align:center"><span style="display:inline-block;padding:2px 6px;border-radius:5px;font-size:10px;font-weight:700;background:' + bg + ';color:' + clr + '">' + _esc(hd.label) + '</span></td>';
+              return '<td class="em-heat-col" style="text-align:center"><span style="display:inline-block;padding:2px 6px;border-radius:5px;font-size:10px;font-weight:700;background:' + bg + ';color:' + clr + '">' + _esc(hd.label) + '</span></td>';
             }).join('') +
             '</tr>';
         }).join('') +
