@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="Fresko Portal">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-180.png">
-  <title>Fresko Staff Portal — v3.0</title>
+  <title>Fresko Staff Portal</title>
 
   <!-- External Assets -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -6539,7 +6539,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbya1ul7Jh_POaFHYJLJszVtcomiXmldSBKbwMJR5vIY5q6Vl2GJRlkMJniDNqBWEjN2/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbxTT5nRkd5eWaOrv0Kv7LIhYXqjjIrNtH5xi-0ZMgaocD411v5VqYBrPhjr1-TaHP2WvA/exec';
     var _TOKEN  = '';
 
     var _gasActive = 0; // count of concurrent GAS calls in flight
@@ -6897,8 +6897,8 @@ function _gasX(fn, args, timeout, onOk, onErr) {
       _applySbCollapseState();
       _bootNtfs();
 
-      // ── ONE bulk call — load everything at login ──────────────────────────
-      _gas('getAllData', [], function(d) {
+      // ── ONE bulk call — load everything at login (35s timeout for GAS cold start) ──
+      _gasX('getAllData', [], 35000, function(d) {
         if (!d) return;
 
         // Cache everything in _D
@@ -7306,6 +7306,13 @@ function _gasX(fn, args, timeout, onOk, onErr) {
       // Still figuring out check-in/check-out status — let that settle first.
       if (btn.innerHTML.indexOf('Checking...') !== -1) return;
 
+      // NeedLocation = No → no GPS check, enable immediately
+      if (_U && _U.need_location === false) {
+        btn.disabled = false;
+        gpsEl.style.display = 'none';
+        return;
+      }
+
       if (_gpsState === 'disabled') {
         btn.disabled = false;
         gpsEl.style.display = 'none';
@@ -7361,9 +7368,17 @@ function _gasX(fn, args, timeout, onOk, onErr) {
       var btn = document.getElementById('dashPunchBtn');
       var st  = document.getElementById('dashPunchStatus');
       var tm  = document.getElementById('dashPunchTimes');
+      var gpsEl = document.getElementById('dashPunchGps');
       if (!btn || !st) return;
 
       var status = res.status || 'not_checked_in';
+
+      // Show location-exempt badge for NeedLocation=No employees
+      if (_U && _U.need_location === false && gpsEl) {
+        gpsEl.style.display = '';
+        gpsEl.style.color = 'var(--I)';
+        gpsEl.innerHTML = '<i class="fas fa-location-dot-slash"></i> No location restriction — punch from anywhere';
+      }
 
       // Format datetime for display: "16 May 2026, 04:25:08 PM"
       function _fmtAttTime(hhmm, fullTs) {
@@ -7499,11 +7514,16 @@ function _gasX(fn, args, timeout, onOk, onErr) {
 
     // Shared GPS-fetch wrapper for both check-in and check-out — only calls
     // onReady() once we actually have a location (or GPS isn't required by
-    // AppConfig), with the same "Getting location..." UX and hard-block
-    // behaviour either way, so check-in and check-out are never out of sync.
+    // AppConfig or NeedLocation=No for this employee).
     function _withGpsLocation(btn, label, icon, deviceTs, onReady) {
       btn.disabled  = true;
-      btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Getting location...';
+      btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Processing...';
+
+      // NeedLocation = No → skip GPS entirely, punch straight away
+      if (_U && _U.need_location === false) {
+        onReady(deviceTs);
+        return;
+      }
 
       var gpsEnabled = _D.appConfig && (_D.appConfig.GPS_ATTENDANCE||'').toLowerCase() === 'yes';
       if (!gpsEnabled) { onReady(deviceTs); return; }
@@ -17636,7 +17656,7 @@ function _deactivateTask(uid) {
       document.querySelectorAll('.mob-nav-item').forEach(function(el) {
         el.classList.remove('active');
       });
-      var target = document.getElementById('mbn-' + mapped) || document.getElementById('mbn-more');
+      var target = document.getElementById('mbn-' + mapped);
       if (target) target.classList.add('active');
       // Show nav when switching views
       var nav = document.getElementById('mobNav');
@@ -17792,10 +17812,6 @@ function _deactivateTask(uid) {
       <button class="mob-nav-item" id="mbn-leave" onclick="_mbNav('leave')" aria-label="Leave">
         <span class="mob-nav-pill"><i class="fas fa-calendar-days"></i></span>
         <span>Leave</span>
-      </button>
-      <button class="mob-nav-item mob-nav-more" id="mbn-more" onclick="_mbMore()" aria-label="More">
-        <span class="mob-nav-pill"><i class="fas fa-grid-2"></i></span>
-        <span>More</span>
       </button>
     </div>
   </nav>
