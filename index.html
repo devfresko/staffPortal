@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="Fresko Portal">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-180.png">
-  <title>Fresko Staff Portal — v3.0</title>
+  <title>Fresko Staff Portal</title>
 
   <!-- External Assets -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -6614,7 +6614,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbwRVObuFki6HahdegqqspBqGV8Y5n97i15HKQcuULeTLItr6croJ4yt-rHTWKOKOyQBbg/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbxnzrD_TFygkN7vR1lU3pG5Zn0JI_X5Ry8LrYE3EK_egcWqlv7SuZ0wRBZEVGsMdKoe/exec';
     var _TOKEN  = '';
 
     var _gasActive = 0; // count of concurrent GAS calls in flight
@@ -15461,47 +15461,27 @@ function _loadSetupTasks() {
           return;
         }
         el.innerHTML = tasks.map(function (t) {
-          var isDone     = t.status === 'Done';
-          var isPend     = t.status === 'Pending';
-          var isReceived = t.is_received; // task transferred to me from someone else
-          var isTransOut = t.transferred_to && !isReceived; // I gave it away
-          var actualFmt  = t.actual     ? _tsShort(t.actual)     : '';
+                    var isDone = t.status === 'Done';
+          var isPend = t.status === 'Pending' || (!t.status);
+          var isTransOut = !!(t.is_transferred && !t.is_received);
+          var actualFmt  = t.actual ? _tsShort(t.actual) : '';
           var transFmt   = t.transferred_at ? _tsShort(t.transferred_at) : '';
-          var cardBg     = isReceived ? 'background:var(--Vl);border-color:rgba(112,72,232,.25)' : '';
-          return '<div class="task-card anim-item" style="display:flex;align-items:flex-start;gap:12px;padding:13px 16px;background:var(--sur);border:1px solid var(--bdr);border-radius:12px;margin-bottom:8px;transition:all .15s;'+cardBg+'">' +
-            // Completion circle
-            '<div style="width:22px;height:22px;border-radius:50%;border:2px solid '+ _colorForStatus(t.status) +';background:'+(isDone?_colorForStatus(t.status):'transparent')+';flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-top:1px" ' +
-            (isPend && !isTransOut ? 'onclick="_markDone(\''+_esc(t.task_uid)+'\',\''+_esc(date)+'\')"' : '') + '>' +
+          var cardBg     = '';
+          return '<div class="anim-item" style="display:flex;align-items:flex-start;gap:12px;padding:13px 16px;background:var(--sur);border:1px solid var(--bdr);border-radius:12px;margin-bottom:8px;' + cardBg + '">' +
+            '<div style="width:22px;height:22px;border-radius:50%;border:2px solid ' + _colorForStatus(t.status) + ';background:' + (isDone ? _colorForStatus(t.status) : 'transparent') + ';flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-top:2px" ' +
+            (isPend && !isTransOut ? 'onclick="_markDone(\'' + _esc(t.task_uid) + '\',\'' + _esc(date) + '\')"' : '') + '>' +
             (isDone ? '<i class="fas fa-check" style="font-size:10px;color:#fff"></i>' : '') +
             '</div>' +
             '<div style="flex:1;min-width:0">' +
-            // Task name
-            '<div style="font-size:13.5px;font-weight:700;'+(isDone||isTransOut?'text-decoration:line-through;color:var(--tx3)':'')+';word-break:break-word">' + _esc(t.task_name) + '</div>' +
-            // Meta row: freq + timestamps + badges
+            '<div style="font-size:13.5px;font-weight:700;' + (isDone || isTransOut ? 'text-decoration:line-through;color:var(--tx3)' : '') + ';word-break:break-word">' + _esc(t.task_name) + '</div>' +
             '<div style="font-size:11px;color:var(--tx3);margin-top:4px;display:flex;flex-wrap:wrap;gap:6px;align-items:center">' +
             _freqBadge(t.frequency) +
-            // Received badge
-            (isReceived
-              ? '<span style="padding:1px 7px;border-radius:10px;background:var(--Vl);color:var(--V);font-weight:700;font-size:10.5px"><i class="fas fa-arrow-right-arrow-left"></i> Transferred to you'+
-                (transFmt?' · '+transFmt:'')+'</span>'
-              : '') +
-            // Transferred-out badge
-            (isTransOut
-              ? '<span style="padding:1px 7px;border-radius:10px;background:var(--Ol);color:var(--O);font-weight:700;font-size:10.5px"><i class="fas fa-share"></i> Transferred away'+
-                (transFmt?' · '+transFmt:'')+'</span>'
-              : '') +
-            // Completion timestamp
-            (isDone && actualFmt
-              ? '<span style="color:var(--G);font-weight:600"><i class="fas fa-circle-check"></i> '+actualFmt+'</span>'
-              : '') +
-            '</div>' +
-            '</div>' +
-            // Right side: status badge + Done button
+            (isTransOut ? '<span style="padding:1px 7px;border-radius:10px;background:var(--Ol);color:var(--O);font-weight:700;font-size:10.5px"><i class="fas fa-share"></i> Transferred' + (transFmt ? ' · ' + transFmt : '') + '</span>' : '') +
+            (isDone && actualFmt ? '<span style="color:var(--G);font-weight:600"><i class="fas fa-check-circle"></i> ' + actualFmt + '</span>' : '') +
+            '</div></div>' +
             '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">' +
             _statusBadge(t.status) +
-            (isPend && !isTransOut ?
-              '<button class="btn btn-sm btn-xs" onclick="_markDone(\''+_esc(t.task_uid)+'\',\''+_esc(date)+'\')"><i class="fas fa-check"></i> Done</button>' :
-              '') +
+            (isPend && !isTransOut ? '<button class="btn btn-sm btn-xs" onclick="_markDone(\'' + _esc(t.task_uid) + '\',\'' + _esc(date) + '\')"><i class="fas fa-check"></i> Done</button>' : '') +
             '</div>' +
             '</div>';
         }).join('');
