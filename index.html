@@ -6614,7 +6614,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbygRSaGM95wYFFV7Wr3S0ZE8EEsulxQza636POWfOayFaAwSTpSaw1mgBpjnQToAb-B4g/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbzwZIh4or6t146Wi8vSK777S4F3pUVr_XrCvXcZaswp8zX-LYLOTym361xjX-FeXp9bMg/execc';
     var _TOKEN  = '';
 
     var _gasActive = 0; // count of concurrent GAS calls in flight
@@ -8335,13 +8335,13 @@ function _gasX(fn, args, timeout, onOk, onErr) {
           var toEmpId = (document.getElementById('cmtTransTo') || {}).value || '';
           if (!toEmpId) { _toast('Pehle employee select karo', 'warn'); return; }
           var reason  = (document.getElementById('cmtTransReason') || {}).value || '';
-          // Show loading state on confirm button
           var confirmBtn = document.getElementById('mConfirmBtn');
           if (confirmBtn) {
             confirmBtn.disabled = true;
             confirmBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Transferring…';
           }
-          _gas('transferChecklistTask', [taskId, taskName, empId, date || _cmtDate, toEmpId, reason],
+          // Use 30s timeout — transfer reads Name Id column only (fast) but GAS cold start can be slow
+          _gasX('transferChecklistTask', [taskId, taskName, empId, date || _cmtDate, toEmpId, reason], 30000,
             function(res) {
               _closeModal();
               _cmtData.forEach(function(r) {
@@ -8352,16 +8352,22 @@ function _gasX(fn, args, timeout, onOk, onErr) {
                   r.status         = 'Transferred';
                 }
               });
-              _toast('✅ Task transferred to ' + (res.to_emp_name || toEmpId), 'ok');
+              _toast('✅ ' + (res.to_emp_name||toEmpId) + ' ko task transfer ho gaya!', 'ok');
               _renderCmtList();
             },
             function(e) {
-              // Re-enable button on error
+              // Show error prominently INSIDE the modal
+              var bEl = document.getElementById('mBody');
+              if (bEl) {
+                var errDiv = document.createElement('div');
+                errDiv.style.cssText = 'margin-top:10px;padding:10px 12px;background:var(--Rl);border:1px solid var(--R);border-radius:8px;color:var(--R);font-size:12.5px;font-weight:600';
+                errDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> ' + _esc(e.message);
+                bEl.appendChild(errDiv);
+              }
               if (confirmBtn) {
                 confirmBtn.disabled = false;
                 confirmBtn.innerHTML = '<i class="fas fa-arrow-right-arrow-left"></i> Transfer Task';
               }
-              _toast('❌ Error: ' + e.message, 'err');
             }
           );
         },
