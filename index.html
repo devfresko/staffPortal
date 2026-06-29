@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="Fresko Portal">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-180.png">
-  <title>Fresko Staff Portal</title>
+  <title>Fresko Staff Portal — v3.0</title>
 
   <!-- External Assets -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -8271,38 +8271,67 @@ function _gasX(fn, args, timeout, onOk, onErr) {
     }
 
     function _cmtTransfer(taskId, empId, empName, date) {
-      // Build employee dropdown from Doer List (exclude the current employee)
-      var doers = (_D.empDir || []).filter(function(e) { return e.emp_id !== empId; });
+      // If empDir not loaded yet, fetch it first then show modal
+      if (!_D.empDir || !_D.empDir.length) {
+        _toast('⏳ Loading employee list…', 'info');
+        _gas('getEmployeeDirectory', [], function(dir) {
+          _D.empDir = dir || [];
+          _cmtTransfer(taskId, empId, empName, date);
+        }, function(e) { _toast('Could not load employees: ' + e.message, 'err'); });
+        return;
+      }
+
+      // Build employee dropdown — exclude the current task owner
+      // Sort by name, group by dept for clarity
+      var doers = (_D.empDir || [])
+        .filter(function(e) { return e.emp_id !== empId; })
+        .sort(function(a,b) { return (a.dept+a.name).localeCompare(b.dept+b.name); });
+
+      if (!doers.length) {
+        _toast('No other employees found to transfer to', 'warn');
+        return;
+      }
+
+      // Group by department
+      var depts = doers.reduce(function(acc, e) {
+        if (!acc[e.dept]) acc[e.dept] = [];
+        acc[e.dept].push(e);
+        return acc;
+      }, {});
+
       var opts = '<option value="">— Select employee —</option>' +
-        doers.map(function(e) {
-          return '<option value="'+_esc(e.emp_id)+'" data-name="'+_esc(e.name)+'">'+_esc(e.name)+' ('+_esc(e.dept)+')</option>';
+        Object.keys(depts).sort().map(function(dept) {
+          return '<optgroup label="' + _esc(dept) + '">' +
+            depts[dept].map(function(e) {
+              return '<option value="'+_esc(e.emp_id)+'">'+_esc(e.name)+'</option>';
+            }).join('') +
+            '</optgroup>';
         }).join('');
 
       _openModal(
         '<i class="fas fa-arrow-right-arrow-left" style="color:var(--V)"></i> Transfer Task',
         '<div style="display:flex;flex-direction:column;gap:12px">' +
         '<div style="padding:10px;background:var(--Vl);border-radius:10px;font-size:12.5px;border:1px solid var(--V);color:var(--V);font-weight:600">' +
-        '<i class="fas fa-list-check"></i> ' + _esc(empName) + ' → Task will move to new employee' +
+        '<i class="fas fa-user"></i> <b>'+_esc(empName)+'</b> ka task transfer ho jaayega — scoring naye employee ko milegi' +
         '</div>' +
         '<div>' +
         '<label style="font-size:12px;font-weight:800;color:var(--tx2);display:block;margin-bottom:4px">Transfer to <span style="color:var(--R)">★</span></label>' +
-        '<select id="cmtTransTo" class="ana-sel" style="width:100%">' + opts + '</select>' +
+        '<select id="cmtTransTo" class="ana-sel" style="width:100%;min-height:44px">' + opts + '</select>' +
         '</div>' +
         '<div>' +
         '<label style="font-size:12px;font-weight:800;color:var(--tx2);display:block;margin-bottom:4px">Reason (optional)</label>' +
-        '<input type="text" id="cmtTransReason" class="ana-sel" placeholder="e.g. Staff on leave" style="width:100%">' +
+        '<input type="text" id="cmtTransReason" class="ana-sel" placeholder="e.g. Staff on leave, Other duty..." style="width:100%">' +
         '</div>' +
         '<div style="font-size:11px;color:var(--tx3);background:var(--sur2);border-radius:8px;padding:8px 10px">' +
-        '<i class="fas fa-info-circle"></i> Task will appear in the new employee\'s checklist. Scoring will go to them.' +
+        '<i class="fas fa-info-circle"></i> Scoring aur visibility naye employee ko jaayegi. Original employee ke plan mein task count nahi hoga.' +
         '</div>' +
         '</div>',
         function() {
           var toEmpId = (document.getElementById('cmtTransTo') || {}).value || '';
-          if (!toEmpId) { _toast('Please select an employee', 'warn'); return; }
+          if (!toEmpId) { _toast('Pehle employee select karo', 'warn'); return; }
           var reason = (document.getElementById('cmtTransReason') || {}).value || '';
           _closeModal();
           _gas('transferChecklistTask', [taskId, empId, date || _cmtDate, toEmpId, reason], function(res) {
-            // Update local data
             _cmtData.forEach(function(r) {
               if (r.task_id === taskId && r.emp_id === empId) {
                 r.is_transferred  = true;
