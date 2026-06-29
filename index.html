@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="Fresko Portal">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-180.png">
-  <title>Fresko Staff Portal</title>
+  <title>Fresko Staff Portal — v3.0</title>
 
   <!-- External Assets -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -5745,7 +5745,7 @@
             onerror="this.style.display='none'">
           <div>
             <div class="sb-brand-txt">Fresko</div>
-            <div class="sb-brand-ver">Portal</div>
+            <div class="sb-brand-ver">Portal v3.0</div>
           </div>
         </div>
         <div class="sb-prof" onclick="_loadV('profile')">
@@ -6614,7 +6614,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbw5xg4RxQu66GUcfgTXR505E_A65qxlvbFIo41F9r3k8rjKnre7hmSR7QV2ikDTZw6d2w/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbwZ2PqAtKDFtFc7fXboR01dcXRCrIYzckwWE-x4iNQg5_zIf9v4xVuLJmYbajE3h4w-ug/exec';
     var _TOKEN  = '';
 
     var _gasActive = 0; // count of concurrent GAS calls in flight
@@ -8228,7 +8228,7 @@ function _gasX(fn, args, timeout, onOk, onErr) {
             (isDone || isTransOut ? '' :
               '<div style="display:flex;gap:5px;align-items:center;flex-shrink:0">' +
               '<button id="cmtb_'+_esc(t.task_id)+'_'+_esc(emp.emp_id)+'" onclick="_cmtMarkDone(\''+_esc(t.task_id)+'\',\''+_esc(emp.emp_id)+'\',\''+_esc(emp.name)+'\')" style="padding:4px 10px;border-radius:7px;background:var(--G);color:#fff;font-size:11.5px;font-weight:800;border:none;cursor:pointer;white-space:nowrap"><i class="fas fa-check"></i> Done</button>' +
-              '<button onclick="_cmtTransfer(\''+_esc(t.task_id)+'\',\''+_esc(emp.emp_id)+'\',\''+_esc(emp.name)+'\',\''+_cmtDate+'\')" style="padding:4px 10px;border-radius:7px;background:var(--Vl);color:var(--V);font-size:11.5px;font-weight:800;border:1.5px solid var(--V);cursor:pointer;white-space:nowrap"><i class="fas fa-arrow-right-arrow-left"></i> Transfer</button>' +
+              '<button onclick="_cmtTransfer(\'' + _esc(t.task_id) + '\',\'' + _esc(t.task_name) + '\',\'' + _esc(emp.emp_id) + '\',\'' + _esc(emp.name) + '\',\'' + _cmtDate + '\')" style="padding:4px 10px;border-radius:7px;background:var(--Vl);color:var(--V);font-size:11.5px;font-weight:800;border:1.5px solid var(--V);cursor:pointer;white-space:nowrap"><i class=\"fas fa-arrow-right-arrow-left\"></i> Transfer</button>' +
               '</div>'
             ) +
             '</div>';
@@ -8270,29 +8270,23 @@ function _gasX(fn, args, timeout, onOk, onErr) {
       } catch(e) { return String(ts).substring(0,16); }
     }
 
-    function _cmtTransfer(taskId, empId, empName, date) {
+    function _cmtTransfer(taskId, taskName, empId, empName, date) {
       // If empDir not loaded yet, fetch it first then show modal
       if (!_D.empDir || !_D.empDir.length) {
         _toast('⏳ Loading employee list…', 'info');
         _gas('getEmployeeDirectory', [], function(dir) {
           _D.empDir = dir || [];
-          _cmtTransfer(taskId, empId, empName, date);
+          _cmtTransfer(taskId, taskName, empId, empName, date);
         }, function(e) { _toast('Could not load employees: ' + e.message, 'err'); });
         return;
       }
 
-      // Build employee dropdown — exclude the current task owner
-      // Sort by name, group by dept for clarity
       var doers = (_D.empDir || [])
         .filter(function(e) { return e.emp_id !== empId; })
         .sort(function(a,b) { return (a.dept+a.name).localeCompare(b.dept+b.name); });
 
-      if (!doers.length) {
-        _toast('No other employees found to transfer to', 'warn');
-        return;
-      }
+      if (!doers.length) { _toast('No other employees found', 'warn'); return; }
 
-      // Group by department
       var depts = doers.reduce(function(acc, e) {
         if (!acc[e.dept]) acc[e.dept] = [];
         acc[e.dept].push(e);
@@ -8304,47 +8298,46 @@ function _gasX(fn, args, timeout, onOk, onErr) {
           return '<optgroup label="' + _esc(dept) + '">' +
             depts[dept].map(function(e) {
               return '<option value="'+_esc(e.emp_id)+'">'+_esc(e.name)+'</option>';
-            }).join('') +
-            '</optgroup>';
+            }).join('') + '</optgroup>';
         }).join('');
+
+      var taskDisplay = taskName || taskId || 'Task';
 
       _openModal(
         '<i class="fas fa-arrow-right-arrow-left" style="color:var(--V)"></i> Transfer Task',
         '<div style="display:flex;flex-direction:column;gap:12px">' +
-        '<div style="padding:10px;background:var(--Vl);border-radius:10px;font-size:12.5px;border:1px solid var(--V);color:var(--V);font-weight:600">' +
-        '<i class="fas fa-user"></i> <b>'+_esc(empName)+'</b> ka task transfer ho jaayega — scoring naye employee ko milegi' +
+        '<div style="padding:10px;background:var(--sur2);border-radius:10px;border-left:3px solid var(--V)">' +
+        '<div style="font-size:10.5px;font-weight:800;color:var(--tx3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px">Task</div>' +
+        '<div style="font-size:13px;font-weight:700;color:var(--tx)">' + _esc(taskDisplay) + '</div>' +
+        '<div style="font-size:11px;color:var(--tx3);margin-top:2px"><i class="fas fa-user"></i> ' + _esc(empName) + ' → scoring nayi employee ko milegi</div>' +
         '</div>' +
-        '<div>' +
-        '<label style="font-size:12px;font-weight:800;color:var(--tx2);display:block;margin-bottom:4px">Transfer to <span style="color:var(--R)">★</span></label>' +
-        '<select id="cmtTransTo" class="ana-sel" style="width:100%;min-height:44px">' + opts + '</select>' +
-        '</div>' +
-        '<div>' +
-        '<label style="font-size:12px;font-weight:800;color:var(--tx2);display:block;margin-bottom:4px">Reason (optional)</label>' +
-        '<input type="text" id="cmtTransReason" class="ana-sel" placeholder="e.g. Staff on leave, Other duty..." style="width:100%">' +
-        '</div>' +
+        '<div><label style="font-size:12px;font-weight:800;color:var(--tx2);display:block;margin-bottom:5px">Transfer to <span style="color:var(--R)">★</span></label>' +
+        '<select id="cmtTransTo" class="ana-sel" style="width:100%;min-height:44px">' + opts + '</select></div>' +
+        '<div><label style="font-size:12px;font-weight:800;color:var(--tx2);display:block;margin-bottom:5px">Reason (optional)</label>' +
+        '<input type="text" id="cmtTransReason" class="ana-sel" placeholder="e.g. Staff on leave, Other duty…" style="width:100%"></div>' +
         '<div style="font-size:11px;color:var(--tx3);background:var(--sur2);border-radius:8px;padding:8px 10px">' +
-        '<i class="fas fa-info-circle"></i> Scoring aur visibility naye employee ko jaayegi. Original employee ke plan mein task count nahi hoga.' +
-        '</div>' +
-        '</div>',
+        '<i class="fas fa-info-circle"></i> Task nayi employee ke Today view mein dikhega. Scoring unhe milegi.' +
+        '</div></div>',
         function() {
           var toEmpId = (document.getElementById('cmtTransTo') || {}).value || '';
           if (!toEmpId) { _toast('Pehle employee select karo', 'warn'); return; }
-          var reason = (document.getElementById('cmtTransReason') || {}).value || '';
+          var reason  = (document.getElementById('cmtTransReason') || {}).value || '';
           _closeModal();
-          _gas('transferChecklistTask', [taskId, empId, date || _cmtDate, toEmpId, reason], function(res) {
-            _cmtData.forEach(function(r) {
-              if (r.task_id === taskId && r.emp_id === empId) {
-                r.is_transferred  = true;
-                r.transferred_to  = toEmpId;
-                r.transfer_by     = res.transferred_by || '';
-                r.transferred_at  = res.transferred_at || '';
-                r.status          = 'Transferred';
-              }
-            });
-            var tName = res.to_emp_name || toEmpId;
-            _toast('✓ Task transferred to ' + tName, 'ok');
-            _renderCmtList();
-          }, function(e) { _toast('Error: ' + e.message, 'err'); });
+          _gas('transferChecklistTask', [taskId, taskName, empId, date || _cmtDate, toEmpId, reason],
+            function(res) {
+              _cmtData.forEach(function(r) {
+                if ((r.task_id === taskId || r.task_name === taskName) && r.emp_id === empId) {
+                  r.is_transferred = true; r.transferred_to = toEmpId;
+                  r.transfer_by    = res.transferred_by || '';
+                  r.transferred_at = res.transferred_at || '';
+                  r.status         = 'Transferred';
+                }
+              });
+              _toast('✓ Task transferred to ' + (res.to_emp_name || toEmpId), 'ok');
+              _renderCmtList();
+            },
+            function(e) { _toast('Error: ' + e.message, 'err'); }
+          );
         },
         '<i class="fas fa-arrow-right-arrow-left"></i> Transfer Task'
       );
