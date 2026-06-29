@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="Fresko Portal">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-180.png">
-  <title>Fresko Staff Portal</title>
+  <title>Fresko Staff Portal — v3.0</title>
 
   <!-- External Assets -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -4416,89 +4416,307 @@
     }
 
     @media (max-width: 640px) {
-      :root {
-        --sbw: 264px;
-      }
+      /* ══════════════════════════════════════════════════════════════
+         MOBILE SHELL & LAYOUT
+      ══════════════════════════════════════════════════════════════ */
+      :root { --sbw: 264px; }
 
       .sb {
-        position: fixed;
-        top: 0;
-        left: 0;
-        height: 100vh;
+        position: fixed; top: 0; left: 0; height: 100vh;
         z-index: var(--z-sb);
         transform: translateX(-100%);
-        transition: transform .25s cubic-bezier(.4, 0, .2, 1);
+        transition: transform .25s cubic-bezier(.4,0,.2,1);
+        box-shadow: none;
       }
-
       .sb.mob-open {
         transform: translateX(0);
+        box-shadow: 8px 0 32px rgba(0,0,0,.18);
       }
+      .ham { display: flex !important; }
 
-      .ham {
-        display: flex !important;
+      /* Shell: fixed topbar + scrolling content + fixed bottom nav */
+      .scr#sApp {
+        position: fixed; inset: 0;
+        height: 100svh; overflow: hidden;
+        display: flex; flex-direction: row;
       }
-
-      .krow,
-      .krow-5,
-      .krow-6 {
-        grid-template-columns: 1fr 1fr;
+      .main {
+        display: flex; flex-direction: column; flex: 1; width: 100%;
+        height: 100svh; overflow: hidden;
       }
-
-      .krow-3 {
-        grid-template-columns: 1fr 1fr;
-      }
-
-      .att-sum {
-        grid-template-columns: 1fr 1fr;
-      }
-
-      .wkgrid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-
-      .frow,
-      .frow-3,
-      .frow-4 {
-        grid-template-columns: 1fr;
-      }
-
-      .prof-stats {
-        grid-template-columns: repeat(2, 1fr);
-      }
-
-      .prof-inner {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 14px;
-      }
-
-      #content {
-        padding: 16px;
-      }
-
-      .mod-title {
-        font-size: 18px;
-      }
-
       .topbar {
-        padding: 0 14px;
+        flex-shrink: 0; height: 56px; padding: 0 14px;
+        padding-top: env(safe-area-inset-top, 0px); z-index: 50;
+      }
+      #content {
+        flex: 1; min-height: 0;
+        overflow-y: auto; overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-y: contain;
+        padding: 14px 12px calc(72px + env(safe-area-inset-bottom, 0px));
+        scrollbar-width: none;
+      }
+      #content::-webkit-scrollbar { display: none; }
+      .mob-nav { display: block; }
+
+      /* Topbar */
+      .tb-search, .tb-divider, .sb-toggle { display: none !important; }
+      .tb-breadcrumb { display: none; }
+      .tb-title { font-size: 16px; font-weight: 800; }
+      .tb-right { gap: 2px; }
+      .ico-btn { width: 40px; height: 40px; font-size: 15px; border-radius: 12px; }
+
+      /* ══════════════════════════════════════════════════════════════
+         TOUCH TARGETS & TYPOGRAPHY
+      ══════════════════════════════════════════════════════════════ */
+      .btn     { min-height: 48px; padding: 12px 18px; font-size: 14px; border-radius: 14px; }
+      .btn-sm  { min-height: 40px; padding: 8px 14px; font-size: 13px; }
+      .btn-xs  { min-height: 36px; font-size: 12px; }
+      .nv      { min-height: 52px; padding: 13px 18px; font-size: 14px; }
+      input, select, textarea { font-size: 16px !important; }
+      select,
+      input[type="text"],
+      input[type="month"],
+      input[type="date"],
+      input[type="time"],
+      input[type="email"],
+      input[type="password"] {
+        min-height: 50px; padding: 13px 16px; border-radius: 14px;
+      }
+      .btn:active   { transform: scale(.97); transition: transform .08s; }
+      .card:active  { transform: scale(.985); transition: transform .1s; }
+      .mob-nav-item:active i { transform: scale(.88); }
+      .card { border-radius: 18px !important; padding: 14px !important; }
+
+      /* ══════════════════════════════════════════════════════════════
+         BOTTOM SHEET MODALS — Premium feel
+      ══════════════════════════════════════════════════════════════ */
+      .modal-ov {
+        align-items: flex-end !important;
+        padding: 0 !important;
+      }
+      .modal-box {
+        position: relative !important;
+        bottom: 0 !important; left: 0 !important; right: 0 !important;
+        top: auto !important;
+        transform: none !important;
+        width: 100% !important; max-width: 100% !important;
+        margin: 0 !important;
+        border-radius: 24px 24px 0 0 !important;
+        max-height: 88svh !important;
+        overflow: hidden !important;
+        display: flex !important;
+        flex-direction: column !important;
+        animation: sheetUp .3s cubic-bezier(.34,1,.64,1) both !important;
+      }
+      /* Drag handle pill */
+      .modal-box::before {
+        content: '';
+        display: block;
+        width: 40px; height: 4px;
+        border-radius: 2px;
+        background: var(--bdr2);
+        margin: 14px auto -6px;
+        flex-shrink: 0;
+      }
+      .modal-title {
+        padding: 14px 20px 12px !important;
+        font-size: 16px !important;
+        flex-shrink: 0;
+        border-bottom: 1px solid var(--bdr);
+        word-break: break-word;
+      }
+      .modal-body {
+        padding: 16px 20px !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        flex: 1;
+        -webkit-overflow-scrolling: touch;
+        /* Key: allow all text to wrap */
+        word-break: break-word;
+        overflow-wrap: break-word;
+        line-height: 1.6;
+      }
+      /* All text inside modal wraps cleanly */
+      .modal-body p,
+      .modal-body span,
+      .modal-body div,
+      .modal-body label,
+      .modal-body .dc-title,
+      .modal-body .card,
+      .modal-body [style*="white-space:nowrap"] {
+        white-space: normal !important;
+        word-break: break-word;
+        overflow-wrap: break-word;
+      }
+      /* Form labels in modals: stack label above input */
+      .modal-body label {
+        display: block;
+        font-size: 12px;
+        font-weight: 800;
+        color: var(--tx2);
+        margin-bottom: 4px;
+      }
+      /* All inputs/selects in modal: full width */
+      .modal-body input,
+      .modal-body select,
+      .modal-body textarea {
+        width: 100% !important;
+        box-sizing: border-box;
+      }
+      /* Inline flex rows inside modal: stack vertically */
+      .modal-body > div[style*="display:flex"],
+      .modal-body > div[style*="display: flex"] {
+        flex-wrap: wrap;
         gap: 8px;
       }
-
-      .ntf-panel {
-        left: 8px;
-        right: 8px;
-        width: auto;
+      .modal-foot {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 8px !important;
+        padding: 12px 20px !important;
+        padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px) !important;
+        border-top: 1px solid var(--bdr);
+        flex-shrink: 0;
+      }
+      /* Modal footer buttons: full-width stacked */
+      .modal-foot .btn, .modal-foot button {
+        width: 100% !important;
+        justify-content: center !important;
+        text-align: center !important;
+        min-height: 50px !important;
+        font-size: 14px !important;
+        border-radius: 14px !important;
       }
 
-      .gs-overlay {
-        padding-top: 40px;
+      /* ══════════════════════════════════════════════════════════════
+         PULL-TO-REFRESH
+      ══════════════════════════════════════════════════════════════ */
+      #fkPtr {
+        display: none; position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+        height: 3px;
+        background: linear-gradient(90deg, var(--P), var(--T), var(--G));
+        animation: ptrSlide 1.4s linear infinite;
+      }
+      @keyframes ptrSlide {
+        from { transform: translateX(-100%); }
+        to   { transform: translateX(100%); }
       }
 
-      .tb-search {
-        display: none;
+      /* ══════════════════════════════════════════════════════════════
+         MOD HEAD & TABS
+      ══════════════════════════════════════════════════════════════ */
+      .mod-head {
+        flex-direction: column; align-items: stretch;
+        gap: 8px; margin-bottom: 12px;
       }
-    }
+      .mod-head-right { justify-content: flex-start; flex-wrap: wrap; gap: 6px; }
+      .mod-title { font-size: 17px; }
+
+      .tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; flex-wrap: nowrap !important; scrollbar-width: none; }
+      .tabs::-webkit-scrollbar { display: none; }
+      .tab  { font-size: 11.5px; padding: 9px 10px; white-space: nowrap; flex-shrink: 0; }
+
+      /* ══════════════════════════════════════════════════════════════
+         KPI STRIPS
+      ══════════════════════════════════════════════════════════════ */
+      .krow   { grid-template-columns: repeat(2,1fr) !important; gap: 8px !important; }
+      .krow-3 { grid-template-columns: repeat(2,1fr) !important; }
+      .krow-5, .krow-6 { grid-template-columns: repeat(2,1fr) !important; }
+      .kpi { padding: 14px 12px; border-radius: 12px; }
+      .kpi-icon { width: 34px; height: 34px; font-size: 14px; border-radius: 10px; }
+      .kpi-val  { font-size: 22px; }
+      .kpi-lbl  { font-size: 10px; }
+
+      /* ══════════════════════════════════════════════════════════════
+         FILTER BARS
+      ══════════════════════════════════════════════════════════════ */
+      .ana-sel { font-size: 14px !important; min-height: 44px; border-radius: 12px; }
+      /* Mark team filter bars */
+      #tamFilters, #cmtFilters {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 8px !important;
+        padding: 10px !important;
+      }
+      #tamFilters input[type="date"],
+      #cmtFilters input[type="date"],
+      #tamFilters button:last-child,
+      #cmtFilters button:last-child { grid-column: 1 / -1; }
+
+      /* ══════════════════════════════════════════════════════════════
+         TABLES
+      ══════════════════════════════════════════════════════════════ */
+      .tw { border-radius: var(--r2); }
+      .tw table { min-width: 420px; }
+      .tw thead th { font-size: 9.5px; padding: 8px 10px; }
+      .tw tbody td  { font-size: 12px;  padding: 8px 10px; }
+      .table-card { border-radius: var(--r); overflow: hidden; border: 1px solid var(--bdr); }
+
+      /* ══════════════════════════════════════════════════════════════
+         EM DASHBOARD
+      ══════════════════════════════════════════════════════════════ */
+      .em-heat-col { display: none !important; }
+      #emTableWrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .em-table th, .em-table td { font-size: 11px; padding: 7px 8px; white-space: nowrap; }
+
+      /* ══════════════════════════════════════════════════════════════
+         CARDS & DELEGATION
+      ══════════════════════════════════════════════════════════════ */
+      .dcard { border-radius: 12px !important; }
+      .dc-act { flex-wrap: wrap !important; }
+      .dc-act .btn-sm { flex: 1; min-width: 120px; justify-content: center; text-align: center; }
+
+      /* ══════════════════════════════════════════════════════════════
+         ATTENDANCE PUNCH CARD
+      ══════════════════════════════════════════════════════════════ */
+      .att-punch-card { border-radius: 20px !important; padding: 18px !important; }
+      .btn-checkin { font-size: 15px !important; min-height: 52px !important; border-radius: 14px !important; }
+
+      /* ══════════════════════════════════════════════════════════════
+         ANALYTICS
+      ══════════════════════════════════════════════════════════════ */
+      .att-sum  { grid-template-columns: repeat(2,1fr) !important; }
+      .wkgrid   { grid-template-columns: repeat(3,1fr) !important; }
+      .ana-kpi-row { grid-template-columns: repeat(2,1fr) !important; }
+      .da-kpi-strip { grid-template-columns: repeat(2,1fr) !important; }
+      .ana-charts-grid { grid-template-columns: 1fr !important; }
+      .da-grid3 { grid-template-columns: 1fr !important; }
+      .ana-chart-wide { grid-column: span 1 !important; }
+
+      /* ══════════════════════════════════════════════════════════════
+         EMPLOYEE DIRECTORY & PROFILE
+      ══════════════════════════════════════════════════════════════ */
+      .emp-grid { grid-template-columns: repeat(2,1fr) !important; gap: 10px !important; }
+      .emp-card { padding: 14px 10px !important; }
+      #edModules > div { grid-template-columns: 1fr !important; }
+      #edModules > div + div { grid-template-columns: 1fr !important; }
+
+      /* ══════════════════════════════════════════════════════════════
+         MARK TEAM ATTENDANCE — card rows
+      ══════════════════════════════════════════════════════════════ */
+      #tamList .adm-body > div { flex-wrap: wrap !important; align-items: flex-start; }
+      #tamList input[type="time"] { flex: 1; min-width: 90px; }
+
+      /* ══════════════════════════════════════════════════════════════
+         MISC
+      ══════════════════════════════════════════════════════════════ */
+      .hol-grid  { grid-template-columns: repeat(2,1fr) !important; gap: 8px !important; }
+      .muster-table th, .muster-table td { font-size: 10px !important; padding: 5px 6px !important; }
+      .sec-title { font-size: 13px !important; }
+
+      /* Global text wrap for mobile — prevents any content from overflowing */
+      #content * {
+        max-width: 100%;
+        box-sizing: border-box;
+      }
+      #content p, #content span:not(.badge):not(.pill),
+      #content .card > div, #content li {
+        word-break: break-word;
+        overflow-wrap: break-word;
+      }
+    } /* end @media 640px */
+    
 
     /* ══════════════════════════════════════════════════════════════════════
    CHECK IN / CHECK OUT BUTTON — Dashboard Widget
@@ -4715,272 +4933,7 @@
       to   { transform: translateY(0); opacity: 1; }
     }
 
-    @media (max-width: 640px) {
-
-      /* ── 1. Shell: fixed topbar + scrolling content + fixed bottom nav ── */
-      .scr#sApp {
-        position: fixed; inset: 0;
-        height: 100svh; overflow: hidden;
-        display: flex; flex-direction: row;
-      }
-      .main {
-        display: flex; flex-direction: column; flex: 1; width: 100%;
-        height: 100svh; overflow: hidden;
-      }
-      .topbar {
-        flex-shrink: 0; height: 56px; padding: 0 14px;
-        padding-top: env(safe-area-inset-top, 0px); z-index: 50;
-      }
-      #content {
-        flex: 1; min-height: 0;
-        overflow-y: auto; overflow-x: hidden;
-        -webkit-overflow-scrolling: touch;
-        overscroll-behavior-y: contain;
-        padding: 14px 14px calc(72px + env(safe-area-inset-bottom, 0px));
-        scrollbar-width: none;
-      }
-      #content::-webkit-scrollbar { display: none; }
-      .mob-nav { display: block; }
-
-      /* ── 2. Topbar ── */
-      .tb-search, .tb-divider, .sb-toggle { display: none !important; }
-      .tb-breadcrumb { display: none; }
-      .tb-title { font-size: 16px; font-weight: 800; }
-      .tb-right { gap: 2px; }
-      .ico-btn { width: 40px; height: 40px; font-size: 15px; border-radius: 12px; }
-
-      /* ── 3. Touch targets 44px ── */
-      .btn     { min-height: 48px; padding: 13px 20px; font-size: 14.5px; border-radius: 14px; }
-      .btn-sm  { min-height: 40px; padding: 8px 14px; font-size: 13px; }
-      .btn-xs  { min-height: 36px; font-size: 12px; }
-      .nv      { min-height: 52px; padding: 13px 18px; font-size: 14px; }
-      input, select, textarea { font-size: 16px !important; }
-      select, input[type="text"], input[type="month"],
-      input[type="date"], input[type="time"],
-      input[type="email"], input[type="password"] {
-        min-height: 50px; padding: 13px 16px; border-radius: 14px;
-      }
-      /* Active / press state for buttons — gives haptic-like visual feedback */
-      .btn:active { transform: scale(.97); transition: transform .08s; }
-      .card:active { transform: scale(.985); transition: transform .1s; }
-      .mob-nav-item:active i { transform: scale(.88); }
-      /* Cards wider gap on small screens */
-      .card { border-radius: 18px !important; }
-      .da-kpi { border-radius: 16px !important; }
-      /* Pull-to-refresh indicator */
-      #fkPtr {
-        display: none; position: fixed; top: 0; left: 0; right: 0; z-index: 200;
-        height: 3px; background: linear-gradient(90deg, var(--P), var(--T), var(--G));
-        animation: ptrSlide 1.4s linear infinite;
-      }
-      @keyframes ptrSlide {
-        from { transform: translateX(-100%); }
-        to   { transform: translateX(100%); }
-      }
-      /* Improve the bottom punch card on mobile */
-      .att-punch-card { border-radius: 20px !important; padding: 18px !important; }
-      .btn-checkin { font-size: 15px !important; min-height: 52px !important; border-radius: 14px !important; }
-
-      /* ── 4. Bottom sheet modals ── */
-      .modal-ov   { align-items: flex-end; padding: 0; }
-      .modal-box  {
-        position: relative !important;
-        width: 100% !important; max-width: 100% !important;
-        margin: 0 !important;
-        border-radius: 24px 24px 0 0 !important;
-        max-height: 90svh;
-        animation: sheetUp .28s cubic-bezier(.4,0,.2,1) both;
-      }
-      .modal-foot {
-        padding-bottom: calc(env(safe-area-inset-bottom,0px) + 16px) !important;
-      }
-      .modal-box::before {
-        content: ''; display: block; width: 36px; height: 4px;
-        border-radius: 2px; background: var(--bdr2); margin: 0 auto 12px;
-      }
-
-      /* ── 5. Module head ── */
-      .mod-head { flex-direction: column; align-items: stretch; gap: 12px; margin-bottom: 16px; }
-      .mod-head button, .mod-head .btn { width: 100%; justify-content: center; min-height: 46px; }
-      .mod-title { font-size: 22px !important; font-weight: 900; letter-spacing: -.4px; }
-      .mod-sub   { font-size: 12px; }
-
-      /* ── 6. Cards ── */
-      .card         { border-radius: 20px !important; padding: 16px !important; }
-      .card-sm      { border-radius: 16px !important; padding: 14px !important; }
-      .card-nohover { border-radius: 16px !important; padding: 14px !important; }
-      .ann-card     { border-radius: 16px; padding: 14px; }
-      .card { -webkit-tap-highlight-color: transparent; }
-
-      /* ── 7. KPI grids: 2 col ── */
-      .krow, .krow-3, .krow-5, .krow-6, .ana-kpi-row, .da-kpi-strip {
-        grid-template-columns: repeat(2,1fr) !important; gap: 10px !important;
-      }
-      .kpi         { padding: 14px; border-radius: 18px; }
-      .kpi-val     { font-size: 26px; }
-      .kpi-lbl     { font-size: 10px; }
-      .ana-kpi-val, .da-kpi-val { font-size: 20px; }
-      .ana-kpi-sub, .da-kpi-sub { display: none; }
-
-      /* ── 8. Chart grids: 1 col ── */
-      .ana-charts-grid { grid-template-columns: 1fr !important; gap: 10px !important; }
-      .da-grid3, .da-grid2 { grid-template-columns: 1fr !important; gap: 10px !important; }
-      .ana-chart-wide, .da-chart-wide-2 { grid-column: 1 !important; }
-      .ana-chart-card, .da-chart-card { padding: 14px; border-radius: 16px; }
-
-      /* ── 9. Employee/dept grids ── */
-      .da-emp-cards { grid-template-columns: 1fr !important; }
-      .ed-grid      { grid-template-columns: 1fr !important; }
-      .da-grid-dept { grid-template-columns: repeat(2,1fr) !important; }
-
-      /* ── 10. Tables: horizontal scroll ── */
-      .tw, .tbl-wrap, .table-card {
-        overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 14px;
-      }
-      .tw::-webkit-scrollbar, .table-card::-webkit-scrollbar { display: none; }
-      table { min-width: 480px; }
-      th, td { padding: 10px 12px; font-size: 12px; white-space: nowrap; }
-
-      /* ── 11. Toolbars ── */
-      .ana-toolbar, .ed-toolbar { padding: 12px; border-radius: 16px; margin-bottom: 12px; }
-      .ana-toolbar > div, .ed-toolbar > div { flex-wrap: wrap; gap: 8px; }
-      .ana-sel { font-size: 14px !important; padding: 10px 12px; min-height: 44px; border-radius: 12px; flex: 1; min-width: 0; }
-      .fbar { flex-wrap: wrap; gap: 8px; }
-      .fbar label { width: 100%; font-size: 11px; font-weight: 700; color: var(--tx2); }
-      .fbar input, .fbar select, .fbar .ana-sel { width: 100% !important; }
-
-      /* ── 12. Tabs: scrollable ── */
-      .tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; flex-wrap: nowrap !important; scrollbar-width: none; padding-bottom: 2px; }
-      .tabs::-webkit-scrollbar { display: none; }
-      .tab { white-space: nowrap; padding: 10px 16px; font-size: 13px; min-height: 44px; }
-
-      /* ── 13. Attendance punch ── */
-      .att-punch-card { flex-direction: column; align-items: stretch; gap: 12px; }
-      .btn-checkin    { width: 100%; min-height: 56px; font-size: 16px; border-radius: 16px; }
-
-      /* ── 14. Delegation banner ── */
-      .da-banner { flex-direction: column; gap: 12px; border-radius: 20px; padding: 16px; }
-
-      /* ── 15. Login: full screen ── */
-      .login-grid { display: none !important; }
-      .scr#sLogin {
-        align-items: stretch; justify-content: stretch;
-        background: var(--bg);
-        overflow-y: auto; -webkit-overflow-scrolling: touch;
-        position: fixed; inset: 0; z-index: 500;
-        height: 100svh; height: 100vh;
-      }
-      .lbox {
-        border-radius: 0 !important;
-        width: 100%; max-width: 100%;
-        min-height: 100svh; min-height: 100vh;
-        padding: 60px 24px 40px;
-        display: flex; flex-direction: column; justify-content: center;
-        box-shadow: none !important;
-        background: var(--bg) !important;
-      }
-      /* Login inputs — bigger on mobile */
-      .l-field input {
-        min-height: 52px; font-size: 16px !important;
-        border-radius: 14px; padding: 14px 14px 14px 44px;
-      }
-      .l-btn {
-        min-height: 52px; font-size: 16px; border-radius: 14px; margin-top: 8px;
-      }
-      .l-title { font-size: 26px; }
-
-      /* ── csetup responsive grid ── */
-      .csetup-grid {
-        display: grid; grid-template-columns: 1fr; gap: 16px;
-      }
-
-      /* ── fbar: full width stacked on mobile ── */
-      .fbar { display: flex; flex-wrap: wrap; gap: 8px; }
-      .fbar label {
-        width: 100%; font-size: 11px; font-weight: 700;
-        color: var(--tx2); text-transform: uppercase; letter-spacing: .3px;
-      }
-      .fbar select, .fbar input, .fbar .btn {
-        width: 100% !important; min-width: 0 !important;
-      }
-      .fbar-spacer { display: none; }
-
-      /* ── mod-head: stack + search full width ── */
-      .mod-head { flex-direction: column !important; gap: 10px !important; }
-      .mod-head-right { width: 100%; flex-wrap: wrap; gap: 8px; }
-      .search-inp { width: 100% !important; }
-      .search-inp input { width: 100% !important; }
-
-      /* ── Delegation items ── */
-      .deleg-item { padding: 12px; border-radius: 14px; }
-
-      /* ── Leave/regularize forms ── */
-      .leave-form, .reg-form { gap: 12px; }
-
-      /* ── Profile page ── */
-      .prof-card { padding: 20px 16px; border-radius: 20px; }
-
-      /* ── Dashboard widgets ── */
-      .dash-widget { border-radius: 18px; padding: 14px; }
-
-      /* ── Announcements ── */
-      .ann-item { padding: 12px; }
-
-      /* ── Attendance grid ── */
-      .att-grid { grid-template-columns: 1fr !important; }
-
-      /* ── Dashboard punch card ── */
-      .att-punch-info { flex-direction: column; gap: 8px; }
-      .att-punch-time { font-size: 13px; }
-      .att-punch-stat { flex-direction: column; text-align: center; gap: 6px; }
-
-      /* ── Delegation form ── */
-      .deleg-form-grid { grid-template-columns: 1fr !important; }
-
-      /* ── Leave form ── */
-      .form-g { gap: 12px; }
-      .fgrp { gap: 6px; }
-      .fgrp label { font-size: 12px; font-weight: 700; }
-
-      /* ── Announcement cards ── */
-      .ann-card-inner { flex-direction: column; gap: 8px; }
-
-      /* ── Performance chart area ── */
-      .perf-top { flex-direction: column; gap: 10px; }
-      .perf-kpi-row { grid-template-columns: repeat(2,1fr) !important; }
-
-      /* ── Profile page ── */
-      .prof-head { flex-direction: column; align-items: center; text-align: center; gap: 12px; }
-      .prof-stats { grid-template-columns: repeat(2,1fr) !important; }
-
-      /* ── Muster table: smaller text ── */
-      .muster-tbl th, .muster-tbl td { padding: 6px 4px; font-size: 10px; }
-
-      /* ── Holiday calendar ── */
-      .hol-grid { grid-template-columns: 1fr !important; }
-
-      /* ── Analytics banner ── */
-      .da-banner > div:last-child { flex-wrap: wrap; gap: 10px; }
-
-      /* ── Sidebar on mobile: bigger user section ── */
-      .sb-prof { padding: 12px 14px; }
-      .sb-name { font-size: 14px; }
-      .sb-role { font-size: 11px; }
-
-      /* ── Bottom nav labels ── */
-      .mob-nav-item span { font-size: 9px; }
-
-      /* ── Prevent horizontal overflow everywhere ── */
-      * { max-width: 100%; box-sizing: border-box; }
-      img { max-width: 100%; height: auto; }
-
-      /* ── 16. Misc ── */
-      .sec-title { font-size: 13px; }
-      .bdg       { font-size: 10px; padding: 2px 7px; }
-      .grp-hdr   { padding: 12px 14px; border-radius: 14px; }
-      .pbar-wrap { border-radius: 4px; }
-
-    } /* end @media 640px */
+     /* end @media 640px */
 
     /* ── Tablet 641-1024px (unchanged) ── */
     @media (min-width: 641px) and (max-width: 1024px) {
@@ -5686,154 +5639,7 @@
        MOBILE — ≤ 640px
        All views: stack, full-width, touch-friendly
        ════════════════════════════════════════════════════════════════ */
-    @media (max-width: 640px) {
-
-      /* ── mod-head: stack title + actions ── */
-      .mod-head {
-        flex-direction: column; align-items: stretch; gap: 10px; margin-bottom: 14px;
-      }
-      .mod-head-right { justify-content: flex-start; flex-wrap: wrap; }
-      .mod-title { font-size: 17px; }
-
-      /* ── Filter bar: stack to 2-col grid on mobile ── */
-      .filter-bar {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 6px;
-        padding: 10px;
-      }
-      .filter-bar .fb-sep, .filter-bar .fb-spacer { display: none; }
-      .filter-bar input[type="text"],
-      .filter-bar input[type="search"] { grid-column: 1 / -1; }
-      .filter-bar .fb-reload,
-      .filter-bar button:last-child { grid-column: 1 / -1; }
-
-      /* All inline filter bars (non .filter-bar class) */
-      [id$="Filters"], [id$="filters"],
-      div[style*="display:flex"][style*="gap:6px"][style*="flex-wrap:wrap"] {
-        display: grid !important;
-        grid-template-columns: 1fr 1fr !important;
-        gap: 6px !important;
-      }
-      .ana-sel { font-size: 14px !important; min-height: 44px; width: 100%; }
-
-      /* ── Sort bar: horizontal scroll ── */
-      .sort-bar { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
-      .sort-bar::-webkit-scrollbar { display: none; }
-      .sort-btn { flex-shrink: 0; }
-
-      /* ── Stat strip: 3-equal on mobile ── */
-      .stat-strip { gap: 6px; }
-      .stat-pill { padding: 8px 4px; border-radius: 10px; }
-      .stat-pill .val { font-size: 18px; }
-      .stat-pill .lbl { font-size: 9px; }
-
-      /* ── Tables: always scrollable ── */
-      .tw { border-radius: var(--r2); }
-      .tw table { min-width: 420px; }
-      .tw thead th { font-size: 9.5px; padding: 8px 10px; }
-      .tw tbody td  { font-size: 12px; padding: 8px 10px; }
-      .table-card { border-radius: var(--r); overflow: hidden; border: 1px solid var(--bdr); }
-
-      /* ── KPI strips ── */
-      .krow   { grid-template-columns: repeat(2,1fr) !important; gap: 8px !important; }
-      .krow-3 { grid-template-columns: repeat(2,1fr) !important; }
-      .krow-5, .krow-6 { grid-template-columns: repeat(2,1fr) !important; }
-      .kpi { padding: 14px 12px; border-radius: 12px; }
-      .kpi-icon { width: 34px; height: 34px; font-size: 14px; }
-      .kpi-val  { font-size: 24px; }
-      .kpi-lbl  { font-size: 10px; }
-
-      /* ── Cards: tighter on mobile ── */
-      .card { padding: 14px; border-radius: 14px; }
-      .card-anim { animation-duration: .2s; }
-
-      /* ── Tabs: horizontal scroll ── */
-      .tabs { gap: 0; padding-bottom: 0; }
-      .tab  { font-size: 11.5px; padding: 9px 10px; white-space: nowrap; flex-shrink: 0; }
-
-      /* ── Modals: bottom sheet on mobile ── */
-      .modal-box {
-        position: fixed !important;
-        bottom: 0 !important; left: 0 !important; right: 0 !important;
-        top: auto !important;
-        transform: none !important;
-        width: 100% !important; max-width: 100% !important;
-        border-radius: 24px 24px 0 0 !important;
-        max-height: 90svh; overflow-y: auto;
-        padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px)) !important;
-        animation: sheetUp .28s cubic-bezier(.4,0,.2,1) both !important;
-      }
-      .modal-ov { align-items: flex-end !important; }
-
-      /* ── EM Dashboard ── */
-      #emTableWrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-      .em-table th, .em-table td { font-size: 11px; padding: 7px 8px; white-space: nowrap; }
-      /* Hide heat columns on small mobile (keep name + scores) */
-      .em-heat-col { display: none !important; }
-
-      /* ── Employee Directory ── */
-      .emp-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 10px !important; }
-      .emp-card { padding: 14px 10px !important; }
-
-      /* ── Profile modal ── */
-      #edModules > div { grid-template-columns: 1fr !important; }
-      #edModules > div + div { grid-template-columns: 1fr !important; }
-
-      /* ── Analytics filter rows (inline rendered) ── */
-      [id$="Root"] > div:first-child { flex-wrap: wrap !important; }
-
-      /* ── Mark Team Attendance/Checklist filter bars ── */
-      #tamFilters, #cmtFilters {
-        display: grid !important;
-        grid-template-columns: 1fr 1fr !important;
-        gap: 6px !important;
-      }
-      #tamFilters input[type="date"], #cmtFilters input[type="date"] { grid-column: 1 / -1; }
-      #tamFilters button, #cmtFilters button { grid-column: 1 / -1; }
-
-      /* ── Mark Team Attendance: staff card layout ── */
-      #tamList .adm-body > div {
-        flex-wrap: wrap !important;
-      }
-      #tamList .adm-body > div > div:last-child {
-        width: 100%; display: flex; flex-wrap: wrap; gap: 5px;
-      }
-      #tamList input[type="time"] { flex: 1; min-width: 90px; }
-
-      /* ── Delegation cards ── */
-      .dcard { border-radius: 12px !important; }
-      .dc-act .btn-sm { flex: 1; text-align: center; }
-
-      /* ── Attendance analytics ── */
-      .att-sum { grid-template-columns: repeat(2,1fr) !important; }
-      .wkgrid  { grid-template-columns: repeat(3,1fr) !important; }
-
-      /* ── Checklist today cards ── */
-      .ck-card { border-radius: 12px !important; padding: 12px !important; }
-
-      /* ── Muster grid: compact ── */
-      .muster-table th, .muster-table td { font-size: 10px !important; padding: 5px 6px !important; }
-
-      /* ── Holiday calendar ── */
-      .hol-grid { grid-template-columns: repeat(2,1fr) !important; gap: 8px !important; }
-      .cal-grid  { gap: 3px !important; }
-      .cal-day   { font-size: 11px !important; padding: 6px 4px !important; }
-
-      /* ── Dashboard grid ── */
-      #dashGrid { grid-template-columns: 1fr !important; }
-
-      /* ── Summary section ── */
-      .dash-sum-grid { grid-template-columns: 1fr !important; }
-
-      /* ── EM Dashboard sort/expand bar ── */
-      #emSortBar { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
-      #emSortBar::-webkit-scrollbar { display: none; }
-      #emSortBar button { flex-shrink: 0; }
-
-      /* ── Doer detail KPI boxes ── */
-      .doer-kpi-grid { grid-template-columns: repeat(2,1fr) !important; }
-    }
+    
 
     /* ── Tiny phones (≤380px) ── */
     @media (max-width: 380px) {
@@ -5939,7 +5745,7 @@
             onerror="this.style.display='none'">
           <div>
             <div class="sb-brand-txt">Fresko</div>
-            <div class="sb-brand-ver">Portal</div>
+            <div class="sb-brand-ver">Portal v3.0</div>
           </div>
         </div>
         <div class="sb-prof" onclick="_loadV('profile')">
@@ -6808,7 +6614,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbxTT5nRkd5eWaOrv0Kv7LIhYXqjjIrNtH5xi-0ZMgaocD411v5VqYBrPhjr1-TaHP2WvA/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbwT3YR34tCq--ZA0erct4Jlq2Zkv3OuLJaiZIggdpkX28NYYOZMD9EscO9oePmYCMKZ_A/exec';
     var _TOKEN  = '';
 
     var _gasActive = 0; // count of concurrent GAS calls in flight
@@ -8398,18 +8204,31 @@ function _gasX(fn, args, timeout, onOk, onErr) {
           '<div id="'+uid+'" class="adm-body adm-open">';
 
         eHtml += emp.tasks.map(function(t, ti) {
-          var isDone = t.status === 'Done';
-          var rowBg  = ti%2===0?'var(--bg)':'var(--sur2)';
+          var isDone     = t.status === 'Done';
+          var isTransOut = t.is_transferred;
+          var rowBg      = ti%2===0?'var(--bg)':'var(--sur2)';
+          var actualFmt  = t.actual ? _tsShort(t.actual) : '';
+          var transFmt   = t.transferred_at ? _tsShort(t.transferred_at) : '';
           return '<div style="display:flex;align-items:center;gap:10px;padding:9px 14px 9px 60px;background:'+rowBg+';border-top:'+(ti>0?'1px solid var(--bdr)':'none')+'">' +
             '<div style="flex:1;min-width:0">' +
-            '<div style="font-size:13px;font-weight:700;'+(isDone?'text-decoration:line-through;color:var(--tx3)':'')+'">' + _esc(t.task_name) + '</div>' +
-            '<div style="font-size:10.5px;color:var(--tx3);margin-top:2px">' +
-            (t.frequency?'<span style="padding:1px 6px;border-radius:4px;background:var(--sur2);border:1px solid var(--bdr);font-size:10px">'+_esc(t.frequency)+'</span> ':'') +
-            (isDone?'<span style="color:var(--G);font-weight:700"><i class="fas fa-circle-check"></i> Done</span>':'<span style="color:var(--R);font-weight:700"><i class="fas fa-circle-xmark"></i> Pending</span>') +
+            '<div style="font-size:13px;font-weight:700;'+(isDone||isTransOut?'text-decoration:line-through;color:var(--tx3)':'')+'">' + _esc(t.task_name) + '</div>' +
+            '<div style="font-size:10.5px;color:var(--tx3);margin-top:3px;display:flex;flex-wrap:wrap;gap:5px;align-items:center">' +
+            (t.frequency?'<span style="padding:1px 6px;border-radius:4px;background:var(--sur2);border:1px solid var(--bdr);font-size:10px">'+_esc(t.frequency)+'</span>':'') +
+            (isTransOut
+              ? '<span style="color:var(--V);font-weight:700"><i class="fas fa-arrow-right-arrow-left"></i> Transferred' +
+                (t.transferred_to?' to Emp '+_esc(t.transferred_to):'') + '</span>' +
+                (transFmt ? '<span style="color:var(--tx3)">· '+transFmt+'</span>' : '') +
+                (t.transfer_by ? '<span style="color:var(--tx3)">by '+_esc(t.transfer_by)+'</span>' : '')
+              : isDone
+                ? '<span style="color:var(--G);font-weight:700"><i class="fas fa-circle-check"></i> Done</span>' +
+                  (actualFmt ? '<span style="color:var(--tx3)">· '+actualFmt+'</span>' : '')
+                : '<span style="color:var(--R);font-weight:700"><i class="fas fa-circle-xmark"></i> Pending</span>'
+            ) +
             '</div></div>' +
-            (isDone ? '' :
+            (isDone || isTransOut ? '' :
               '<div style="display:flex;gap:5px;align-items:center;flex-shrink:0">' +
               '<button id="cmtb_'+_esc(t.task_id)+'_'+_esc(emp.emp_id)+'" onclick="_cmtMarkDone(\''+_esc(t.task_id)+'\',\''+_esc(emp.emp_id)+'\',\''+_esc(emp.name)+'\')" style="padding:4px 10px;border-radius:7px;background:var(--G);color:#fff;font-size:11.5px;font-weight:800;border:none;cursor:pointer;white-space:nowrap"><i class="fas fa-check"></i> Done</button>' +
+              '<button onclick="_cmtTransfer(\''+_esc(t.task_id)+'\',\''+_esc(emp.emp_id)+'\',\''+_esc(emp.name)+'\',\''+_cmtDate+'\')" style="padding:4px 10px;border-radius:7px;background:var(--Vl);color:var(--V);font-size:11.5px;font-weight:800;border:1.5px solid var(--V);cursor:pointer;white-space:nowrap"><i class="fas fa-arrow-right-arrow-left"></i> Transfer</button>' +
               '</div>'
             ) +
             '</div>';
@@ -8420,6 +8239,86 @@ function _gasX(fn, args, timeout, onOk, onErr) {
       }).join('');
 
       list.innerHTML = html;
+    }
+
+    /* ── Smart timestamp formatter: "Today 10:30", "Yesterday 14:05", "27 Jun 09:00" ── */
+    function _tsShort(ts) {
+      if (!ts) return '';
+      // ts format: "dd-MM-yyyy HH:mm:ss" or "yyyy-MM-dd HH:mm:ss"
+      try {
+        var parts = String(ts).split(' ');
+        var datePart = parts[0] || '', timePart = parts[1] || '';
+        var hhmm = timePart.substring(0,5); // "HH:mm"
+        // Parse date
+        var d;
+        if (datePart.includes('-')) {
+          var dp = datePart.split('-');
+          if (dp[0].length === 4) { // yyyy-MM-dd
+            d = new Date(parseInt(dp[0]), parseInt(dp[1])-1, parseInt(dp[2]));
+          } else { // dd-MM-yyyy
+            d = new Date(parseInt(dp[2]), parseInt(dp[1])-1, parseInt(dp[0]));
+          }
+        }
+        if (!d || isNaN(d)) return String(ts).substring(0,16);
+        var today = new Date(); today.setHours(0,0,0,0);
+        var yesterday = new Date(today); yesterday.setDate(today.getDate()-1);
+        var t = new Date(d); t.setHours(0,0,0,0);
+        var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        if (t.getTime() === today.getTime())     return 'Today ' + hhmm;
+        if (t.getTime() === yesterday.getTime()) return 'Yesterday ' + hhmm;
+        return d.getDate() + ' ' + months[d.getMonth()] + ' ' + hhmm;
+      } catch(e) { return String(ts).substring(0,16); }
+    }
+
+    function _cmtTransfer(taskId, empId, empName, date) {
+      // Build employee dropdown from Doer List (exclude the current employee)
+      var doers = (_D.empDir || []).filter(function(e) { return e.emp_id !== empId; });
+      var opts = '<option value="">— Select employee —</option>' +
+        doers.map(function(e) {
+          return '<option value="'+_esc(e.emp_id)+'" data-name="'+_esc(e.name)+'">'+_esc(e.name)+' ('+_esc(e.dept)+')</option>';
+        }).join('');
+
+      _openModal(
+        '<i class="fas fa-arrow-right-arrow-left" style="color:var(--V)"></i> Transfer Task',
+        '<div style="display:flex;flex-direction:column;gap:12px">' +
+        '<div style="padding:10px;background:var(--Vl);border-radius:10px;font-size:12.5px;border:1px solid var(--V);color:var(--V);font-weight:600">' +
+        '<i class="fas fa-list-check"></i> ' + _esc(empName) + ' → Task will move to new employee' +
+        '</div>' +
+        '<div>' +
+        '<label style="font-size:12px;font-weight:800;color:var(--tx2);display:block;margin-bottom:4px">Transfer to <span style="color:var(--R)">★</span></label>' +
+        '<select id="cmtTransTo" class="ana-sel" style="width:100%">' + opts + '</select>' +
+        '</div>' +
+        '<div>' +
+        '<label style="font-size:12px;font-weight:800;color:var(--tx2);display:block;margin-bottom:4px">Reason (optional)</label>' +
+        '<input type="text" id="cmtTransReason" class="ana-sel" placeholder="e.g. Staff on leave" style="width:100%">' +
+        '</div>' +
+        '<div style="font-size:11px;color:var(--tx3);background:var(--sur2);border-radius:8px;padding:8px 10px">' +
+        '<i class="fas fa-info-circle"></i> Task will appear in the new employee\'s checklist. Scoring will go to them.' +
+        '</div>' +
+        '</div>',
+        function() {
+          var toEmpId = (document.getElementById('cmtTransTo') || {}).value || '';
+          if (!toEmpId) { _toast('Please select an employee', 'warn'); return; }
+          var reason = (document.getElementById('cmtTransReason') || {}).value || '';
+          _closeModal();
+          _gas('transferChecklistTask', [taskId, empId, date || _cmtDate, toEmpId, reason], function(res) {
+            // Update local data
+            _cmtData.forEach(function(r) {
+              if (r.task_id === taskId && r.emp_id === empId) {
+                r.is_transferred  = true;
+                r.transferred_to  = toEmpId;
+                r.transfer_by     = res.transferred_by || '';
+                r.transferred_at  = res.transferred_at || '';
+                r.status          = 'Transferred';
+              }
+            });
+            var tName = res.to_emp_name || toEmpId;
+            _toast('✓ Task transferred to ' + tName, 'ok');
+            _renderCmtList();
+          }, function(e) { _toast('Error: ' + e.message, 'err'); });
+        },
+        '<i class="fas fa-arrow-right-arrow-left"></i> Transfer Task'
+      );
     }
 
     function _cmtToggle(uid) {
@@ -15508,25 +15407,48 @@ function _loadSetupTasks() {
           return;
         }
         el.innerHTML = tasks.map(function (t) {
-          var isDone = t.status === 'Done';
-          var isPend = t.status === 'Pending';
-          return '<div class="task-card" style="display:flex;align-items:center;gap:12px;padding:13px 16px;background:var(--sur);border:1px solid var(--bdr);border-radius:10px;margin-bottom:10px;transition:all .15s"' +
-            (isDone ? ' style="opacity:.6"' : '') + '>' +
-            '<div style="width:20px;height:20px;border-radius:50%;border:2px solid ' + _colorForStatus(t.status) + ';background:' + (isDone ? _colorForStatus(t.status) : 'transparent') + ';flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer" ' +
-            (isPend ? 'onclick="_markDone(\'' + _esc(t.task_uid) + '\',\'' + _esc(date) + '\')"' : '') + '>' +
+          var isDone     = t.status === 'Done';
+          var isPend     = t.status === 'Pending';
+          var isReceived = t.is_received; // task transferred to me from someone else
+          var isTransOut = t.transferred_to && !isReceived; // I gave it away
+          var actualFmt  = t.actual     ? _tsShort(t.actual)     : '';
+          var transFmt   = t.transferred_at ? _tsShort(t.transferred_at) : '';
+          var cardBg     = isReceived ? 'background:var(--Vl);border-color:rgba(112,72,232,.25)' : '';
+          return '<div class="task-card anim-item" style="display:flex;align-items:flex-start;gap:12px;padding:13px 16px;background:var(--sur);border:1px solid var(--bdr);border-radius:12px;margin-bottom:8px;transition:all .15s;'+cardBg+'">' +
+            // Completion circle
+            '<div style="width:22px;height:22px;border-radius:50%;border:2px solid '+ _colorForStatus(t.status) +';background:'+(isDone?_colorForStatus(t.status):'transparent')+';flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-top:1px" ' +
+            (isPend && !isTransOut ? 'onclick="_markDone(\''+_esc(t.task_uid)+'\',\''+_esc(date)+'\')"' : '') + '>' +
             (isDone ? '<i class="fas fa-check" style="font-size:10px;color:#fff"></i>' : '') +
             '</div>' +
             '<div style="flex:1;min-width:0">' +
-            '<div style="font-size:13.5px;font-weight:700;' + (isDone ? 'text-decoration:line-through;color:var(--tx3)' : '') + '">' + _esc(t.task_name) + '</div>' +
-            '<div style="font-size:11px;color:var(--tx3);margin-top:3px;display:flex;gap:8px">' +
+            // Task name
+            '<div style="font-size:13.5px;font-weight:700;'+(isDone||isTransOut?'text-decoration:line-through;color:var(--tx3)':'')+';word-break:break-word">' + _esc(t.task_name) + '</div>' +
+            // Meta row: freq + timestamps + badges
+            '<div style="font-size:11px;color:var(--tx3);margin-top:4px;display:flex;flex-wrap:wrap;gap:6px;align-items:center">' +
             _freqBadge(t.frequency) +
-            (t.actual_dt ? '<span>Done: ' + _fmtDate(t.actual_dt) + '</span>' : '') +
+            // Received badge
+            (isReceived
+              ? '<span style="padding:1px 7px;border-radius:10px;background:var(--Vl);color:var(--V);font-weight:700;font-size:10.5px"><i class="fas fa-arrow-right-arrow-left"></i> Transferred to you'+
+                (transFmt?' · '+transFmt:'')+'</span>'
+              : '') +
+            // Transferred-out badge
+            (isTransOut
+              ? '<span style="padding:1px 7px;border-radius:10px;background:var(--Ol);color:var(--O);font-weight:700;font-size:10.5px"><i class="fas fa-share"></i> Transferred away'+
+                (transFmt?' · '+transFmt:'')+'</span>'
+              : '') +
+            // Completion timestamp
+            (isDone && actualFmt
+              ? '<span style="color:var(--G);font-weight:600"><i class="fas fa-circle-check"></i> '+actualFmt+'</span>'
+              : '') +
             '</div>' +
             '</div>' +
+            // Right side: status badge + Done button
+            '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">' +
             _statusBadge(t.status) +
-            (isPend ?
-              '<button class="btn btn-sm btn-xs" onclick="_markDone(\'' + _esc(t.task_uid) + '\',\'' + _esc(date) + '\')"><i class="fas fa-check"></i> Done</button>' :
+            (isPend && !isTransOut ?
+              '<button class="btn btn-sm btn-xs" onclick="_markDone(\''+_esc(t.task_uid)+'\',\''+_esc(date)+'\')"><i class="fas fa-check"></i> Done</button>' :
               '') +
+            '</div>' +
             '</div>';
         }).join('');
       }, function (e) { el.innerHTML = '<div class="te">Error: ' + _esc(e.message) + '</div>'; });
