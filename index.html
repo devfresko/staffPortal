@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="Fresko Portal">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-180.png">
-  <title>Fresko Staff Portal</title>
+  <title>Fresko Staff Portal — v3.0</title>
 
   <!-- External Assets -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -4310,12 +4310,17 @@
       display: none;
       position: fixed;
       inset: 0;
-      background: rgba(0, 0, 0, .5);
+      background: rgba(13, 27, 42, .45);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
       z-index: calc(var(--z-sb) - 1);
+      opacity: 0;
+      transition: opacity .25s ease;
     }
-
     .mob-ov.on {
       display: block;
+      opacity: 1;
+      animation: fadein-fast .25s ease both;
     }
 
     /* Quick search bar in topbar */
@@ -5586,7 +5591,7 @@
   <!-- ═══════════════════════════════════════════════════════════
      LOGIN SCREEN
 ═══════════════════════════════════════════════════════════ -->
-  <div class="scr on" id="sLogin" style="background:linear-gradient(145deg,#001d26 0%,#003d4d 35%,#005F73 60%,#0A9396 85%,#0d7a7a 100%)">
+  <div class="scr on" id="sLogin" style="background:linear-gradient(135deg,#005F73 0%,#0A9396 40%,#94D2BD 100%)">
     <div class="lbox">
       <div class="l-logo-wrap">
         <img src="https://fresko.co.in/wp-content/uploads/2025/08/Untitled-design-21.png" alt="Fresko Logo"
@@ -5651,6 +5656,8 @@
   <div class="scr" id="sApp">
     <!-- Pull-to-refresh indicator (mobile) -->
     <div id="fkPtr"></div>
+    <!-- Global GAS call loading bar — iridescent sweep at very top -->
+    <div id="fkLb" style="position:fixed;top:0;left:0;right:0;height:3px;z-index:9999;background:linear-gradient(90deg,var(--P),var(--Pd),var(--T),var(--G),var(--Pd),var(--P));background-size:300% 100%;animation:loadBarSweep 1.4s linear infinite;opacity:0;transition:opacity .2s;pointer-events:none"></div>
 
     <!-- Mobile sidebar overlay -->
     <div class="mob-ov" id="mobOv" onclick="_closeSb()"></div>
@@ -5762,7 +5769,7 @@
       <!-- Top Bar -->
       <header class="topbar">
         <div class="tb-left">
-          <button class="ico-btn ham" id="hamBtn" onclick="_isMobile&&_isMobile()?_sbToggleMob():_openSb()" title="Menu">
+          <button class="ico-btn ham" id="hamBtn" onclick="_mobToggleSb()" title="Menu">
             <i class="fas fa-bars"></i>
           </button>
           <button type="button" class="ico-btn sb-toggle" id="sbToggle" onclick="_toggleSbCollapse()"
@@ -5877,8 +5884,6 @@
   </div>
 
   <!-- Toast notification -->
-  <!-- Progress loading bar (top of screen) -->
-  <div id="fkLoadBar" class="content-loading-bar"></div>
   <div id="toast"></div>
 
   <!-- ═══════════════════════════════════════════════════════════
@@ -6193,17 +6198,48 @@
     /* ══════════════════════════════════════════════════════════
        SKELETON BUILDER
     ══════════════════════════════════════════════════════════ */
+    /* ── Loading messages — playful, contextual ── */
+    var _skelMsgs = [
+      '🔄 Fetching data…', '⏳ Please wait…', '📡 Connecting…',
+      '🚀 Loading…', '✨ Almost ready…', '📊 Crunching numbers…',
+      '🔍 Gathering info…', '💫 One moment…'
+    ];
+    var _skelMsgIdx = 0;
+    function _skelMsg() { return _skelMsgs[(_skelMsgIdx++) % _skelMsgs.length]; }
+
     function _skel(rows, cls) {
-      rows = rows || 3;
-      cls = cls || 'sk-h5';
-      var h = '<div class="sk-row">';
-      for (var i = 0; i < rows; i++) h += '<div class="sk ' + cls + '"></div>';
+      rows = rows || 3; cls = cls || 'sk-h5';
+      var msg = _skelMsg();
+      var h = '<div class="sk-row" data-msg="' + msg + '">';
+      for (var i = 0; i < rows; i++) {
+        var w = i % 3 === 0 ? '' : i % 3 === 1 ? 'width:88%' : 'width:72%';
+        h += '<div class="sk ' + cls + '" style="' + w + ';animation-delay:' + (i * 0.12) + 's"></div>';
+      }
       return h + '</div>';
     }
+
     function _skelKpi(n) {
       n = n || 4;
       var h = '<div class="krow" style="grid-template-columns:repeat(' + n + ',1fr)">';
-      for (var i = 0; i < n; i++) h += '<div class="sk sk-h6" style="border-radius:14px"></div>';
+      for (var i = 0; i < n; i++)
+        h += '<div class="sk sk-h6" style="border-radius:14px;min-height:90px;animation-delay:' + (i * 0.1) + 's"></div>';
+      return h + '</div>';
+    }
+
+    /* Context-specific skeleton builders */
+    function _skelCard(n) {      // Card grid skeleton
+      n = n || 3;
+      var h = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px">';
+      for (var i = 0; i < n; i++)
+        h += '<div class="sk sk-h5" style="min-height:120px;border-radius:16px;animation-delay:' + (i*0.1) + 's"></div>';
+      return h + '</div>';
+    }
+    function _skelTable(rows) {  // Table skeleton
+      rows = rows || 5;
+      var h = '<div class="sk-row" style="gap:6px">' +
+        '<div class="sk sk-h6" style="height:38px;border-radius:8px;opacity:.5"></div>';
+      for (var i = 0; i < rows; i++)
+        h += '<div class="sk sk-h5" style="height:48px;border-radius:8px;animation-delay:' + (i*0.08) + 's"></div>';
       return h + '</div>';
     }
 
@@ -6506,7 +6542,13 @@
     var GAS_URL = 'https://script.google.com/macros/s/AKfycbya1ul7Jh_POaFHYJLJszVtcomiXmldSBKbwMJR5vIY5q6Vl2GJRlkMJniDNqBWEjN2/exec';
     var _TOKEN  = '';
 
-function _gas(fn, args, onOk, onErr) {
+    var _gasActive = 0; // count of concurrent GAS calls in flight
+
+    function _lbShow() { _gasActive++; var b=document.getElementById('fkLb'); if(b) b.style.opacity='1'; }
+    function _lbHide() { _gasActive=Math.max(0,_gasActive-1); if(!_gasActive){var b=document.getElementById('fkLb');if(b){b.style.opacity='0';}} }
+
+    function _gas(fn, args, onOk, onErr) {
+  _lbShow();
   var sendArgs = (args || []).concat([_U]);
   var cb  = '_cb' + Date.now() + Math.floor(Math.random() * 9999);
   var payload = encodeURIComponent(JSON.stringify({ action: fn, args: sendArgs }));
@@ -6517,7 +6559,7 @@ function _gas(fn, args, onOk, onErr) {
 
   var timer = setTimeout(function() {
     if (done) return;
-    done = true;
+    done = true; _lbHide();
     script.remove();
     delete window[cb];
     if (onErr) onErr({ message: 'Network error. Check connection.' });
@@ -6526,7 +6568,7 @@ function _gas(fn, args, onOk, onErr) {
 
   window[cb] = function(data) {
     if (done) return;
-    done = true;
+    done = true; _lbHide();
     clearTimeout(timer);
     script.remove();
     delete window[cb];
@@ -6971,10 +7013,6 @@ function _gasX(fn, args, timeout, onOk, onErr) {
       var cont = document.getElementById('content');
       if (cont) cont.scrollTop = 0;
       if (cont) cont.innerHTML = _skelKpi(4) + _skel(3);
-
-      // Show top loading bar on every view switch
-      var _lb = document.getElementById('fkLoadBar');
-      if (_lb) { _lb.classList.add('on'); clearTimeout(_lb._lbT); _lb._lbT = setTimeout(function(){ _lb.classList.remove('on'); }, 1800); }
 
       var views = {
         dash: _vDash,
@@ -16867,12 +16905,6 @@ function _loadSetupTasks() {
     }
 
     /* Skeleton loader helper: n rows of type cls (default sk-h4) */
-    function _skel(n, cls) {
-      cls = cls || 'sk-h4';
-      var out = '';
-      for (var i = 0; i < (n || 3); i++) out += '<div class="sk ' + cls + '" style="margin-bottom:10px"></div>';
-      return out;
-    }
 
     /* Role-based check: true if logged-in user is Manager or Owner */
     function _isManager() {
@@ -17337,9 +17369,8 @@ function _loadSetupTasks() {
 
       if (_D.dashStats) {
         _renderDashStats(_D.dashStats);
-        setTimeout(function() { _kpiCountUp(kEl); }, 50);
       } else {
-        _gas('getDashboardStats', [], function(stats) { _D.dashStats = stats; _renderDashStats(stats); setTimeout(function(){ _kpiCountUp(kEl); }, 50); },
+        _gas('getDashboardStats', [], function(stats) { _D.dashStats = stats; _renderDashStats(stats); },
           function() { if (kEl) kEl.innerHTML = '<div class="te" style="grid-column:1/-1"><i class="fas fa-wifi"></i> Could not load stats.</div>'; });
       }
 
@@ -17486,99 +17517,12 @@ function _loadSetupTasks() {
         '<span>' + _esc(msg) + '</span>' +
         '</div>';
       el.style.background = cfg.bg;
-      // Reset animation so it replays on every toast
-      el.style.animation = 'none';
-      void el.offsetWidth; // force reflow
-      el.style.animation = 'toastIn .35s cubic-bezier(.34,1.2,.64,1) both';
       el.classList.add('show');
 
       clearTimeout(_toast._t);
-      _toast._t = setTimeout(function () {
-        el.style.animation = 'toastOut .28s ease forwards';
-        setTimeout(function() { el.classList.remove('show'); el.style.animation = ''; }, 280);
-      }, 3200);
+      _toast._t = setTimeout(function () { el.classList.remove('show'); }, 3500);
     }
     _toast._t = null;
-
-    /* ── Button Ripple Effect ── */
-    document.addEventListener('click', function(e) {
-      var btn = e.target.closest('.btn, .l-btn, .btn-checkin, .ico-btn');
-      if (!btn) return;
-      var rect = btn.getBoundingClientRect();
-      var ripple = document.createElement('span');
-      ripple.className = 'btn-ripple';
-      ripple.style.top  = (e.clientY - rect.top)  + 'px';
-      ripple.style.left = (e.clientX - rect.left) + 'px';
-      btn.style.position = btn.style.position || 'relative';
-      btn.style.overflow = 'hidden';
-      btn.appendChild(ripple);
-      setTimeout(function() { if (ripple.parentNode) ripple.remove(); }, 480);
-    }, { passive: true });
-
-    /* ── KPI number count-up animation ── */
-    function _animateNum(el, target, duration) {
-      var start = 0;
-      var startT = null;
-      var isFloat = String(target).indexOf('.') !== -1;
-      function step(ts) {
-        if (!startT) startT = ts;
-        var prog = Math.min((ts - startT) / (duration || 700), 1);
-        var ease = 1 - Math.pow(1 - prog, 3); // cubic ease-out
-        var cur = start + (target - start) * ease;
-        el.textContent = isFloat ? cur.toFixed(1) : Math.round(cur);
-        if (prog < 1) requestAnimationFrame(step);
-        else el.textContent = isFloat ? target.toFixed(1) : target;
-      }
-      requestAnimationFrame(step);
-    }
-    /* Called after KPI data is loaded — wraps numeric values in count-up */
-    function _kpiCountUp(containerEl) {
-      if (!containerEl) return;
-      containerEl.querySelectorAll('.kpi-val, .ps-val, .att-kpi .val, .ana-kpi-val, .da-kpi-val').forEach(function(el) {
-        var raw = el.textContent.replace(/[^0-9.]/g, '');
-        var num = parseFloat(raw);
-        if (!isNaN(num) && num > 0) {
-          el.classList.add('num-loaded');
-          _animateNum(el, num, 600);
-        }
-      });
-    }
-
-    /* ── Animated progress bars — set actual width after a tick ── */
-    function _animateBars(root) {
-      var container = root || document.getElementById('content');
-      if (!container) return;
-      container.querySelectorAll('.kpi-bar, .pbar').forEach(function(bar) {
-        var targetW = bar.style.width || bar.getAttribute('data-w');
-        if (!targetW) return;
-        bar.setAttribute('data-w', targetW);
-        bar.style.width = '0%';
-        requestAnimationFrame(function() {
-          requestAnimationFrame(function() {
-            bar.style.transition = 'width .8s cubic-bezier(.4,0,.2,1)';
-            bar.style.width = targetW;
-          });
-        });
-      });
-    }
-
-    /* Hook _animateBars after every innerHTML assignment in content */
-    var _origContent = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML');
-    if (_origContent && _origContent.set) {
-      var _patchedInner = false;
-      function _patchContentInner() {
-        if (_patchedInner) return; _patchedInner = true;
-        var contentEl = document.getElementById('content');
-        if (!contentEl) return;
-        var _cset = _origContent.set;
-        var _mutObs = new MutationObserver(function() {
-          setTimeout(function() { _animateBars(contentEl); }, 80);
-        });
-        _mutObs.observe(contentEl, { childList: true, subtree: false });
-      }
-      document.addEventListener('DOMContentLoaded', _patchContentInner);
-      setTimeout(_patchContentInner, 500);
-    }
 
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js').catch(function(){});
@@ -17827,85 +17771,6 @@ function _deactivateTask(uid) {
       } catch(e) {
         console.warn('[Session] Restore failed:', e.message);
       }
-    })();
-
-  
-    /* ══════════════════════════════════════════════════════════
-       ✦  PREMIUM MICRO-INTERACTIONS
-    ══════════════════════════════════════════════════════════ */
-
-    /* ── 3D Tilt on KPI cards ── */
-    (function() {
-      function addTilt(el) {
-        if (el._tilt) return;
-        el._tilt = true;
-        el.addEventListener('mousemove', function(e) {
-          var r = el.getBoundingClientRect();
-          var cx = r.left + r.width  / 2;
-          var cy = r.top  + r.height / 2;
-          var dx = (e.clientX - cx) / (r.width  / 2);
-          var dy = (e.clientY - cy) / (r.height / 2);
-          var rx = -dy * 7;
-          var ry =  dx * 7;
-          el.style.transform = 'translateY(-3px) scale(1.015) rotateX(' + rx + 'deg) rotateY(' + ry + 'deg)';
-          el.style.boxShadow = 'var(--shad2), 0 0 0 1.5px rgba(10,147,150,.12), 0 ' + (6 + dy*4) + 'px ' + (20 + Math.abs(dx)*10) + 'px rgba(13,27,42,.12)';
-        }, { passive: true });
-        el.addEventListener('mouseleave', function() {
-          el.style.transform = '';
-          el.style.boxShadow = '';
-          el.style.transition = 'all .35s cubic-bezier(.4,0,.2,1)';
-          setTimeout(function(){ el.style.transition = ''; }, 350);
-        }, { passive: true });
-      }
-
-      function applyTilts() {
-        document.querySelectorAll('.kpi').forEach(addTilt);
-      }
-
-      // Apply on content changes
-      var ct = document.getElementById('content');
-      if (ct) {
-        var obs = new MutationObserver(function() { setTimeout(applyTilts, 60); });
-        obs.observe(ct, { childList: true, subtree: true });
-      }
-      document.addEventListener('DOMContentLoaded', applyTilts);
-      setTimeout(applyTilts, 1000);
-    })();
-
-    /* ── Card lift on hover (emp cards, delegation cards) ── */
-    (function() {
-      function liftOn(el) {
-        el.style.transform = 'translateY(-4px)';
-        el.style.boxShadow = 'var(--shad2)';
-      }
-      function liftOff(el) {
-        el.style.transform = '';
-        el.style.boxShadow = '';
-      }
-      // Delegated — works for dynamically added cards
-      document.addEventListener('mouseover', function(e) {
-        var c = e.target.closest('.emp-card, .da-emp-card, .ed-card');
-        if (c) liftOn(c);
-      }, { passive: true });
-      document.addEventListener('mouseout', function(e) {
-        var c = e.target.closest('.emp-card, .da-emp-card, .ed-card');
-        if (c) liftOff(c);
-      }, { passive: true });
-    })();
-
-    /* ── Topbar title animate on view change ── */
-    var _origTbTitle = null;
-    (function() {
-      var el = document.getElementById('tbTitle');
-      if (!el) return;
-      var origSet = Object.getOwnPropertyDescriptor(Node.prototype, 'textContent');
-      // Instead, observe DOM changes on tbTitle
-      var obs = new MutationObserver(function() {
-        el.style.animation = 'none';
-        void el.offsetWidth;
-        el.style.animation = 'tbTitleIn .3s cubic-bezier(.34,1.2,.64,1) both';
-      });
-      obs.observe(el, { childList: true, characterData: true, subtree: true });
     })();
 
   </script>
