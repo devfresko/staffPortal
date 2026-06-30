@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="Fresko Portal">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-180.png">
-  <title>Fresko Staff Portal — v3.0</title>
+  <title>Fresko Staff Portal</title>
 
   <!-- External Assets -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -5745,7 +5745,7 @@
             onerror="this.style.display='none'">
           <div>
             <div class="sb-brand-txt">Fresko</div>
-            <div class="sb-brand-ver">Portal v3.0</div>
+            <div class="sb-brand-ver">Portal</div>
           </div>
         </div>
         <div class="sb-prof" onclick="_loadV('profile')">
@@ -6614,7 +6614,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbx9navfr3sWpGf6kDQxaQhA2R673r-fXIHUT07oU4WtAnjyBWQybAEgcaHM7rxd-H8k5w/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbx1lDKlV-J9pxmI-C4wnoZZz7MUMJ6vojs6wg2OdJ4e4BvdQRriClV2X_qUnyZlym0GGw/exec';
     var _TOKEN  = '';
 
     var _gasActive = 0; // count of concurrent GAS calls in flight
@@ -15460,19 +15460,18 @@ function _loadSetupTasks() {
           el.innerHTML = '<div class="empty-state"><i class="fas fa-list-check"></i><h4>No Tasks Today</h4><p>No tasks are scheduled for ' + _fmtDate(date) + '.</p></div>';
           return;
         }
-        el.innerHTML = tasks.map(function (t) {
+        el.innerHTML = tasks.map(function (t, idx) {
           var isDone = t.status === 'Done';
           var isPend = !isDone && t.status !== 'Holiday';
           var isTransOut = !!(t.is_transferred);
           var actualFmt  = t.actual ? _tsShort(t.actual) : '';
-          var uid  = _esc(t.task_uid  || '');
-          var nm   = _esc(t.task_name || '');
-          var dt   = _esc(date);
-          var sc   = _colorForStatus(t.status);
-          var doneAttr = isPend && !isTransOut
-            ? 'data-uid="'+uid+'" data-name="'+nm+'" data-dt="'+dt+'" onclick="_markDone(this)"' : '';
-          return '<div class="anim-item" style="display:flex;align-items:flex-start;gap:12px;padding:13px 16px;background:var(--sur);border:1px solid var(--bdr);border-radius:12px;margin-bottom:8px">' +
-            '<div style="width:24px;height:24px;border-radius:50%;border:2px solid '+sc+';background:'+(isDone?sc:'transparent')+';flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-top:1px" '+doneAttr+'>' +
+          var rowId = 'ckrow_' + idx + '_' + Date.now();
+          var sc    = _colorForStatus(t.status);
+          // Single row wrapper holds the data — both circle and button just
+          // reference the row's id, no ambiguity about which element was clicked.
+          return '<div class="anim-item" id="'+rowId+'" data-uid="'+_esc(t.task_uid||'')+'" data-name="'+_esc(t.task_name||'')+'" data-dt="'+_esc(date)+'" style="display:flex;align-items:flex-start;gap:12px;padding:13px 16px;background:var(--sur);border:1px solid var(--bdr);border-radius:12px;margin-bottom:8px">' +
+            '<div class="ck-circle" style="width:24px;height:24px;border-radius:50%;border:2px solid '+sc+';background:'+(isDone?sc:'transparent')+';flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-top:1px" ' +
+            (isPend && !isTransOut ? 'onclick="_markDone(\''+rowId+'\')"' : '') + '>' +
             (isDone?'<i class="fas fa-check" style="font-size:10px;color:#fff"></i>':'') +
             '</div>' +
             '<div style="flex:1;min-width:0">' +
@@ -15484,31 +15483,41 @@ function _loadSetupTasks() {
             '</div></div>' +
             '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">' +
             _statusBadge(t.status) +
-            (isPend&&!isTransOut?'<button class="btn btn-sm btn-xs" data-uid="'+uid+'" data-name="'+nm+'" data-dt="'+dt+'" onclick="_markDone(this)"><i class="fas fa-check"></i> Done</button>':'') +
+            (isPend&&!isTransOut?'<button class="ck-btn btn btn-sm btn-xs" onclick="_markDone(\''+rowId+'\')"><i class="fas fa-check"></i> Done</button>':'') +
             '</div>' +
             '</div>';
         }).join('');
       }, function (e) { el.innerHTML = '<div class="te">Error: ' + _esc(e.message) + '</div>'; });
     }
 
-    function _markDone(el) {
-      var taskUid  = el.dataset.uid  || '';
-      var taskName = el.dataset.name || '';
-      var date     = el.dataset.dt   || '';
-      var btn = el.tagName === 'BUTTON' ? el : el.closest('button') ||
-        document.querySelector('button[data-name="'+taskName+'"][data-dt="'+date+'"]');
-      if (btn) { btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>'; btn.disabled = true; }
+    function _markDone(rowId) {
+      var row = document.getElementById(rowId);
+      if (!row) return;
+      var taskUid  = row.dataset.uid  || '';
+      var taskName = row.dataset.name || '';
+      var date     = row.dataset.dt   || '';
+      var circle = row.querySelector('.ck-circle');
+      var btn    = row.querySelector('.ck-btn');
+      // Disable BOTH the circle and the button so there's no ambiguity about state
+      if (circle) circle.style.pointerEvents = 'none';
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Saving…'; }
+      row.style.opacity = '0.6';
+
       _gas('markTaskDone', [taskUid, taskName, date, ''], function(r) {
+        row.style.opacity = '1';
         if (r && r.success === false) {
           _toast('❌ ' + (r.error || 'Task update nahi hui'), 'err');
-          if (btn) { btn.innerHTML = '<i class="fas fa-check"></i> Done'; btn.disabled = false; }
+          if (circle) circle.style.pointerEvents = '';
+          if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> Done'; }
         } else {
           _toast('✅ Done!', 'ok');
           _loadToday();
         }
       }, function(e) {
+        row.style.opacity = '1';
         _toast('❌ Error: ' + e.message, 'err');
-        if (btn) { btn.innerHTML = '<i class="fas fa-check"></i> Done'; btn.disabled = false; }
+        if (circle) circle.style.pointerEvents = '';
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> Done'; }
       });
     }
 
