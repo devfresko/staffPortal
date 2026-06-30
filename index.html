@@ -5745,7 +5745,7 @@
             onerror="this.style.display='none'">
           <div>
             <div class="sb-brand-txt">Fresko</div>
-            <div class="sb-brand-ver">Portal</div>
+            <div class="sb-brand-ver">Portal v3.0</div>
           </div>
         </div>
         <div class="sb-prof" onclick="_loadV('profile')">
@@ -6614,7 +6614,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbx1lDKlV-J9pxmI-C4wnoZZz7MUMJ6vojs6wg2OdJ4e4BvdQRriClV2X_qUnyZlym0GGw/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbzO-h9TRZWUDL7ca-AjzhnHk7ACeMaaQjHyVUnddZKELpHXcm_Xk3Z6r-tvHnCUlpmKhQ/exec';
     var _TOKEN  = '';
 
     var _gasActive = 0; // count of concurrent GAS calls in flight
@@ -8222,7 +8222,8 @@ function _gasX(fn, args, timeout, onOk, onErr) {
           var rowBg      = ti%2===0?'var(--bg)':'var(--sur2)';
           var actualFmt  = t.actual ? _tsShort(t.actual) : '';
           var transFmt   = t.transferred_at ? _tsShort(t.transferred_at) : '';
-          return '<div style="display:flex;align-items:center;gap:10px;padding:9px 14px 9px 60px;background:'+rowBg+';border-top:'+(ti>0?'1px solid var(--bdr)':'none')+'">' +
+          var rowId      = 'cmtrow_' + t.row_num + '_' + Math.random().toString(36).slice(2,7);
+          return '<div id="'+rowId+'" data-row="'+t.row_num+'" data-occ="'+t.occ+'" data-name="'+_esc(t.task_name||'')+'" data-emp="'+_esc(emp.emp_id)+'" data-empname="'+_esc(emp.name)+'" data-dt="'+_cmtDate+'" style="display:flex;align-items:center;gap:10px;padding:9px 14px 9px 60px;background:'+rowBg+';border-top:'+(ti>0?'1px solid var(--bdr)':'none')+'">' +
             '<div style="flex:1;min-width:0">' +
             '<div style="font-size:13px;font-weight:700;'+(isDone||isTransOut?'text-decoration:line-through;color:var(--tx3)':'')+'">' + _esc(t.task_name) + '</div>' +
             '<div style="font-size:10.5px;color:var(--tx3);margin-top:3px;display:flex;flex-wrap:wrap;gap:5px;align-items:center">' +
@@ -8239,9 +8240,9 @@ function _gasX(fn, args, timeout, onOk, onErr) {
             ) +
             '</div></div>' +
             (isDone || isTransOut ? '' :
-              '<div style="display:flex;gap:5px;align-items:center;flex-shrink:0">' +
-              '<button id="cmtb_'+_esc(t.task_id)+'_'+_esc(emp.emp_id)+'" onclick="_cmtMarkDone(\''+_esc(t.task_id)+'\',\''+_esc(emp.emp_id)+'\',\''+_esc(emp.name)+'\')" style="padding:4px 10px;border-radius:7px;background:var(--G);color:#fff;font-size:11.5px;font-weight:800;border:none;cursor:pointer;white-space:nowrap"><i class="fas fa-check"></i> Done</button>' +
-              '<button onclick="_cmtTransfer(\'' + _esc(t.task_id) + '\',\'' + _esc(t.task_name) + '\',\'' + _esc(emp.emp_id) + '\',\'' + _esc(emp.name) + '\',\'' + _cmtDate + '\')" style="padding:4px 10px;border-radius:7px;background:var(--Vl);color:var(--V);font-size:11.5px;font-weight:800;border:1.5px solid var(--V);cursor:pointer;white-space:nowrap"><i class=\"fas fa-arrow-right-arrow-left\"></i> Transfer</button>' +
+              '<div class="cmt-actions" style="display:flex;gap:5px;align-items:center;flex-shrink:0">' +
+              '<button class="cmt-done-btn" onclick="_cmtMarkDone(this)" style="padding:4px 10px;border-radius:7px;background:var(--G);color:#fff;font-size:11.5px;font-weight:800;border:none;cursor:pointer;white-space:nowrap"><i class="fas fa-check"></i> Done</button>' +
+              '<button onclick="_cmtTransfer(this)" style="padding:4px 10px;border-radius:7px;background:var(--Vl);color:var(--V);font-size:11.5px;font-weight:800;border:1.5px solid var(--V);cursor:pointer;white-space:nowrap"><i class="fas fa-arrow-right-arrow-left"></i> Transfer</button>' +
               '</div>'
             ) +
             '</div>';
@@ -8283,13 +8284,22 @@ function _gasX(fn, args, timeout, onOk, onErr) {
       } catch(e) { return String(ts).substring(0,16); }
     }
 
-    function _cmtTransfer(taskId, taskName, empId, empName, date) {
+    function _cmtTransfer(el) {
+      var row = el.closest('[data-row]');
+      if (!row) return;
+      var rowNum   = row.dataset.row     || '';
+      var occ      = row.dataset.occ     || '0';
+      var taskName = row.dataset.name    || '';
+      var empId    = row.dataset.emp     || '';
+      var empName  = row.dataset.empname || '';
+      var date     = row.dataset.dt      || '';
+
       // If empDir not loaded yet, fetch it first then show modal
       if (!_D.empDir || !_D.empDir.length) {
         _toast('⏳ Loading employee list…', 'info');
         _gas('getEmployeeDirectory', [], function(dir) {
           _D.empDir = dir || [];
-          _cmtTransfer(taskId, taskName, empId, empName, date);
+          _cmtTransfer(el);
         }, function(e) { _toast('Could not load employees: ' + e.message, 'err'); });
         return;
       }
@@ -8340,12 +8350,12 @@ function _gasX(fn, args, timeout, onOk, onErr) {
             confirmBtn.disabled = true;
             confirmBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Transferring…';
           }
-          // Use 30s timeout — transfer reads Name Id column only (fast) but GAS cold start can be slow
-          _gasX('transferChecklistTask', [taskId, taskName, empId, date || _cmtDate, toEmpId, reason], 30000,
+          // Use 30s timeout — row_num based write is instant, this just covers GAS cold start
+          _gasX('transferChecklistTask', [rowNum, occ, taskName, empId, date || _cmtDate, toEmpId, reason], 30000,
             function(res) {
               _closeModal();
               _cmtData.forEach(function(r) {
-                if ((r.task_id === taskId || r.task_name === taskName) && r.emp_id === empId) {
+                if (r.row_num == rowNum && r.emp_id === empId) {
                   r.is_transferred = true; r.transferred_to = toEmpId;
                   r.transfer_by    = res.transferred_by || '';
                   r.transferred_at = res.transferred_at || '';
@@ -8404,16 +8414,23 @@ function _gasX(fn, args, timeout, onOk, onErr) {
         _cmtData=rows||[]; _renderCmtList();
       }, function(e){ if(l) l.innerHTML='<div class="te">'+_esc(e.message)+'</div>'; });
     }
-    function _cmtMarkDone(taskId, empId, empName) {
-      var btn=document.getElementById('cmtb_'+taskId+'_'+empId);
-      if(btn){btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i>';}
-      _gas('markTeamTaskDone',[taskId,empId,_cmtDate,''], function(){
-        _cmtData.forEach(function(r){ if(r.task_id===taskId&&r.emp_id===empId) r.status='Done'; });
-        _toast('✓ Task marked done for '+empName,'ok');
+    function _cmtMarkDone(el) {
+      var row = el.closest('[data-row]');
+      if (!row) return;
+      var rowNum   = row.dataset.row     || '';
+      var occ      = row.dataset.occ     || '0';
+      var taskName = row.dataset.name    || '';
+      var empId    = row.dataset.emp     || '';
+      var empName  = row.dataset.empname || '';
+      var btn = row.querySelector('.cmt-done-btn');
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+      _gas('markTeamTaskDone', [rowNum, occ, taskName, empId, _cmtDate, ''], function() {
+        _cmtData.forEach(function(r) { if (r.row_num == rowNum && r.emp_id === empId) r.status = 'Done'; });
+        _toast('✓ ' + empName + ' ka task done mark ho gaya', 'ok');
         _renderCmtList();
-      }, function(e){
-        _toast(e.message,'err');
-        if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-check"></i> Done';}
+      }, function(e) {
+        _toast(e.message, 'err');
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> Done'; }
       });
     }
     function _cmtShiftTask(taskId, empId) {
@@ -15460,16 +15477,14 @@ function _loadSetupTasks() {
           el.innerHTML = '<div class="empty-state"><i class="fas fa-list-check"></i><h4>No Tasks Today</h4><p>No tasks are scheduled for ' + _fmtDate(date) + '.</p></div>';
           return;
         }
-        el.innerHTML = tasks.map(function (t, idx) {
+        el.innerHTML = tasks.map(function (t) {
           var isDone = t.status === 'Done';
           var isPend = !isDone && t.status !== 'Holiday';
           var isTransOut = !!(t.is_transferred);
           var actualFmt  = t.actual ? _tsShort(t.actual) : '';
-          var rowId = 'ckrow_' + idx + '_' + Date.now();
+          var rowId = 'ckrow_' + t.row_num + '_' + Math.random().toString(36).slice(2,7);
           var sc    = _colorForStatus(t.status);
-          // Single row wrapper holds the data — both circle and button just
-          // reference the row's id, no ambiguity about which element was clicked.
-          return '<div class="anim-item" id="'+rowId+'" data-uid="'+_esc(t.task_uid||'')+'" data-name="'+_esc(t.task_name||'')+'" data-dt="'+_esc(date)+'" style="display:flex;align-items:flex-start;gap:12px;padding:13px 16px;background:var(--sur);border:1px solid var(--bdr);border-radius:12px;margin-bottom:8px">' +
+          return '<div class="anim-item" id="'+rowId+'" data-row="'+t.row_num+'" data-occ="'+t.occ+'" data-name="'+_esc(t.task_name||'')+'" data-dt="'+_esc(date)+'" style="display:flex;align-items:flex-start;gap:12px;padding:13px 16px;background:var(--sur);border:1px solid var(--bdr);border-radius:12px;margin-bottom:8px">' +
             '<div class="ck-circle" style="width:24px;height:24px;border-radius:50%;border:2px solid '+sc+';background:'+(isDone?sc:'transparent')+';flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-top:1px" ' +
             (isPend && !isTransOut ? 'onclick="_markDone(\''+rowId+'\')"' : '') + '>' +
             (isDone?'<i class="fas fa-check" style="font-size:10px;color:#fff"></i>':'') +
@@ -15493,17 +15508,17 @@ function _loadSetupTasks() {
     function _markDone(rowId) {
       var row = document.getElementById(rowId);
       if (!row) return;
-      var taskUid  = row.dataset.uid  || '';
+      var rowNum   = row.dataset.row  || '';
+      var occ      = row.dataset.occ  || '0';
       var taskName = row.dataset.name || '';
       var date     = row.dataset.dt   || '';
       var circle = row.querySelector('.ck-circle');
       var btn    = row.querySelector('.ck-btn');
-      // Disable BOTH the circle and the button so there's no ambiguity about state
       if (circle) circle.style.pointerEvents = 'none';
       if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Saving…'; }
       row.style.opacity = '0.6';
 
-      _gas('markTaskDone', [taskUid, taskName, date, ''], function(r) {
+      _gas('markTaskDone', [rowNum, occ, taskName, date, ''], function(r) {
         row.style.opacity = '1';
         if (r && r.success === false) {
           _toast('❌ ' + (r.error || 'Task update nahi hui'), 'err');
