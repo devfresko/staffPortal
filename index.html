@@ -5745,7 +5745,7 @@
             onerror="this.style.display='none'">
           <div>
             <div class="sb-brand-txt">Fresko</div>
-            <div class="sb-brand-ver">Portal</div>
+            <div class="sb-brand-ver">Portal v3.0</div>
           </div>
         </div>
         <div class="sb-prof" onclick="_loadV('profile')">
@@ -6614,7 +6614,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbziD3vUWuobo55CAfXnsRoErIA56YaYQ0I8aCRg6MXc-R2nWlVcQK2AVE5iu0RWoXjXbw/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbyR3EGyn1xPhvjwkLngy8i-5kFpVNVtmqSc3SvnvIDGHhYW15OPbvnERTbH7_33BvQfJQ/exec';
     var _TOKEN  = '';
 
     var _gasActive = 0; // count of concurrent GAS calls in flight
@@ -8223,7 +8223,7 @@ function _gasX(fn, args, timeout, onOk, onErr) {
           var actualFmt  = t.actual ? _tsShort(t.actual) : '';
           var transFmt   = t.transferred_at ? _tsShort(t.transferred_at) : '';
           var rowId      = 'cmtrow_' + t.row_num + '_' + Math.random().toString(36).slice(2,7);
-          return '<div id="'+rowId+'" data-row="'+t.row_num+'" data-occ="'+t.occ+'" data-name="'+_esc(t.task_name||'')+'" data-emp="'+_esc(emp.emp_id)+'" data-empname="'+_esc(emp.name)+'" data-dt="'+_cmtDate+'" style="display:flex;align-items:center;gap:10px;padding:9px 14px 9px 60px;background:'+rowBg+';border-top:'+(ti>0?'1px solid var(--bdr)':'none')+'">' +
+          return '<div id="'+rowId+'" data-row="'+t.row_num+'" data-occ="'+t.occ+'" data-uid="'+_esc(t.task_uid||'')+'" data-name="'+_esc(t.task_name||'')+'" data-emp="'+_esc(emp.emp_id)+'" data-empname="'+_esc(emp.name)+'" data-dt="'+_cmtDate+'" style="display:flex;align-items:center;gap:10px;padding:9px 14px 9px 60px;background:'+rowBg+';border-top:'+(ti>0?'1px solid var(--bdr)':'none')+'">' +
             '<div style="flex:1;min-width:0">' +
             '<div style="font-size:13px;font-weight:700;'+(isDone||isTransOut?'text-decoration:line-through;color:var(--tx3)':'')+'">' + _esc(t.task_name) + '</div>' +
             '<div style="font-size:10.5px;color:var(--tx3);margin-top:3px;display:flex;flex-wrap:wrap;gap:5px;align-items:center">' +
@@ -8288,6 +8288,7 @@ function _gasX(fn, args, timeout, onOk, onErr) {
       if (!row) return;
       var rowNum   = row.dataset.row     || '';
       var occ      = row.dataset.occ     || '0';
+      var taskUid  = row.dataset.uid     || '';   // Task ID for reliable Checklist lookup
       var taskName = row.dataset.name    || '';
       var empId    = row.dataset.emp     || '';
       var empName  = row.dataset.empname || '';
@@ -8350,7 +8351,7 @@ function _gasX(fn, args, timeout, onOk, onErr) {
             confirmBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Transferring…';
           }
           // Use 30s timeout — row_num based write is instant, this just covers GAS cold start
-          _gasX('transferChecklistTask', [rowNum, occ, taskName, empId, date || _cmtDate, toEmpId, reason], 60000,
+          _gasX('transferChecklistTask', [rowNum, occ, taskUid, taskName, empId, date || _cmtDate, toEmpId, reason], 60000,
             function(res) {
               _closeModal();
               _cmtData.forEach(function(r) {
@@ -11267,7 +11268,7 @@ function _loadSetupTasks() {
 
         '</div>' +
         '<div style="padding:14px 20px;border-top:1px solid var(--bdr)">' +
-        '<div style="font-size:10px;color:var(--tx3);font-weight:600">Fresko Portal &nbsp;·&nbsp; &copy; 2026 Fresko</div>' +
+        '<div style="font-size:10px;color:var(--tx3);font-weight:600">Fresko Portal v3.0 &nbsp;·&nbsp; &copy; 2026 Fresko</div>' +
         '</div>';
 
       document.body.appendChild(panel);
