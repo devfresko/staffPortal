@@ -6614,7 +6614,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbwROpJf8q4QMxTRqS6NTFm2klIv6YUUm_H_9bvXFYmVTvNldc0lK5zfbj4eNwLcuncQIg/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbyqG7MYJMiXGE1qGfoittig6nkqajnBL-RJeDorC6UClKTN33LgeDevX8FKNyBVDi5JSw/exec';
     var _TOKEN  = '';
 
     var _gasActive = 0; // count of concurrent GAS calls in flight
@@ -8338,7 +8338,7 @@ function _gasX(fn, args, timeout, onOk, onErr) {
         '<div><label style="font-size:12px;font-weight:800;color:var(--tx2);display:block;margin-bottom:5px">Reason (optional)</label>' +
         '<input type="text" id="cmtTransReason" class="ana-sel" placeholder="e.g. Staff on leave, Other duty…" style="width:100%"></div>' +
         '<div style="font-size:11px;color:var(--tx3);background:var(--sur2);border-radius:8px;padding:8px 10px">' +
-        '<i class="fas fa-info-circle"></i> Task nayi employee ke Today view mein dikhega. Scoring unhe milegi.' +
+        '<i class="fas fa-info-circle"></i> Task dono sheets (Checklist + Checklist_Today) mein update hoga. Pehla update 5-10 seconds mein hoga.' +
         '</div></div>',
         function() {
           var toEmpId = (document.getElementById('cmtTransTo') || {}).value || '';
@@ -8350,7 +8350,7 @@ function _gasX(fn, args, timeout, onOk, onErr) {
             confirmBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Transferring…';
           }
           // Use 30s timeout — row_num based write is instant, this just covers GAS cold start
-          _gasX('transferChecklistTask', [rowNum, occ, taskName, empId, date || _cmtDate, toEmpId, reason], 30000,
+          _gasX('transferChecklistTask', [rowNum, occ, taskName, empId, date || _cmtDate, toEmpId, reason], 60000,
             function(res) {
               _closeModal();
               _cmtData.forEach(function(r) {
@@ -11267,7 +11267,7 @@ function _loadSetupTasks() {
 
         '</div>' +
         '<div style="padding:14px 20px;border-top:1px solid var(--bdr)">' +
-        '<div style="font-size:10px;color:var(--tx3);font-weight:600">Fresko Portal v3.0 &nbsp;·&nbsp; &copy; 2026 Fresko</div>' +
+        '<div style="font-size:10px;color:var(--tx3);font-weight:600">Fresko Portal &nbsp;·&nbsp; &copy; 2026 Fresko</div>' +
         '</div>';
 
       document.body.appendChild(panel);
