@@ -7806,20 +7806,22 @@ function _gasX(fn, args, timeout, onOk, onErr) {
     ══════════════════════════════════════════════════════════ */
 
     function _safeU() {
-      var u = _U || {};
-      return {
-        name:     u.name || u.full_name || 'User',
-        emp_code: u.emp_code || u.user_id || '',
-        email:    u.email || '',
-        role:     u.role  || 'STAFF',
-        dept:     u.dept  || '',
-        photo:    u.photo || '',
-        need_attendance: u.need_attendance !== false,
-        need_location:   u.need_location   !== false
-      };
+      // Repair _U in-place so ALL subsequent _U.x accesses are safe
+      if (!_U || typeof _U !== 'object') _U = {};
+      if (!_U.name)            _U.name            = 'User';
+      if (!_U.emp_code)        _U.emp_code        = '';
+      if (!_U.email)           _U.email           = '';
+      if (!_U.role)            _U.role            = 'STAFF';
+      if (!_U.dept)            _U.dept            = '';
+      if (!_U.photo)           _U.photo           = '';
+      if (_U.need_attendance === undefined) _U.need_attendance = true;
+      if (_U.need_location   === undefined) _U.need_location   = true;
+      return _U; // returns the repaired _U directly
     }
 
+
     function _bootApp() {
+      _safeU(); // ensure _U has valid values before any access
       // Switch screens
       document.getElementById('sLogin').classList.remove('on');
       document.getElementById('sApp').classList.add('on');
@@ -18196,13 +18198,13 @@ function _loadSetupTasks() {
     /* Role-based check: true if logged-in user is Manager or Owner */
     function _isManager() {
       if (!_U) return false;
-      var r = String(_U.role || '').toUpperCase();
+      var r = String((_U||{}).role || '').toUpperCase();
       return r === 'OWNER' || r === 'MANAGER';
     }
 
     function _isMarkAttendanceAllowed() {
       if (!_U) return false;
-      var r = String(_U.role || '').toUpperCase();
+      var r = String((_U||{}).role || '').toUpperCase();
       return r === 'OWNER' || r === 'MANAGER' || r === 'COORDINATOR';
     }
 
@@ -19059,6 +19061,21 @@ function _deactivateTask(uid) {
         console.warn('[Session] Restore failed:', e.message);
       }
     })();
+
+
+    // Global error handler — catches any uncaught error
+    window.onerror = function(msg, src, line, col, err) {
+      console.error('[GlobalErr]', msg, src, line);
+      var c = document.getElementById('content');
+      if (c && c.innerHTML.trim().length < 100) {
+        c.innerHTML = '<div style="padding:32px;text-align:center">'
+          + '<div style="font-size:36px;margin-bottom:10px">⚠️</div>'
+          + '<b>App Error</b><br><small style="color:#888">' + msg + '</small><br><br>'
+          + '<button onclick="location.reload()" class="btn">🔄 Reload</button>'
+          + '</div>';
+      }
+      return false;
+    };
 
   </script>
   <!-- ── Mobile Bottom Navigation ── -->
