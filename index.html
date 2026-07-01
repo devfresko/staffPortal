@@ -3941,7 +3941,10 @@
       animation: fadein-fast .15s ease;
     }
 
-    .modal-box {
+    /* Modal hidden by default */
+      .modal-box { display: none; }
+      /* Desktop center modal when open */
+      .modal-box.open  {
       position: fixed;
       top: 50%;
       left: 50%;
@@ -3959,9 +3962,9 @@
       overflow: hidden;
     }
 
-    .modal-box.on {
+    .modal-box.open {
       display: flex;
-      animation: bounce-in .25s ease both;
+      animation: bounce-in .25s ease;
     }
 
     .modal-box.wide {
@@ -4493,8 +4496,14 @@
         align-items: flex-end !important;
         padding: 0 !important;
       }
-      .modal-box {
-        position: relative !important;
+      /* Modal hidden by default — JS controls visibility via .open class */
+      .modal-box:not(.open) { display: none !important; }
+
+      /* Bottom sheet: only when .open */
+      .modal-box.open {
+        display: flex !important;
+        flex-direction: column !important;
+        position: fixed !important;
         bottom: 0 !important; left: 0 !important; right: 0 !important;
         top: auto !important;
         transform: none !important;
@@ -4503,8 +4512,6 @@
         border-radius: 24px 24px 0 0 !important;
         max-height: 88svh !important;
         overflow: hidden !important;
-        display: flex !important;
-        flex-direction: column !important;
         animation: sheetUp .3s cubic-bezier(.34,1,.64,1) both !important;
       }
       /* Drag handle pill — ONLY when modal is actually open */
@@ -5223,7 +5230,7 @@
     /* ══════════════════════════════════════════
        MODAL — spring entrance, frosted
     ══════════════════════════════════════════ */
-    .modal-box {
+    .modal-box.open {
       border-radius: 20px !important;
       box-shadow: 0 24px 72px rgba(13,27,42,.2), 0 4px 16px rgba(13,27,42,.1) !important;
     }
@@ -5759,9 +5766,9 @@
 
 
     /* ── Modal zoom spring ──────────────────────────────────────────────── */
-    .modal-box { animation: zoomSpring .35s cubic-bezier(.34,1.3,.64,1) both !important; }
+    .modal-box.open { animation: zoomSpring .35s cubic-bezier(.34,1.3,.64,1) both !important; }
     @media (max-width:640px) {
-      .modal-box { animation: sheetUp .32s cubic-bezier(.34,1.2,.64,1) both !important; }
+      .modal-box.open { animation: sheetUp .32s cubic-bezier(.34,1.2,.64,1) both !important; }
     }
 
     /* ── Topbar slide down on load ──────────────────────────────────────── */
@@ -6059,7 +6066,7 @@
 
     /* ── Modal improvements for mobile ──────────────────────────────────── */
     @media (max-width: 640px) {
-      .modal-box { 
+      .modal-box.open { 
         max-height: 85svh !important; 
         overflow: hidden !important;
         display: flex;
@@ -6367,13 +6374,13 @@
         onerror="this.style.display='none'">
       <div style="color:#fff;font-size:22px;font-weight:900;letter-spacing:-.4px;text-align:center;
         text-shadow:0 2px 12px rgba(0,0,0,.2)">Fresko Staff Portal</div>
-      <div style="display:flex;gap:8px;margin-top:4px">
+      <div id="fkSplashMsg" style="color:rgba(255,255,255,.8);font-size:13.5px;font-weight:600;
+        text-align:center;letter-spacing:.2px;margin-top:4px">Loading your workspace…</div>
+      <div style="display:flex;gap:6px;margin-top:12px">
         <div class="fk-dot" style="animation-delay:0s"></div>
-        <div class="fk-dot" style="animation-delay:.18s"></div>
-        <div class="fk-dot" style="animation-delay:.36s"></div>
+        <div class="fk-dot" style="animation-delay:.2s"></div>
+        <div class="fk-dot" style="animation-delay:.4s"></div>
       </div>
-      <div id="fkSplashMsg" style="color:rgba(255,255,255,.72);font-size:13px;font-weight:600;
-        text-align:center;margin-top:-6px">Loading your workspace…</div>
     </div>
     <div style="position:absolute;bottom:40px;color:rgba(255,255,255,.45);font-size:11px">
       © 2026 Fresko &nbsp;·&nbsp; All rights reserved
@@ -7593,6 +7600,11 @@ function _gasX(fn, args, timeout, onOk, onErr) {
       function _hideSplash() {
         clearInterval(splashMsgTimer);
         if (!splash) return;
+        // Show skeleton in content area BEFORE hiding splash — no blank gap
+        var cont = document.getElementById('content');
+        if (cont && typeof _skelKpi === 'function') {
+          cont.innerHTML = _skelKpi(4) + _skel(3);
+        }
         splash.style.animation = 'splashHide .35s cubic-bezier(.4,0,.2,1) forwards';
         setTimeout(function () { splash.style.display = 'none'; }, 340);
       }
