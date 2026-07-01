@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="Fresko Portal">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-180.png">
-  <title>Fresko Staff Portal</title>
+  <title>Fresko Staff Portal — v3.0</title>
 
   <!-- External Assets -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -4509,8 +4509,8 @@
         flex-direction: column !important;
         animation: sheetUp .3s cubic-bezier(.34,1,.64,1) both !important;
       }
-      /* Drag handle pill */
-      .modal-box::before {
+      /* Drag handle pill — ONLY when modal is actually open */
+      .modal-box.open::before {
         content: '';
         display: block;
         width: 40px; height: 4px;
@@ -5657,6 +5657,484 @@
         transition-duration: .001ms !important;
       }
     }
+  
+    /* ══════════════════════════════════════════════════════════════════════
+       ANIMATION SYSTEM v2 — Fresko Staff Portal
+       Principles: spring physics, stagger, purpose-driven motion
+    ══════════════════════════════════════════════════════════════════════ */
+
+    /* ── New keyframes ───────────────────────────────────────────────────── */
+    @keyframes slideInUp    { from { opacity:0; transform:translateY(28px) scale(.97); } to { opacity:1; transform:translateY(0) scale(1); } }
+    @keyframes slideInLeft  { from { opacity:0; transform:translateX(-22px); } to { opacity:1; transform:translateX(0); } }
+    @keyframes slideInRight { from { opacity:0; transform:translateX(22px);  } to { opacity:1; transform:translateX(0); } }
+    @keyframes zoomSpring   { 0%{opacity:0;transform:scale(.82)} 60%{transform:scale(1.04)} 80%{transform:scale(.98)} 100%{opacity:1;transform:scale(1)} }
+    @keyframes checkDraw    { from{stroke-dashoffset:40} to{stroke-dashoffset:0} }
+    @keyframes progressFill { from{width:0;opacity:.5} to{opacity:1} }
+    @keyframes badgePulse   { 0%,100%{box-shadow:0 0 0 0 rgba(var(--R-rgb,.8,.2,.2),.45)} 50%{box-shadow:0 0 0 6px rgba(var(--R-rgb),0)} }
+    @keyframes pendingShimmer { 0%{background-position:200% center} 100%{background-position:-200% center} }
+    @keyframes navSlideIn   { from{opacity:0;transform:translateX(-14px)} to{opacity:1;transform:none} }
+    @keyframes dotWave      { 0%,100%{transform:translateY(0)} 40%{transform:translateY(-7px)} 60%{transform:translateY(-4px)} }
+    @keyframes heroFloat    { 0%,100%{transform:translateY(0) rotate(-1deg)} 50%{transform:translateY(-8px) rotate(1deg)} }
+    @keyframes loginUp      { from{opacity:0;transform:translateY(40px) scale(.95)} to{opacity:1;transform:none} }
+    @keyframes logoSpin     { 0%{opacity:0;transform:rotate(-15deg) scale(.7)} 60%{transform:rotate(5deg) scale(1.08)} 100%{opacity:1;transform:none} }
+    @keyframes countUp      { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none} }
+    @keyframes tabSlide     { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+    @keyframes rippleOut    { from{transform:scale(0);opacity:.5} to{transform:scale(3.5);opacity:0} }
+    @keyframes pulseRing    { 0%{box-shadow:0 0 0 0 var(--Pl)} 70%{box-shadow:0 0 0 8px transparent} 100%{box-shadow:0 0 0 0 transparent} }
+
+    /* ── Login screen orchestrated entrance ──────────────────────────────── */
+    .login-logo   { animation: logoSpin .7s cubic-bezier(.34,1.4,.64,1) both; }
+    .login-title  { animation: loginUp  .5s .15s cubic-bezier(.34,1.2,.64,1) both; }
+    .login-sub    { animation: loginUp  .5s .22s cubic-bezier(.34,1.2,.64,1) both; }
+    .login-field  { animation: loginUp  .45s cubic-bezier(.34,1.2,.64,1) both; }
+    .login-field:nth-child(1) { animation-delay: .28s; }
+    .login-field:nth-child(2) { animation-delay: .36s; }
+    .login-submit { animation: loginUp  .45s .44s cubic-bezier(.34,1.2,.64,1) both; }
+
+    /* ── Sidebar nav item stagger on load ───────────────────────────────── */
+    .nav-item, .nv  { animation: navSlideIn .4s cubic-bezier(.34,1.2,.64,1) both; }
+    .nav-item:nth-child(1),.nv:nth-child(1) { animation-delay:.08s }
+    .nav-item:nth-child(2),.nv:nth-child(2) { animation-delay:.12s }
+    .nav-item:nth-child(3),.nv:nth-child(3) { animation-delay:.16s }
+    .nav-item:nth-child(4),.nv:nth-child(4) { animation-delay:.20s }
+    .nav-item:nth-child(5),.nv:nth-child(5) { animation-delay:.24s }
+    .nav-item:nth-child(6),.nv:nth-child(6) { animation-delay:.28s }
+    .nav-item:nth-child(7),.nv:nth-child(7) { animation-delay:.32s }
+    .nav-item:nth-child(8),.nv:nth-child(8) { animation-delay:.36s }
+    .nav-item:nth-child(9),.nv:nth-child(9) { animation-delay:.40s }
+
+    /* ── View / tab content entrance ─────────────────────────────────────── */
+    .view-enter { animation: slideInUp .38s cubic-bezier(.34,1.2,.64,1) both; }
+    .tab-enter  { animation: tabSlide  .28s cubic-bezier(.34,1.2,.64,1) both; }
+
+    /* ── Staggered card list ─────────────────────────────────────────────── */
+    .stagger > *, .stagger-list > * {
+      animation: slideInUp .42s cubic-bezier(.34,1.2,.64,1) both;
+    }
+    .stagger > *:nth-child(1)  { animation-delay: .04s }
+    .stagger > *:nth-child(2)  { animation-delay: .09s }
+    .stagger > *:nth-child(3)  { animation-delay: .13s }
+    .stagger > *:nth-child(4)  { animation-delay: .17s }
+    .stagger > *:nth-child(5)  { animation-delay: .21s }
+    .stagger > *:nth-child(6)  { animation-delay: .25s }
+    .stagger > *:nth-child(7)  { animation-delay: .28s }
+    .stagger > *:nth-child(8)  { animation-delay: .31s }
+    .stagger > *:nth-child(9)  { animation-delay: .33s }
+    .stagger > *:nth-child(n+10) { animation-delay: .35s }
+
+    /* ── Card micro-interactions ─────────────────────────────────────────── */
+    .card, .kpi, .dcard, .ck-card {
+      transition: transform .18s cubic-bezier(.34,1.4,.64,1),
+                  box-shadow .18s ease !important;
+    }
+    .card:hover, .kpi:hover, .dcard:hover {
+      transform: translateY(-3px) scale(1.008);
+      box-shadow: 0 8px 28px rgba(0,0,0,.10) !important;
+    }
+    .card:active, .kpi:active { transform: scale(.97) !important; }
+
+    /* ── KPI counter animation helper ───────────────────────────────────── */
+    .kpi-counting { animation: countUp .4s cubic-bezier(.34,1.4,.64,1) both; }
+
+    /* ── Progress bar animated fill ─────────────────────────────────────── */
+    .prog-fill-anim { animation: progressFill .8s cubic-bezier(.4,0,.2,1) both !important; }
+
+    /* ── Pending badge shimmer ──────────────────────────────────────────── */
+    .badge-pending, span[style*="var(--R)"], span[style*="Pending"] {
+      animation: badgePulse 2.4s ease infinite;
+    }
+
+    /* ── Done button ripple ─────────────────────────────────────────────── */
+    .btn-ripple {
+      position: relative; overflow: hidden;
+    }
+    .btn-ripple::after {
+      content: '';
+      position: absolute; inset: 50%;
+      border-radius: 50%;
+      background: rgba(255,255,255,.45);
+      transform: scale(0); opacity: .5;
+    }
+    .btn-ripple:active::after {
+      animation: rippleOut .5s cubic-bezier(0,0,.2,1) forwards;
+    }
+
+
+    /* ── Modal zoom spring ──────────────────────────────────────────────── */
+    .modal-box { animation: zoomSpring .35s cubic-bezier(.34,1.3,.64,1) both !important; }
+    @media (max-width:640px) {
+      .modal-box { animation: sheetUp .32s cubic-bezier(.34,1.2,.64,1) both !important; }
+    }
+
+    /* ── Topbar slide down on load ──────────────────────────────────────── */
+    .topbar { animation: slideInUp .4s .05s cubic-bezier(.34,1.2,.64,1) both; }
+
+    /* ── mob-nav bounce up ──────────────────────────────────────────────── */
+    .mob-nav { animation: slideInUp .42s .1s cubic-bezier(.34,1.4,.64,1) both; }
+
+    /* ── Anim-item (existing class used in lists) — enhanced ────────────── */
+    .anim-item {
+      animation: slideInUp .38s cubic-bezier(.34,1.2,.64,1) both;
+    }
+
+    /* ── Dot wave loader ────────────────────────────────────────────────── */
+    .dot-wave { display:inline-flex; gap:4px; align-items:center; }
+    .dot-wave span {
+      width:6px; height:6px; border-radius:50%;
+      background: var(--P); display:inline-block;
+      animation: dotWave .9s ease-in-out infinite;
+    }
+    .dot-wave span:nth-child(2) { animation-delay:.15s }
+    .dot-wave span:nth-child(3) { animation-delay:.30s }
+
+    /* ── Greeting typewriter cursor ─────────────────────────────────────── */
+    .typing-cursor::after {
+      content:'|'; animation: fadein .7s ease infinite alternate;
+      font-weight:300; margin-left:1px; color:var(--P);
+    }
+
+    /* ── Success checkmark SVG animation ────────────────────────────────── */
+    .check-svg path {
+      stroke-dasharray: 40;
+      stroke-dashoffset: 40;
+      animation: checkDraw .4s .1s cubic-bezier(.4,0,.2,1) forwards;
+    }
+
+    /* ── Button press feedback ──────────────────────────────────────────── */
+    .btn { transition: transform .1s, box-shadow .1s; }
+    .btn:active { transform: scale(.95) !important; }
+    .btn-sm:active { transform: scale(.93) !important; }
+
+    /* ── Input focus glow ──────────────────────────────────────────────── */
+    input:focus, select:focus, textarea:focus {
+      transition: border-color .2s, box-shadow .2s !important;
+      box-shadow: 0 0 0 3px var(--Pl) !important;
+    }
+
+    /* ── Attendance punch card glow on hover ─────────────────────────────── */
+    .att-punch-card:hover, #dashPunchBtn:hover {
+      animation: pulseRing 1.8s ease infinite;
+    }
+
+    /* ── Section headers slide in ────────────────────────────────────────── */
+    .mod-head  { animation: slideInUp .3s cubic-bezier(.34,1.2,.64,1) both; }
+    .sec-title { animation: slideInLeft .3s .05s cubic-bezier(.34,1.2,.64,1) both; }
+
+    /* ── Empty state enhanced float ─────────────────────────────────────── */
+    .empty-state i { animation: heroFloat 3.5s ease-in-out infinite; }
+    .empty-state .msg { animation: slideInUp .5s .2s cubic-bezier(.34,1.2,.64,1) both; }
+
+    /* ── Reduced motion: respect system preference ───────────────────────── */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+      }
+    }
+
+  
+    /* ══════════════════════════════════════════════════════════════════════
+       PERFORMANCE — Layout containment + compositor hints
+    ══════════════════════════════════════════════════════════════════════ */
+    /* Contain layout reflow to scroller — prevents full-page relayout */
+    #content { contain: layout style; }
+    /* Sidebar: promote to own compositor layer (avoid repaint during slide) */
+    .sb { will-change: transform; }
+    /* Modals: own layer (only when open) */
+    .modal-ov { will-change: opacity; }
+    .modal-box.open { will-change: transform, opacity; }
+    /* Cards: hint GPU for hover transform */
+    .card, .kpi, .dcard { will-change: transform; }
+    /* Only animate opacity+transform — no layout-triggering properties */
+    .anim-item { will-change: transform, opacity; }
+    /* Scrollable areas: smooth momentum */
+    #content, .tw, .tabs { -webkit-overflow-scrolling: touch; }
+    /* Image rendering: crisp on retina */
+    img { image-rendering: -webkit-optimize-contrast; }
+
+    /* ── Responsive Typography — fluid scale ────────────────────────────── */
+    :root {
+      --fs-xs:  11px;
+      --fs-sm:  12.5px;
+      --fs-md:  14px;
+      --fs-lg:  16px;
+      --fs-xl:  20px;
+      --fs-2xl: 24px;
+      --fs-3xl: 30px;
+    }
+    @media (min-width: 1200px) {
+      :root { --fs-md: 14.5px; --fs-xl: 22px; --fs-2xl: 28px; }
+    }
+
+    /* ── Desktop (>1280px): wider content, better use of space ─────────── */
+    @media (min-width: 1280px) {
+      :root { --sbw: 240px; }
+      .card   { padding: 22px; }
+      .kpi    { padding: 20px 18px; }
+      .kpi-val { font-size: 32px; }
+      .mod-title { font-size: 22px; }
+      .krow   { grid-template-columns: repeat(4,1fr); gap: 14px; }
+      .krow-3 { grid-template-columns: repeat(3,1fr); }
+      .krow-5 { grid-template-columns: repeat(5,1fr); }
+      .krow-6 { grid-template-columns: repeat(6,1fr); }
+      #content { padding: 24px 28px; }
+      .tw thead th { font-size: 11px; }
+      .tw tbody td { font-size: 13.5px; }
+    }
+
+    /* ── Tablet (641-1024px): optimized density ─────────────────────────── */
+    @media (min-width: 641px) and (max-width: 1024px) {
+      :root { --sbw: 210px; }
+      .card   { padding: 16px; }
+      .kpi    { padding: 15px 14px; }
+      .kpi-val { font-size: 26px; }
+      .krow   { grid-template-columns: repeat(3,1fr); gap: 10px; }
+      .krow-5, .krow-6 { grid-template-columns: repeat(3,1fr); }
+      #content { padding: 16px 18px; }
+      /* Sidebar text: tighter */
+      .sb-label { font-size: 11.5px; }
+      .nv { padding: 9px 14px; font-size: 13px; }
+      /* Tabs: allow horizontal scroll */
+      .tabs { overflow-x: auto; }
+    }
+
+    /* ── Mobile (≤640px): touch-first, full-width ───────────────────────── */
+    @media (max-width: 640px) {
+      /* Better card spacing on mobile */
+      .card   { padding: 14px 14px; border-radius: 16px; }
+      .kpi    { padding: 14px 12px; border-radius: 14px; }
+      .kpi-val { font-size: 24px; }
+      .kpi-icon { width: 36px; height: 36px; }
+      /* Tables: horizontal scroll with momentum */
+      .tw { -webkit-overflow-scrolling: touch; border-radius: 12px; }
+      /* Mod-head: tighter on mobile */
+      .mod-head { gap: 8px; margin-bottom: 12px; }
+      .mod-title { font-size: 17px; line-height: 1.25; }
+      /* Filter bars: 2-col grid */
+      .filter-bar { grid-template-columns: 1fr 1fr; gap: 7px; }
+      /* Better touch targets */
+      .btn { min-height: 46px; }
+      .btn-sm { min-height: 40px; }
+      /* Content padding */
+      #content { padding: 12px 12px 80px; }
+      /* ANA selects: full width */
+      .ana-sel { width: 100% !important; min-height: 46px; font-size: 15px; }
+      /* Modal: full bottom sheet */
+      .modal-title { font-size: 16px; font-weight: 800; }
+      .modal-body  { font-size: 14px; line-height: 1.6; }
+      /* KPI row: 2 columns max */
+      .krow, .krow-3 { grid-template-columns: repeat(2,1fr) !important; gap: 8px !important; }
+      .krow-5, .krow-6 { grid-template-columns: repeat(2,1fr) !important; }
+      /* Section headers */
+      .sec-title { font-size: 13px; }
+      /* Dashboard quick stats */
+      .dash-sum-grid { grid-template-columns: 1fr !important; }
+      /* Employee directory: 2-col */
+      .emp-grid { grid-template-columns: repeat(2,1fr) !important; }
+      /* Tab bar scrollable */
+      .tabs { padding-bottom: 2px; }
+      .tab  { font-size: 11.5px; padding: 9px 11px; min-width: max-content; }
+    }
+
+    /* ── Tiny phone (≤375px): even tighter ──────────────────────────────── */
+    @media (max-width: 375px) {
+      .krow { grid-template-columns: 1fr !important; }
+      .card { padding: 12px; border-radius: 14px; }
+      .kpi-val { font-size: 22px; }
+      .tab { font-size: 10.5px; padding: 8px 9px; }
+      #content { padding: 10px 10px 76px; }
+    }
+
+    /* ── Focus accessibility ─────────────────────────────────────────────── */
+    :focus-visible {
+      outline: 2px solid var(--P);
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
+    button:focus-visible, a:focus-visible { outline-offset: 3px; }
+
+  
+    /* ══════════════════════════════════════════════════════════════════════
+       MOBILE PAYTM-STYLE POLISH + CROSS-DEVICE FIXES
+    ══════════════════════════════════════════════════════════════════════ */
+
+    /* ── Quick action tiles: consistent across all screens ─────────────── */
+    #dashQuickAct button:active { transform: scale(.90) !important; }
+    @media (max-width: 640px) {
+      #dashQuickAct { grid-template-columns: repeat(4,1fr) !important; }
+    }
+
+    /* ── Filter bars: proper 2-col wrap on mobile ────────────────────────── */
+    @media (max-width: 640px) {
+      /* All inline filter divs */
+      [id$="Root"] > div[style*="display:flex"],
+      [id$="Root"] > div[style*="display: flex"] {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 8px !important;
+        flex-wrap: unset !important;
+      }
+      /* Filter selects + inputs always full cell */
+      .ana-sel, select, input[type="date"], input[type="month"] {
+        width: 100% !important;
+        box-sizing: border-box;
+      }
+      /* Sort/filter bars: horizontal scroll */
+      div[style*="display:flex"][style*="gap:6px"],
+      div[style*="display:flex"][style*="gap: 6px"] {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        flex-wrap: nowrap !important;
+        padding-bottom: 4px;
+        scrollbar-width: none;
+      }
+    }
+
+    /* ── Checklist Today filter: clean card on mobile ────────────────────── */
+    @media (max-width: 640px) {
+      #ckFiltersWrap {
+        background: var(--sur);
+        border-radius: 16px;
+        border: 1px solid var(--bdr);
+        padding: 14px;
+        margin-bottom: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      #ckFiltersWrap label { font-size: 12px; font-weight: 800; color: var(--tx3); }
+      #ckFiltersWrap select, #ckFiltersWrap input { width: 100%; }
+    }
+
+    /* ── EM Dashboard filter: vertical stack on mobile ───────────────────── */
+    @media (max-width: 640px) {
+      #emRoot > div:first-child,
+      [id$="AnaRoot"] > div:first-child {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 8px !important;
+      }
+      #emRoot .ana-sel, [id$="AnaRoot"] .ana-sel {
+        width: 100% !important;
+        min-height: 46px;
+      }
+    }
+
+    /* ── Dashboard mobile: full-width cards, better spacing ─────────────── */
+    @media (max-width: 640px) {
+      /* Hero greeting */
+      .dash-hero { border-radius: 20px !important; padding: 20px 18px !important; }
+      /* Punch card */
+      #dashPunchCard { border-radius: 18px !important; }
+      /* Lower card grid */
+      #dashLower { grid-template-columns: 1fr !important; }
+      /* Progress bar */
+      #dashProgBar { height: 6px !important; border-radius: 3px; }
+      /* Today's progress section */
+      #dashTodayProg { padding: 14px 16px !important; border-radius: 16px !important; }
+    }
+
+    /* ── Attendance/leave forms: better mobile ───────────────────────────── */
+    @media (max-width: 640px) {
+      .att-form-grid { grid-template-columns: 1fr !important; }
+      .leave-form-row { flex-direction: column !important; gap: 10px !important; }
+    }
+
+    /* ── Delegation cards: full-width on mobile ──────────────────────────── */
+    @media (max-width: 640px) {
+      .del-card-grid { grid-template-columns: 1fr !important; }
+      .dcard .dc-act { flex-wrap: wrap !important; }
+      .dcard .dc-act .btn { flex: 1 1 calc(50% - 6px) !important; text-align: center; }
+    }
+
+    /* ── Employee Directory: 2-col on mobile ─────────────────────────────── */
+    @media (max-width: 640px) {
+      .emp-dir-grid { grid-template-columns: repeat(2,1fr) !important; gap: 10px !important; }
+      .emp-card .emp-name { font-size: 12px !important; }
+      .emp-card .emp-role { font-size: 10.5px !important; }
+    }
+
+    /* ── Analytics: single column on mobile ──────────────────────────────── */
+    @media (max-width: 640px) {
+      .ana-charts-grid { grid-template-columns: 1fr !important; }
+      .chart-wrap { margin-bottom: 12px; }
+    }
+
+    /* ── Modal improvements for mobile ──────────────────────────────────── */
+    @media (max-width: 640px) {
+      .modal-box { 
+        max-height: 85svh !important; 
+        overflow: hidden !important;
+        display: flex;
+        flex-direction: column;
+      }
+      .modal-title { 
+        font-size: 16px !important; 
+        font-weight: 800 !important;
+        padding: 16px 20px 14px !important;
+        flex-shrink: 0;
+        border-bottom: 1px solid var(--bdr);
+      }
+      .modal-body { 
+        overflow-y: auto !important;
+        flex: 1;
+        padding: 16px 20px !important;
+        -webkit-overflow-scrolling: touch;
+      }
+      .modal-foot { 
+        flex-shrink: 0;
+        padding: 12px 20px !important;
+        padding-bottom: max(12px, env(safe-area-inset-bottom, 12px)) !important;
+        border-top: 1px solid var(--bdr);
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 8px !important;
+      }
+      .modal-foot .btn { width: 100% !important; min-height: 48px !important; }
+      .modal-foot select, .modal-foot input { width: 100% !important; }
+    }
+
+    /* ── Topbar: better mobile ───────────────────────────────────────────── */
+    @media (max-width: 640px) {
+      .topbar { padding: 0 14px; height: 54px; }
+      .tb-title { font-size: 16px; font-weight: 800; }
+    }
+
+    /* ── Mobile nav: elevated with safe area ─────────────────────────────── */
+    @media (max-width: 640px) {
+      .mob-nav {
+        padding-bottom: env(safe-area-inset-bottom, 8px);
+        box-shadow: 0 -2px 20px rgba(0,0,0,.08);
+        border-top: 1px solid var(--bdr);
+      }
+      .mob-nav-item { gap: 3px; }
+      .mob-nav-label { font-size: 9.5px; font-weight: 700; }
+      .mob-nav-icon { font-size: 20px; }
+    }
+
+    /* ── Tablet (641-1024px): balanced layout ────────────────────────────── */
+    @media (min-width: 641px) and (max-width: 1024px) {
+      #dashQuickAct { grid-template-columns: repeat(8,1fr) !important; }
+      .krow { grid-template-columns: repeat(3,1fr) !important; }
+      .krow-6 { grid-template-columns: repeat(4,1fr) !important; }
+    }
+
+    /* ── Paytm-style touch feedback ─────────────────────────────────────── */
+    @media (max-width: 640px) {
+      .btn, button, .nv, .mob-nav-item {
+        -webkit-tap-highlight-color: transparent;
+      }
+      .btn:active  { transform: scale(.94) !important; }
+      .nv:active   { opacity: .7; }
+    }
+
+    /* ── Week view calendar: proper mobile layout ──────────────────────── */
+    @media (max-width: 640px) {
+      .week-cols { grid-template-columns: 1fr !important; }
+      .week-day  { border-radius: 14px !important; margin-bottom: 10px; }
+    }
+
   </style>
 </head>
 
@@ -5668,29 +6146,29 @@
 ═══════════════════════════════════════════════════════════ -->
   <div class="scr on" id="sLogin" style="background:linear-gradient(135deg,#005F73 0%,#0A9396 40%,#94D2BD 100%)">
     <div class="lbox">
-      <div class="l-logo-wrap">
+      <div class="l-logo-wrap login-logo">
         <img src="https://fresko.co.in/wp-content/uploads/2025/08/Untitled-design-21.png" alt="Fresko Logo"
           onerror="this.style.display='none';document.getElementById('lgFallback').style.display='flex'">
         <div class="l-logo-fallback" id="lgFallback" style="display:none">FK</div>
       </div>
-      <div class="l-title">Fresko Staff Portal</div>
-      <div class="l-sub">Sign in to access your workspace</div>
+      <div class="l-title login-title">Fresko Staff Portal</div>
+      <div class="l-sub login-sub">Sign in to access your workspace</div>
 
-      <div class="l-field">
+      <div class="l-field login-field">
         <label>Email Address</label>
         <input type="email" id="femail" placeholder="you@fresko.co.in" autocomplete="email"
           onkeydown="if(event.key==='Enter')document.getElementById('fpass').focus()">
         <i class="fas fa-envelope l-ico"></i>
       </div>
 
-      <div class="l-field">
+      <div class="l-field login-field">
         <label>Password</label>
         <input type="password" id="fpass" placeholder="••••••••" autocomplete="current-password"
           onkeydown="if(event.key==='Enter')_doLogin()">
         <i class="fas fa-lock l-ico"></i>
       </div>
 
-      <button class="l-btn" id="btnLogin" onclick="_doLogin()">
+      <button class="l-btn login-submit btn-ripple" id="btnLogin" onclick="_doLogin()">
         <i class="fas fa-sign-in-alt"></i> Sign In
       </button>
 
@@ -5745,7 +6223,7 @@
             onerror="this.style.display='none'">
           <div>
             <div class="sb-brand-txt">Fresko</div>
-            <div class="sb-brand-ver">Portal </div>
+            <div class="sb-brand-ver">Portal v3.0</div>
           </div>
         </div>
         <div class="sb-prof" onclick="_loadV('profile')">
@@ -5906,7 +6384,7 @@
 
   <!-- Modal overlay + box -->
   <div class="modal-ov" id="mOv" onclick="_closeModal()"></div>
-  <div class="modal-box" id="modal">
+  <div class="modal-box" id="modal" style="display:none">
     <div class="modal-title" id="mTitle">Confirm</div>
     <div class="modal-body" id="mBody"></div>
     <div class="modal-foot" id="mFoot"></div>
@@ -6614,7 +7092,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbyRAnYoJ8cKUBdgSI5waz-E2huCqW3nfO67tMopx75PRsaPPi1sIdnGUGx3qyoWicJLQA/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbxnuY9vozpYMyh4WwgL_6wDjvwcKXbxaG1kjN3FoCoeMF0b-4QqfHhKLQ-Thih4knk60A/exec';
     var _TOKEN  = '';
 
     var _gasActive = 0; // count of concurrent GAS calls in flight
@@ -7086,8 +7564,19 @@ function _gasX(fn, args, timeout, onOk, onErr) {
       _charts = {};
 
       var cont = document.getElementById('content');
-      if (cont) cont.scrollTop = 0;
-      if (cont) cont.innerHTML = _skelKpi(4) + _skel(3);
+      if (cont) {
+        // Micro-flash out before switching content
+        cont.style.opacity = '0';
+        cont.style.transform = 'translateY(6px)';
+        cont.style.transition = 'opacity .12s ease, transform .12s ease';
+        setTimeout(function() {
+          cont.scrollTop = 0;
+          cont.innerHTML = _skelKpi(4) + _skel(3);
+          cont.style.opacity = '1';
+          cont.style.transform = '';
+          cont.style.transition = '';
+        }, 90);
+      }
 
       var views = {
         dash: _vDash,
@@ -7117,7 +7606,7 @@ function _gasX(fn, args, timeout, onOk, onErr) {
       // 50ms delay ensures the view function's innerHTML has been fully set first.
       setTimeout(function() {
         _initSearchSelects(document.getElementById('content'));
-        _responsivePostRender();
+        _debouncedPostRender();
       }, 80);
     }
 
@@ -7746,20 +8235,24 @@ function _gasX(fn, args, timeout, onOk, onErr) {
         [1,2,3,4].map(function() { return '<div class="sk sk-h6" style="border-radius:14px"></div>'; }).join('') +
         '</div>' +
 
-        // ── Mobile: quick action row ──
-        (mob
-          ? '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px" id="dashQuickAct">' +
-            ['fa-list-check:Tasks:check','fa-diagram-project:Delegate:deleg','fa-user-clock:Attend:attend','fa-umbrella-beach:Leave:leave']
-            .map(function(s) {
-              var p=s.split(':');
-              return '<button onclick="_loadV(\''+p[2]+'\')" style="display:flex;flex-direction:column;align-items:center;gap:7px;padding:14px 6px;background:var(--sur);border:1.5px solid var(--bdr);border-radius:16px;cursor:pointer;box-shadow:var(--shad);transition:all .15s;-webkit-tap-highlight-color:transparent" onactive="this.style.transform=\'scale(.95)\'">' +
-                '<div style="width:42px;height:42px;border-radius:13px;background:var(--Pl);display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--P)"><i class="fas '+p[0]+'"></i></div>' +
-                '<span style="font-size:11px;font-weight:800;color:var(--tx2);letter-spacing:.2px">'+p[1]+'</span>' +
-                '</button>';
-            }).join('') +
-            '</div>'
-          : ''
-        ) +
+        // ── Quick action tiles (Paytm-style: vibrant colors, bold icons) ──
+        '<div style="display:grid;grid-template-columns:repeat('+(mob?'4':'8')+',1fr);gap:'+(mob?'10px':'12px')+';margin-bottom:20px" id="dashQuickAct">' +
+        [
+          {ico:'fa-list-check',  lbl:'Tasks',    view:'check', bg:'linear-gradient(135deg,#0F766E,#14B8A6)', shadow:'rgba(20,184,166,.3)'},
+          {ico:'fa-diagram-project',lbl:'Delegate',view:'deleg',bg:'linear-gradient(135deg,#7C3AED,#A78BFA)', shadow:'rgba(124,58,237,.3)'},
+          {ico:'fa-user-clock',  lbl:'Attend',   view:'attend',bg:'linear-gradient(135deg,#1D4ED8,#60A5FA)', shadow:'rgba(29,78,216,.3)'},
+          {ico:'fa-umbrella-beach',lbl:'Leave',  view:'leave', bg:'linear-gradient(135deg,#DC2626,#F87171)', shadow:'rgba(220,38,38,.3)'},
+          {ico:'fa-bullhorn',    lbl:'Announcements',view:'ann',bg:'linear-gradient(135deg,#D97706,#FCD34D)', shadow:'rgba(217,119,6,.3)'},
+          {ico:'fa-calendar-days',lbl:'Holidays', view:'holcal',bg:'linear-gradient(135deg,#065F46,#34D399)', shadow:'rgba(6,95,70,.3)'},
+          {ico:'fa-chart-line',  lbl:'Analytics', view:'clana',bg:'linear-gradient(135deg,#9D174D,#F472B6)', shadow:'rgba(157,23,77,.3)'},
+          {ico:'fa-address-card',lbl:'Directory', view:'empdir',bg:'linear-gradient(135deg,#92400E,#F59E0B)', shadow:'rgba(146,64,14,.3)'}
+        ].map(function(a) {
+          return '<button onclick="_loadV(\''+a.view+'\')" style="display:flex;flex-direction:column;align-items:center;gap:'+(mob?'8px':'10px')+';padding:'+(mob?'14px 4px':'16px 8px')+';background:var(--sur);border:none;border-radius:'+(mob?'18px':'20px')+';cursor:pointer;transition:transform .15s cubic-bezier(.34,1.56,.64,1),box-shadow .15s;-webkit-tap-highlight-color:transparent;box-shadow:0 2px 10px rgba(0,0,0,.06)" onmouseenter="this.style.transform=\'translateY(-3px)\';this.style.boxShadow=\'0 8px 24px '+a.shadow+'\'" onmouseleave="this.style.transform=\'\';this.style.boxShadow=\'0 2px 10px rgba(0,0,0,.06)\'" ontouchstart="this.style.transform=\'scale(.92)\'" ontouchend="this.style.transform=\'\'">' +
+            '<div style="width:'+(mob?'44px':'50px')+';height:'+(mob?'44px':'50px')+';border-radius:'+(mob?'14px':'16px')+';background:'+a.bg+';display:flex;align-items:center;justify-content:center;font-size:'+(mob?'19px':'22px')+';color:#fff;box-shadow:0 4px 14px '+a.shadow+';flex-shrink:0"><i class="fas '+a.ico+'"></i></div>' +
+            '<span style="font-size:'+(mob?'10px':'11.5px')+';font-weight:800;color:var(--tx2);letter-spacing:.1px;text-align:center;line-height:1.2;word-break:break-word">'+a.lbl+'</span>' +
+            '</button>';
+        }).join('') +
+        '</div>' +
 
         // ── Charts row (desktop only; mobile shows list-style cards instead) ──
         (mob ? '' :
@@ -11269,7 +11762,7 @@ function _loadSetupTasks() {
 
         '</div>' +
         '<div style="padding:14px 20px;border-top:1px solid var(--bdr)">' +
-        '<div style="font-size:10px;color:var(--tx3);font-weight:600">Fresko Portal  &nbsp;·&nbsp; &copy; 2026 Fresko</div>' +
+        '<div style="font-size:10px;color:var(--tx3);font-weight:600">Fresko Portal v3.0 &nbsp;·&nbsp; &copy; 2026 Fresko</div>' +
         '</div>';
 
       document.body.appendChild(panel);
@@ -12264,8 +12757,8 @@ function _loadSetupTasks() {
       // Show first onboarding tip 2 seconds after login (triggered from _bootApp)
       // _showNextTip is called from _bootApp after login
 
-      console.log('[Fresko Portal ] Initialized. Ready for login.');
-      console.log('[Fresko Portal ] Press ? for keyboard shortcuts, ⌘K for search.');
+      console.log('[Fresko Portal v3.0] Initialized. Ready for login.');
+      console.log('[Fresko Portal v3.0] Press ? for keyboard shortcuts, ⌘K for search.');
     }());
 
     /* ══════════════════════════════════════════════════════════════════════
@@ -15193,9 +15686,16 @@ function _loadSetupTasks() {
         el.classList.toggle('active', el.getAttribute('data-tab') === tabId);
       });
 
-      // Panes
+      // Panes — add tab-enter animation to newly activated pane
       document.querySelectorAll('.tab-pane').forEach(function (el) {
-        el.classList.toggle('active', el.id === tabId + 'Pane');
+        var isActive = el.id === tabId + 'Pane';
+        if (isActive && !el.classList.contains('active')) {
+          // Fresh activation — replay entrance animation
+          el.classList.remove('tab-enter');
+          void el.offsetWidth;
+          el.classList.add('tab-enter');
+        }
+        el.classList.toggle('active', isActive);
       });
 
       // Dispatch sub-tab loaders
@@ -15227,49 +15727,85 @@ function _loadSetupTasks() {
         try { loaders[tabId](); } catch (e) { console.warn('[_switchTab] loader error for ' + tabId + ': ' + e.message); }
       }
       // Apply responsive post-render fixes after tab switches
-      setTimeout(_responsivePostRender, 60);
+      _debouncedPostRender();
     }
 
     /* ── _responsivePostRender ───────────────────────────────────────────────
        Called after every view/tab load. Ensures all dynamically rendered
        content is properly wrapped for mobile responsiveness.
     ── */
-    function _responsivePostRender() {
+    /* Debounce wrapper for _responsivePostRender — prevents redundant calls */
+    var _prTimer = null;
+    function _debouncedPostRender() {
+      clearTimeout(_prTimer);
+      _prTimer = setTimeout(_responsivePostRender, 100);
+    }
+
+        function _responsivePostRender() {
       var content = document.getElementById('content');
       if (!content) return;
 
-      // 1. Wrap bare <table> elements not already inside .tw
+      // 1. Wrap bare <table> in .tw for scrollable + animated rows
       content.querySelectorAll('table').forEach(function(tbl) {
-        if (tbl.closest('.tw')) return; // already wrapped
+        if (tbl.closest('.tw')) return;
         var wrapper = document.createElement('div');
         wrapper.className = 'tw';
         tbl.parentNode.insertBefore(wrapper, tbl);
         wrapper.appendChild(tbl);
       });
 
-      // 2. Add .table-card wrapper for tables inside cards (if not there)
-      content.querySelectorAll('.tw').forEach(function(tw) {
-        if (!tw.closest('.table-card') && !tw.closest('.card')) {
-          if (!tw.parentNode.classList.contains('table-card')) {
-            var tc = document.createElement('div');
-            tc.className = 'table-card';
-            tw.parentNode.insertBefore(tc, tw);
-            tc.appendChild(tw);
+      // 2. Add view-enter to main content area for page-load animation
+      content.className = content.className.replace(/\bview-enter\b/,'');
+      void content.offsetWidth; // trigger reflow
+      content.classList.add('view-enter');
+
+      // 3. Stagger .anim-item cards — reset animation to replay
+      var items = content.querySelectorAll('.anim-item');
+      items.forEach(function(el, i) {
+        el.style.animation = 'none';
+        void el.offsetWidth;
+        el.style.animation = '';
+        el.style.animationDelay = Math.min(i * 55, 420) + 'ms';
+      });
+
+      // 4. KPI number counter — find .kpi-val elements and count up
+      content.querySelectorAll('.kpi-val, [class*="kpi-val"]').forEach(function(el) {
+        var raw = el.textContent.trim();
+        var num = parseFloat(raw.replace(/[^0-9.]/g,''));
+        if (!isNaN(num) && num > 0 && num < 100000) {
+          el.classList.add('kpi-counting');
+          var isInt  = Number.isInteger(num);
+          var prefix = raw.match(/^[^0-9]*/)[0];
+          var suffix = raw.match(/[^0-9.]*$/)[0];
+          var start  = 0, duration = 900, startTime = null;
+          function step(ts) {
+            if (!startTime) startTime = ts;
+            var pct = Math.min((ts - startTime) / duration, 1);
+            // easeOutExpo
+            var ease = pct === 1 ? 1 : 1 - Math.pow(2, -10 * pct);
+            var cur  = start + (num - start) * ease;
+            el.textContent = prefix + (isInt ? Math.round(cur) : cur.toFixed(1)) + suffix;
+            if (pct < 1) requestAnimationFrame(step);
           }
+          setTimeout(function() { requestAnimationFrame(step); }, 200);
         }
       });
 
-      // 3. On mobile: make sort button containers scrollable
+      // 5. Animate progress bars — find width-set divs
+      content.querySelectorAll('[style*="width:"][style*="background"]').forEach(function(el) {
+        if (el.style.height && parseInt(el.style.height) <= 12) {
+          el.classList.add('prog-fill-anim');
+        }
+      });
+
+      // 6. On mobile — fix sort bars + filter grids
       if (window.innerWidth <= 640) {
         content.querySelectorAll('[id$="SortBar"], .sort-bar').forEach(function(bar) {
           bar.style.flexWrap = 'nowrap';
           bar.style.overflowX = 'auto';
           bar.style.paddingBottom = '4px';
-          bar.style.msOverflowStyle = 'none';
           bar.style.scrollbarWidth = 'none';
         });
-
-        // 4. Stack multi-input filter rows
         content.querySelectorAll('[id$="Filters"], [id$="filters"]').forEach(function(fb) {
           if (fb.style.display !== 'grid') {
             fb.style.display = 'grid';
@@ -15277,8 +15813,6 @@ function _loadSetupTasks() {
             fb.style.gap = '6px';
           }
         });
-
-        // 5. EM Dashboard: hide heat map columns to prevent overflow
         content.querySelectorAll('.em-heat-col, th[data-heat], td[data-heat]').forEach(function(el) {
           el.style.display = 'none';
         });
@@ -15568,9 +16102,9 @@ function _loadSetupTasks() {
         document.body.classList.add('dense');
       }
 
-      console.log('[Fresko Portal ] Initialized. Ready for login.');
-      console.log('[Fresko Portal ] Press ? for keyboard shortcuts, ⌘K for search.');
-      console.log('[Fresko Portal ] Navigation routes:', _navRoutes.length, 'views registered.');
+      console.log('[Fresko Portal v3.0] Initialized. Ready for login.');
+      console.log('[Fresko Portal v3.0] Press ? for keyboard shortcuts, ⌘K for search.');
+      console.log('[Fresko Portal v3.0] Navigation routes:', _navRoutes.length, 'views registered.');
     }());
 
     /* ══════════════════════════════════════════════════════════════════════
