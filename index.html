@@ -4910,7 +4910,7 @@
     }
     .fk-dot {
       width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,.9);
-      animation: fkPulse 1.2s ease-in-out infinite;
+      animation: dotWave .9s ease-in-out infinite 1.2s ease-in-out infinite;
     }
     @keyframes fkPulse {
       0%, 100% { opacity: .25; transform: scale(.65); filter: blur(1px); }
@@ -5158,7 +5158,6 @@
       transform: translateY(-2px);
       box-shadow: 0 6px 20px rgba(0,95,115,.3);
     }
-    .btn:active { transform: scale(.97); box-shadow: none; }
     .btn-outline {
       background: transparent;
       box-shadow: none;
@@ -6179,7 +6178,6 @@
     .krow > .kpi:nth-child(4) { animation-delay:.20s }
 
     /* Quick tile animation via .qa-tile in CSS — uses kpiPop without opacity:0 */
-    .qa-tile { animation: kpiPop .42s cubic-bezier(.34,1.4,.64,1) forwards; }
     .qa-tile:nth-child(1) { animation-delay:.05s } .qa-tile:nth-child(2) { animation-delay:.10s }
     .qa-tile:nth-child(3) { animation-delay:.15s } .qa-tile:nth-child(4) { animation-delay:.19s }
     .qa-tile:nth-child(5) { animation-delay:.23s } .qa-tile:nth-child(6) { animation-delay:.27s }
@@ -6189,7 +6187,6 @@
     .card { animation: cardSlideUp .35s cubic-bezier(.34,1.2,.64,1); }
 
     /* ── Sidebar: items slide in from left ──────────────────────────────── */
-    .nv { animation: navSlideIn .38s cubic-bezier(.34,1.2,.64,1) forwards; }
     .nv:nth-child(1)  { animation-delay:.06s }
     .nv:nth-child(2)  { animation-delay:.10s }
     .nv:nth-child(3)  { animation-delay:.14s }
@@ -6198,7 +6195,6 @@
     .nv:nth-child(6)  { animation-delay:.26s }
     .nv:nth-child(7)  { animation-delay:.29s }
     .nv:nth-child(8)  { animation-delay:.32s }
-    .nv:nth-child(n+9) { animation-delay:.35s }
 
     /* ── Topbar: slide down ─────────────────────────────────────────────── */
     .topbar { animation: slideInUp .35s .02s cubic-bezier(.34,1.2,.64,1) forwards; }
@@ -6542,9 +6538,6 @@
     }
 
   
-    /* ═══════════════════════════════════════════════════════════════
-       MOBILE ANIMATION SYSTEM — All devices, always visible
-    ═══════════════════════════════════════════════════════════════ */
 
     /* Safe keyframes — transform only, NEVER opacity:0 */
     @keyframes mobSlideUp  { from{transform:translateY(18px) scale(.98)} to{transform:none} }
@@ -6569,7 +6562,6 @@
     .dcard { animation: mobSlideUp .38s cubic-bezier(.34,1.2,.64,1) forwards; }
 
     /* ── Quick tiles: stagger pop ── */
-    .qa-tile { animation: mobPop .4s cubic-bezier(.34,1.4,.64,1) forwards; }
     .qa-tile:nth-child(1) { animation-delay:.05s }
     .qa-tile:nth-child(2) { animation-delay:.10s }
     .qa-tile:nth-child(3) { animation-delay:.14s }
@@ -6590,7 +6582,6 @@
     .anim-item:nth-child(n+7) { animation-delay:.22s }
 
     /* ── Sidebar nav: slide in stagger ── */
-    .nv { animation: mobSlideIn .32s cubic-bezier(.34,1.2,.64,1) forwards; }
     .nv:nth-child(1) { animation-delay:.05s } .nv:nth-child(2) { animation-delay:.09s }
     .nv:nth-child(3) { animation-delay:.13s } .nv:nth-child(4) { animation-delay:.17s }
     .nv:nth-child(5) { animation-delay:.20s } .nv:nth-child(6) { animation-delay:.23s }
@@ -6602,7 +6593,6 @@
     /* ── Login form fields: stagger ── */
     .l-field:nth-child(1) { animation: mobSlideIn .4s .25s cubic-bezier(.34,1.2,.64,1) forwards; }
     .l-field:nth-child(2) { animation: mobSlideIn .4s .35s cubic-bezier(.34,1.2,.64,1) forwards; }
-    .l-btn { animation: mobPop .4s .45s cubic-bezier(.34,1.3,.64,1) forwards; }
 
     /* ── Topbar: slide down ── */
     .topbar { animation: mobHeroPop .35s cubic-bezier(.34,1.2,.64,1) forwards; }
@@ -6639,6 +6629,105 @@
         animation-duration: .01ms !important;
         transition-duration: .01ms !important;
       }
+    }
+
+  
+    /* ═══════════════════════════════════════════════════════════════════
+       ANIMATION SYSTEM — Safe on all devices
+       KEY RULE: Interactive elements (buttons/nav/tiles) NEVER use
+       transform-based animations — it shifts their tap area on mobile.
+       Only non-interactive containers use transform animations.
+    ═══════════════════════════════════════════════════════════════════ */
+
+    /* ── Safe keyframes — only opacity (never shifts tap area) ── */
+    @keyframes safeIn    { from{opacity:.05} to{opacity:1} }
+    @keyframes safeSlide { from{opacity:.05;transform:translateY(12px)} to{opacity:1;transform:none} }
+    @keyframes safePop   { from{opacity:.05;transform:scale(.94) translateY(8px)} to{opacity:1;transform:none} }
+    @keyframes dotWave   { 0%,100%{transform:translateY(0)} 45%{transform:translateY(-9px)} }
+
+    /* ── Splash dots ── */
+    .fk-dot { animation: dotWave .9s ease-in-out infinite !important; }
+    .fk-dot:nth-child(2) { animation-delay:.18s !important; }
+    .fk-dot:nth-child(3) { animation-delay:.36s !important; }
+
+    /* ── Login box (non-interactive container — safe to animate) ── */
+    .lbox { animation: safeSlide .5s cubic-bezier(.34,1.1,.64,1) forwards; }
+    .l-title { animation: safeIn .4s .2s forwards; }
+    .l-sub   { animation: safeIn .4s .3s forwards; }
+    /* Login fields: fade only — NO translateX that shifts tap area */
+    .l-field { animation: safeIn .4s forwards; }
+    .l-field:nth-child(1) { animation-delay:.3s }
+    .l-field:nth-child(2) { animation-delay:.4s }
+    /* Login button: NO animation — always tappable immediately */
+    /* .l-btn - intentionally NO animation */
+
+    /* ── Dashboard hero (non-interactive) ── */
+    .dash-hero { animation: safeSlide .45s cubic-bezier(.34,1.1,.64,1) forwards; }
+
+    /* ── Cards: fade + slide up (card bodies are not buttons) ── */
+    .kpi  { animation: safePop .4s cubic-bezier(.34,1.2,.64,1) forwards; }
+    .card { animation: safeSlide .38s cubic-bezier(.34,1.1,.64,1) forwards; }
+    .dcard { animation: safeSlide .38s cubic-bezier(.34,1.1,.64,1) forwards; }
+    /* Stagger for KPI cards */
+    .krow .kpi:nth-child(1) { animation-delay:.04s }
+    .krow .kpi:nth-child(2) { animation-delay:.09s }
+    .krow .kpi:nth-child(3) { animation-delay:.13s }
+    .krow .kpi:nth-child(4) { animation-delay:.17s }
+    .krow .kpi:nth-child(5) { animation-delay:.21s }
+    .krow .kpi:nth-child(6) { animation-delay:.24s }
+
+    /* ── Quick tiles: ONLY opacity — transform would shift tap area ── */
+    .qa-tile { animation: safeIn .35s cubic-bezier(.4,0,.2,1) forwards; }
+    .qa-tile:nth-child(1) { animation-delay:.05s }
+    .qa-tile:nth-child(2) { animation-delay:.10s }
+    .qa-tile:nth-child(3) { animation-delay:.14s }
+    .qa-tile:nth-child(4) { animation-delay:.18s }
+    .qa-tile:nth-child(5) { animation-delay:.22s }
+    .qa-tile:nth-child(6) { animation-delay:.26s }
+    .qa-tile:nth-child(7) { animation-delay:.29s }
+    .qa-tile:nth-child(8) { animation-delay:.32s }
+
+    /* ── Sidebar nav: ONLY opacity — transform shifts tap area ── */
+    .nv { animation: safeIn .3s cubic-bezier(.4,0,.2,1) forwards; }
+    .nv:nth-child(1) { animation-delay:.05s } .nv:nth-child(2) { animation-delay:.08s }
+    .nv:nth-child(3) { animation-delay:.11s } .nv:nth-child(4) { animation-delay:.14s }
+    .nv:nth-child(5) { animation-delay:.17s } .nv:nth-child(6) { animation-delay:.20s }
+    .nv:nth-child(7) { animation-delay:.22s } .nv:nth-child(n+8) { animation-delay:.24s }
+
+    /* ── Topbar: fade only ── */
+    .topbar  { animation: safeIn .3s forwards; }
+    .mob-nav { animation: safeIn .4s .1s forwards; }
+
+    /* ── List items ── */
+    .anim-item { animation: safeSlide .35s cubic-bezier(.34,1.1,.64,1) forwards; }
+    .anim-item:nth-child(1) { animation-delay:.03s } .anim-item:nth-child(2) { animation-delay:.07s }
+    .anim-item:nth-child(3) { animation-delay:.10s } .anim-item:nth-child(4) { animation-delay:.13s }
+    .anim-item:nth-child(5) { animation-delay:.16s } .anim-item:nth-child(n+6) { animation-delay:.19s }
+
+    /* ── Touch feedback — CSS transitions (fire on tap, not on load) ── */
+    .btn    { transition: background .15s, transform .1s, opacity .1s; }
+    .qa-tile { transition: opacity .15s, transform .12s; }
+    .nv     { transition: background .15s, color .15s; }
+    .card, .kpi { transition: box-shadow .15s, transform .15s; }
+
+    @media (hover:hover) {
+      .card:hover  { transform:translateY(-2px); box-shadow:0 6px 20px rgba(0,0,0,.1); }
+      .kpi:hover   { transform:translateY(-2px); }
+      .qa-tile:hover { transform:translateY(-3px); }
+    }
+    /* Mobile tap: only opacity change — NEVER transform (would shift layout) */
+    @media (max-width:640px) {
+      .btn:active    { opacity:.7 !important; }
+      .qa-tile:active { opacity:.6 !important; }
+      .nv:active     { opacity:.6 !important; }
+    }
+
+    /* ── Tab switch: content area fade ── */
+    .tab-pane.active { animation: safeIn .25s forwards; }
+
+    /* ── Reduce motion ── */
+    @media (prefers-reduced-motion:reduce) {
+      *, *::before, *::after { animation-duration:.01ms !important; transition-duration:.01ms !important; }
     }
 
   </style>
@@ -16282,19 +16371,6 @@ function _loadSetupTasks() {
     }
 
         function _responsivePostRender() {
-      // ── Replay animations on every view render ─────────────────────────
-      // Cards: remove + re-add animation to replay it
-      var cont = document.getElementById('content');
-      if (cont) {
-        var animated = cont.querySelectorAll('.kpi, .card, .dcard, .qa-tile, .anim-item');
-        animated.forEach(function(el, i) {
-          el.style.animation = 'none';
-          el.style.opacity   = '1'; // always visible
-          void el.offsetWidth; // reflow
-          el.style.animation = '';
-          el.style.animationDelay = Math.min(i * 48, 360) + 'ms';
-        });
-      }
       var content = document.getElementById('content');
       if (!content) return;
 
