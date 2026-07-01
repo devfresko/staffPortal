@@ -6316,6 +6316,125 @@
       #dashQuickAct { grid-template-columns: repeat(8,1fr) !important; }
     }
 
+  
+    /* ══════════════════════════════════════════════════════════════
+       MOBILE ALIGNMENT — Final comprehensive fix
+       All views: proper spacing, font sizes, touch targets
+    ══════════════════════════════════════════════════════════════ */
+    @media (max-width: 640px) {
+
+      /* ── Content padding ── */
+      #content {
+        padding: 12px 12px 80px 12px !important;
+        overflow-x: hidden !important;
+      }
+
+      /* ── Cards ── */
+      .card { padding: 14px !important; border-radius: 16px !important; margin-bottom: 10px; }
+      .kpi  { padding: 14px 12px !important; border-radius: 14px !important; }
+      .kpi-val { font-size: 24px !important; }
+      .kpi-icon { width: 36px !important; height: 36px !important; font-size: 16px !important; }
+      .kpi-lbl  { font-size: 10px !important; }
+
+      /* ── KPI grid: 2-column ── */
+      .krow, .krow-3 { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
+      .krow-5, .krow-6 { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
+
+      /* ── Quick tiles: 4-column ── */
+      #dashQuickAct { grid-template-columns: repeat(4,1fr) !important; gap: 8px !important; }
+      .qa-tile { padding: 12px 4px !important; border-radius: 14px !important; }
+      .qa-icon { width: 40px !important; height: 40px !important; font-size: 18px !important; border-radius: 12px !important; }
+      .qa-lbl  { font-size: 10px !important; }
+
+      /* ── Section headers ── */
+      .mod-title  { font-size: 16px !important; }
+      .sec-title  { font-size: 13px !important; }
+      .mod-head   { margin-bottom: 10px !important; flex-wrap: wrap; gap: 8px; }
+
+      /* ── Tabs ── */
+      .tabs { overflow-x: auto !important; -webkit-overflow-scrolling: touch; flex-wrap: nowrap !important; }
+      .tab  { font-size: 11px !important; padding: 8px 10px !important; flex-shrink: 0; white-space: nowrap; }
+
+      /* ── Tables: horizontal scroll ── */
+      .tw { overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; }
+      .tw table { min-width: 400px; }
+      .tw thead th { font-size: 10px !important; padding: 7px 8px !important; }
+      .tw tbody td { font-size: 11.5px !important; padding: 8px 8px !important; }
+
+      /* ── Buttons ── */
+      .btn    { min-height: 44px; font-size: 13.5px !important; }
+      .btn-sm { min-height: 38px; font-size: 12px !important; }
+      .btn-xs { min-height: 32px; font-size: 11px !important; }
+
+      /* ── Filter bars: 2-col grid ── */
+      .ana-sel, .filter-bar select, .filter-bar input {
+        min-height: 42px !important; font-size: 14px !important;
+        width: 100% !important; box-sizing: border-box;
+      }
+
+      /* ── Inputs: prevent zoom on mobile ── */
+      input, select, textarea { font-size: 16px !important; }
+
+      /* ── Mod head: stack on mobile ── */
+      .mod-head { flex-direction: column; align-items: flex-start; }
+      .mod-head-right { flex-wrap: wrap; }
+
+      /* ── Bottom cards: single column ── */
+      #dashLower,
+      div[style*="grid-template-columns: 1fr 1fr 1fr"],
+      div[style*="grid-template-columns:1fr 1fr 1fr"] {
+        grid-template-columns: 1fr !important;
+      }
+
+      /* ── Delegation cards ── */
+      .dcard { border-radius: 14px !important; }
+
+      /* ── Week view: single column ── */
+      .wk-grid { grid-template-columns: 1fr !important; }
+
+      /* ── Employee directory ── */
+      .emp-dir-grid { grid-template-columns: repeat(2,1fr) !important; gap: 8px !important; }
+
+      /* ── Analytics: single col charts ── */
+      .ana-charts-grid, div[style*="grid-template-columns:1fr 1fr"] {
+        grid-template-columns: 1fr !important;
+      }
+
+      /* ── Hero card ── */
+      .dash-hero { border-radius: 18px !important; padding: 18px 16px !important; }
+      .dash-hero .mod-title { font-size: 18px !important; }
+
+      /* ── Attendance punch card ── */
+      .att-punch-card { border-radius: 16px !important; }
+      .btn-checkin { font-size: 14px !important; min-height: 48px !important; }
+
+      /* ── Progress bar ── */
+      .prog-bar { height: 6px !important; border-radius: 3px !important; }
+
+      /* ── Skeleton loading ── */
+      .sk { border-radius: 10px !important; }
+
+      /* ── Mobile nav: safe area ── */
+      .mob-nav {
+        padding-bottom: max(8px, env(safe-area-inset-bottom, 8px)) !important;
+      }
+
+      /* ── Topbar ── */
+      .topbar { height: 56px !important; }
+
+      /* ── Avatar ── */
+      .sb-ava { width: 38px !important; height: 38px !important; }
+    }
+
+    /* ── Tiny phones ≤375px ── */
+    @media (max-width: 375px) {
+      .qa-tile { padding: 10px 3px !important; }
+      .qa-icon { width: 36px !important; height: 36px !important; font-size: 16px !important; }
+      .qa-lbl  { font-size: 9px !important; }
+      .tab { font-size: 10px !important; padding: 7px 8px !important; }
+      #content { padding: 10px 10px 76px !important; }
+    }
+
   </style>
 </head>
 
@@ -7583,6 +7702,11 @@ function _gasX(fn, args, timeout, onOk, onErr) {
       // Switch screens
       document.getElementById('sLogin').classList.remove('on');
       document.getElementById('sApp').classList.add('on');
+      // Show animated skeleton IMMEDIATELY so user sees activity
+      var c0 = document.getElementById('content');
+      if (c0 && typeof _skelKpi === 'function') {
+        c0.innerHTML = _skelKpi(4) + _skel(3);
+      }
 
       // Show the Fresko splash while getAllData loads
       var splash = document.getElementById('fkSplash');
@@ -7702,7 +7826,7 @@ function _gasX(fn, args, timeout, onOk, onErr) {
     function _bootNtfs() {
       var hr = new Date().getHours();
       var greet = hr < 12 ? 'morning' : hr < 17 ? 'afternoon' : 'evening';
-      _addNtf('Good ' + greet + ', ' + (_U.name.split(' ')[0] || '') + '! Have a productive day.', 'fa-sun', 'var(--Ol)', 'var(--O)');
+      _addNtf('Good ' + greet + ', ' + ((_U && _U.name ? _U.name.split(' ')[0] : '') || '') + '! Have a productive day.', 'fa-sun', 'var(--Ol)', 'var(--O)');
     }
     function _loadAnnBadge() {
       _gas('getAnnouncements', [], function (anns) {
@@ -8358,6 +8482,13 @@ function _gasX(fn, args, timeout, onOk, onErr) {
     }
 
     function _vDash() {
+      if (!_U || !_U.name) {
+        // User session not ready — retry after short delay
+        var cont = document.getElementById('content');
+        if (cont) cont.innerHTML = '<div style="padding:40px;text-align:center"><div class="sk sk-h6" style="margin:auto;width:60px;height:60px;border-radius:50%"></div><p style="color:var(--tx3);margin-top:12px">Loading…</p></div>';
+        setTimeout(function() { if (_U && _U.name) _loadV('dash'); }, 800);
+        return;
+      }
       try {
       var hr = new Date().getHours();
       var greet = hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening';
