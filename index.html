@@ -7806,18 +7806,15 @@ function _gasX(fn, args, timeout, onOk, onErr) {
     ══════════════════════════════════════════════════════════ */
 
     function _safeU() {
-      // Repair _U in-place so ALL subsequent _U.x accesses are safe
-      if (!_U || typeof _U !== 'object') _U = {};
-      if (!_U.name)            _U.name            = 'User';
-      if (!_U.emp_code)        _U.emp_code        = '';
-      if (!_U.email)           _U.email           = '';
-      if (!_U.role)            _U.role            = 'STAFF';
-      if (!_U.dept)            _U.dept            = '';
-      if (!_U.photo)           _U.photo           = '';
-      if (_U.need_attendance === undefined) _U.need_attendance = true;
-      if (_U.need_location   === undefined) _U.need_location   = true;
-      return _U; // returns the repaired _U directly
+      // Use bracket notation — prevents regex from breaking assignments
+      _U = (_U && typeof _U === 'object') ? _U : {};
+      var defs = {name:'User',emp_code:'',email:'',role:'STAFF',dept:'',photo:''};
+      for (var k in defs) { if (!_U[k]) _U[k] = defs[k]; }
+      if (_U['need_attendance'] === undefined) _U['need_attendance'] = true;
+      if (_U['need_location']   === undefined) _U['need_location']   = true;
+      return _U;
     }
+
 
 
     function _bootApp() {
@@ -8619,11 +8616,11 @@ function _gasX(fn, args, timeout, onOk, onErr) {
             '<div style="position:absolute;top:-30px;right:-30px;width:130px;height:130px;border-radius:50%;background:rgba(255,255,255,.08)"></div>' +
             '<div style="position:absolute;bottom:-40px;left:-20px;width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,.06)"></div>' +
             '<div style="color:rgba(255,255,255,.8);font-size:12.5px;font-weight:600;letter-spacing:.3px">' + today + '</div>' +
-            '<div style="color:#fff;font-size:22px;font-weight:900;margin-top:6px;letter-spacing:-.5px">' + greet + ', ' + _esc(_U.name.split(' ')[0]) + ' 👋</div>' +
-            '<div style="color:rgba(255,255,255,.7);font-size:12px;margin-top:3px;font-weight:500">' + (_U.role || 'Staff') + ' · ' + (_U.dept || '') + '</div>' +
+            '<div style="color:#fff;font-size:22px;font-weight:900;margin-top:6px;letter-spacing:-.5px">' + greet + ', ' + _esc((_U&&_U.name?_U.name.split(' ')[0]:'There')) + ' 👋</div>' +
+            '<div style="color:rgba(255,255,255,.7);font-size:12px;margin-top:3px;font-weight:500">' + ((_U&&_U.role)||'Staff') + ' · ' + ((_U&&_U.dept)||'') + '</div>' +
             '</div>'
           : '<div class="mod-head">' +
-            '<div><div class="mod-title">' + greet + ', ' + _esc(_U.name.split(' ')[0]) + ' 👋</div>' +
+            '<div><div class="mod-title">' + greet + ', ' + _esc((_U&&_U.name?_U.name.split(' ')[0]:'There')) + ' 👋</div>' +
             '<div class="mod-sub">' + today + '</div></div>' +
             '<div class="mod-head-right">' +
             '<button class="btn btn-outline btn-sm" onclick="_loadV(\'feed\')"><i class="fas fa-bolt"></i> Activity</button>' +
@@ -9395,7 +9392,7 @@ function _gasX(fn, args, timeout, onOk, onErr) {
       return '<div class="fbar">' +
         '<label>Employee:</label>' +
         '<select id="ckEmp" onchange="_loadToday()">' +
-        '<option value="' + _U.emp_code + '">' + _esc(_U.name) + ' (Me)</option>' +
+        '<option value="' + _U.emp_code + '">' + _esc((_U&&_U.name)||'Me') + ' (Me)</option>' +
         '</select>' +
         '<label>Date:</label>' +
         '<input type="date" id="ckDate" value="' + _today() + '" onchange="_loadToday()">' +
@@ -9412,7 +9409,7 @@ function _gasX(fn, args, timeout, onOk, onErr) {
       return '<div class="fbar">' +
         '<label>Week:</label><select id="ckWeek">' + opts.join('') + '</select>' +
         '<label>Year:</label><input type="number" id="ckWYear" value="' + new Date().getFullYear() + '" min="2020" max="2030" >' +
-        '<label>Employee:</label><select id="ckWEmp" ><option value="' + _U.emp_code + '">' + _esc(_U.name) + ' (Me)</option></select>' +
+        '<label>Employee:</label><select id="ckWEmp" ><option value="' + (_U&&_U.emp_code||'') + '">' + _esc((_U&&_U.name)||'Me') + ' (Me)</option></select>' +
         '<button class="btn btn-sm" onclick="_loadWeek()"><i class="fas fa-search"></i> Load</button>' +
         '</div>' +
         '<div id="ckWGrid">' + _skel(2, 'sk-h8') + '</div>';
@@ -11829,7 +11826,7 @@ function _loadSetupTasks() {
 
     function _pindForm() {
       return '<div class="fbar">' +
-        '<label>Employee:</label><select id="pindEmp" style="min-width:180px"><option value="' + _U.emp_code + '">' + _esc(_U.name) + ' (Me)</option></select>' +
+        '<label>Employee:</label><select id="pindEmp" style="min-width:180px"><option value="' + (_U&&_U.emp_code||'') + '">' + _esc((_U&&_U.name)||'Me') + ' (Me)</option></select>' +
         '<label>From:</label><input type="date" id="pindFrom" value="' + _daysAgo(30) + '">' +
         '<label>To:</label><input type="date" id="pindTo" value="' + _today() + '">' +
         '<button class="btn btn-sm" onclick="_loadIndivPerf()"><i class="fas fa-search"></i> Load</button>' +
@@ -15898,7 +15895,7 @@ function _loadSetupTasks() {
 
     //   // Populate user info
     //   var nameEls = document.querySelectorAll('.sidebar-user-name');
-    //   nameEls.forEach(function (el) { el.textContent = _U.name || 'User'; });
+    //   nameEls.forEach(function (el) { el.textContent = (_U&&_U.name)||'User'; });
     //   var roleEls = document.querySelectorAll('.sidebar-user-role');
     //   roleEls.forEach(function (el) { el.textContent = _U.role || 'STAFF'; });
     //   var deptEls = document.querySelectorAll('.sidebar-user-dept');
