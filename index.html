@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="Fresko Portal">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-180.png">
-  <title>Fresko Staff Portal — v3.0</title>
+  <title>Fresko Staff Portal</title>
 
   <!-- External Assets -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -5745,7 +5745,7 @@
             onerror="this.style.display='none'">
           <div>
             <div class="sb-brand-txt">Fresko</div>
-            <div class="sb-brand-ver">Portal v3.0</div>
+            <div class="sb-brand-ver">Portal </div>
           </div>
         </div>
         <div class="sb-prof" onclick="_loadV('profile')">
@@ -6614,7 +6614,7 @@
        JSONP was failing: /exec redirects to echo endpoint (302)
        fetch POST works correctly with GAS doPost
     ══════════════════════════════════════════════════════════ */
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbyZEe1ZVfBZ41JMSW3gnpfYMTnn43RmrvolZYSWLwesLgpx8bsCixliLTmzJdeJSRg82w/exec';
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbyoYJKED4tFEK663Tm1x-ZloevYHCOkpefoR77sUWgnrkKm3mg7DMSR37JG065Qxrd6NA/exec';
     var _TOKEN  = '';
 
     var _gasActive = 0; // count of concurrent GAS calls in flight
@@ -11269,7 +11269,7 @@ function _loadSetupTasks() {
 
         '</div>' +
         '<div style="padding:14px 20px;border-top:1px solid var(--bdr)">' +
-        '<div style="font-size:10px;color:var(--tx3);font-weight:600">Fresko Portal v3.0 &nbsp;·&nbsp; &copy; 2026 Fresko</div>' +
+        '<div style="font-size:10px;color:var(--tx3);font-weight:600">Fresko Portal  &nbsp;·&nbsp; &copy; 2026 Fresko</div>' +
         '</div>';
 
       document.body.appendChild(panel);
@@ -12264,8 +12264,8 @@ function _loadSetupTasks() {
       // Show first onboarding tip 2 seconds after login (triggered from _bootApp)
       // _showNextTip is called from _bootApp after login
 
-      console.log('[Fresko Portal v3.0] Initialized. Ready for login.');
-      console.log('[Fresko Portal v3.0] Press ? for keyboard shortcuts, ⌘K for search.');
+      console.log('[Fresko Portal ] Initialized. Ready for login.');
+      console.log('[Fresko Portal ] Press ? for keyboard shortcuts, ⌘K for search.');
     }());
 
     /* ══════════════════════════════════════════════════════════════════════
@@ -15568,9 +15568,9 @@ function _loadSetupTasks() {
         document.body.classList.add('dense');
       }
 
-      console.log('[Fresko Portal v3.0] Initialized. Ready for login.');
-      console.log('[Fresko Portal v3.0] Press ? for keyboard shortcuts, ⌘K for search.');
-      console.log('[Fresko Portal v3.0] Navigation routes:', _navRoutes.length, 'views registered.');
+      console.log('[Fresko Portal ] Initialized. Ready for login.');
+      console.log('[Fresko Portal ] Press ? for keyboard shortcuts, ⌘K for search.');
+      console.log('[Fresko Portal ] Navigation routes:', _navRoutes.length, 'views registered.');
     }());
 
     /* ══════════════════════════════════════════════════════════════════════
