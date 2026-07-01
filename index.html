@@ -5689,7 +5689,7 @@
     .login-field  { animation: loginUp  .45s cubic-bezier(.34,1.2,.64,1) both; }
     .login-field:nth-child(1) { animation-delay: .28s; }
     .login-field:nth-child(2) { animation-delay: .36s; }
-    .login-submit { animation: loginUp  .45s .44s cubic-bezier(.34,1.2,.64,1) both; }
+    .login-submit { animation: loginUp  .45s .44s cubic-bezier(.34,1.2,.64,1) both; display:block!important; width:100%!important; }
 
     /* ── Sidebar nav item stagger on load ───────────────────────────────── */
     .nav-item, .nv  { animation: navSlideIn .4s cubic-bezier(.34,1.2,.64,1) both; }
@@ -5704,7 +5704,7 @@
     .nav-item:nth-child(9),.nv:nth-child(9) { animation-delay:.40s }
 
     /* ── View / tab content entrance ─────────────────────────────────────── */
-    .view-enter { animation: slideInUp .38s cubic-bezier(.34,1.2,.64,1) both; }
+    .view-enter { animation: slideInUp .38s cubic-bezier(.34,1.2,.64,1) forwards; }
     .tab-enter  { animation: tabSlide  .28s cubic-bezier(.34,1.2,.64,1) both; }
 
     /* ── Staggered card list ─────────────────────────────────────────────── */
@@ -5837,17 +5837,17 @@
     /* ══════════════════════════════════════════════════════════════════════
        PERFORMANCE — Layout containment + compositor hints
     ══════════════════════════════════════════════════════════════════════ */
-    /* Contain layout reflow to scroller — prevents full-page relayout */
-    #content { contain: layout style; }
+    /* contain: layout style REMOVED — caused blank mobile dashboard */
+    #content { /* no containment */ }
     /* Sidebar: promote to own compositor layer (avoid repaint during slide) */
     .sb { will-change: transform; }
     /* Modals: own layer (only when open) */
-    .modal-ov { will-change: opacity; }
+
     .modal-box.open { will-change: transform, opacity; }
     /* Cards: hint GPU for hover transform */
-    .card, .kpi, .dcard { will-change: transform; }
+
     /* Only animate opacity+transform — no layout-triggering properties */
-    .anim-item { will-change: transform, opacity; }
+
     /* Scrollable areas: smooth momentum */
     #content, .tw, .tabs { -webkit-overflow-scrolling: touch; }
     /* Image rendering: crisp on retina */
@@ -6135,6 +6135,117 @@
       .week-day  { border-radius: 14px !important; margin-bottom: 10px; }
     }
 
+  
+    /* ══════════════════════════════════════════════════════════════════════
+       SAFE ANIMATIONS — Work on ALL devices, never hide content
+       Rule: never use opacity:0 as starting point on critical containers
+       Use transform only for entrance effects, opacity only for card items
+    ══════════════════════════════════════════════════════════════════════ */
+
+    /* ── Login screen: smooth orchestrated entrance ─────────────────────── */
+    @keyframes loginBoxIn  { from{opacity:0;transform:translateY(30px) scale(.96)} to{opacity:1;transform:none} }
+    @keyframes loginFieldIn{ from{opacity:0;transform:translateX(-12px)} to{opacity:1;transform:none} }
+    @keyframes loginBtnIn  { from{opacity:0;transform:translateY(10px) scale(.95)} to{opacity:1;transform:none} }
+
+    .lbox        { animation: loginBoxIn   .55s cubic-bezier(.34,1.15,.64,1) .05s both; }
+    .login-field { animation: loginFieldIn .4s  cubic-bezier(.34,1.2,.64,1) both; }
+    .login-field:nth-child(1) { animation-delay:.3s }
+    .login-field:nth-child(2) { animation-delay:.4s }
+    .login-submit { animation: loginBtnIn  .4s  cubic-bezier(.34,1.2,.64,1) .5s both; }
+
+    /* ── Safe card entrance — translateY only, starts VISIBLE ───────────── */
+    @keyframes cardSlideUp { from{transform:translateY(20px)} to{transform:none} }
+
+    /* ── Stagger for .anim-item — opacity goes 0→1 FAST then slide ─────── */
+    .anim-item {
+      animation: slideInUp .32s cubic-bezier(.34,1.2,.64,1) both;
+    }
+    /* Max stagger: first 8 items get delay, rest show immediately */
+    .anim-item:nth-child(1)  { animation-delay:.03s }
+    .anim-item:nth-child(2)  { animation-delay:.07s }
+    .anim-item:nth-child(3)  { animation-delay:.11s }
+    .anim-item:nth-child(4)  { animation-delay:.15s }
+    .anim-item:nth-child(5)  { animation-delay:.18s }
+    .anim-item:nth-child(6)  { animation-delay:.21s }
+    .anim-item:nth-child(7)  { animation-delay:.24s }
+    .anim-item:nth-child(n+8) { animation-delay:.26s }
+
+    /* ── KPI cards: pop in from below ───────────────────────────────────── */
+    .kpi { animation: kpiPop .4s cubic-bezier(.34,1.3,.64,1) both; }
+    .krow > .kpi:nth-child(1) { animation-delay:.05s }
+    .krow > .kpi:nth-child(2) { animation-delay:.10s }
+    .krow > .kpi:nth-child(3) { animation-delay:.15s }
+    .krow > .kpi:nth-child(4) { animation-delay:.20s }
+
+    /* ── Quick action tiles: spring pop from below ──────────────────────── */
+    #dashQuickAct > button { animation: kpiPop .42s cubic-bezier(.34,1.4,.64,1) both; }
+    #dashQuickAct > button:nth-child(1) { animation-delay:.06s }
+    #dashQuickAct > button:nth-child(2) { animation-delay:.11s }
+    #dashQuickAct > button:nth-child(3) { animation-delay:.16s }
+    #dashQuickAct > button:nth-child(4) { animation-delay:.21s }
+    #dashQuickAct > button:nth-child(5) { animation-delay:.26s }
+    #dashQuickAct > button:nth-child(6) { animation-delay:.30s }
+    #dashQuickAct > button:nth-child(7) { animation-delay:.34s }
+    #dashQuickAct > button:nth-child(8) { animation-delay:.37s }
+
+    /* ── Cards slide up (transform only, never opacity:0 on containers) ── */
+    .card { animation: cardSlideUp .35s cubic-bezier(.34,1.2,.64,1) both; }
+
+    /* ── Sidebar: items slide in from left ──────────────────────────────── */
+    .nv { animation: navSlideIn .38s cubic-bezier(.34,1.2,.64,1) both; }
+    .nv:nth-child(1)  { animation-delay:.06s }
+    .nv:nth-child(2)  { animation-delay:.10s }
+    .nv:nth-child(3)  { animation-delay:.14s }
+    .nv:nth-child(4)  { animation-delay:.18s }
+    .nv:nth-child(5)  { animation-delay:.22s }
+    .nv:nth-child(6)  { animation-delay:.26s }
+    .nv:nth-child(7)  { animation-delay:.29s }
+    .nv:nth-child(8)  { animation-delay:.32s }
+    .nv:nth-child(n+9) { animation-delay:.35s }
+
+    /* ── Topbar: slide down ─────────────────────────────────────────────── */
+    .topbar { animation: slideInUp .35s .02s cubic-bezier(.34,1.2,.64,1) both; }
+    .mob-nav { animation: slideInUp .38s .08s cubic-bezier(.34,1.4,.64,1) both; }
+
+    /* ── Mobile card touch interactions ─────────────────────────────────── */
+    @media (max-width: 640px) {
+      .card:active   { transform: scale(.97) !important; transition: transform .1s; }
+      .kpi:active    { transform: scale(.94) !important; }
+      .btn:active    { transform: scale(.93) !important; }
+      .dcard:active  { transform: scale(.97) !important; }
+      #dashQuickAct > button:active { transform: scale(.88) !important; }
+    }
+
+    /* ── Hover effects: desktop only (no hover on touch) ───────────────── */
+    @media (hover: hover) {
+      .card:hover  { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.10) !important; }
+      .kpi:hover   { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,.08) !important; }
+      .dcard:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,.08) !important; }
+      .nv:hover    { padding-left: 20px !important; }
+      .btn:hover   { filter: brightness(1.06); }
+    }
+    .card, .kpi, .dcard, .nv, .btn {
+      transition: transform .18s cubic-bezier(.34,1.3,.64,1), box-shadow .18s ease,
+                  padding .15s ease, filter .15s ease;
+    }
+
+    /* ── Tab switch: subtle slide (safe — not on #content) ─────────────── */
+    .tab-pane.active { animation: slideInUp .28s cubic-bezier(.34,1.2,.64,1); }
+
+    /* ── Modal: slide up on open ────────────────────────────────────────── */
+    @media (max-width: 640px) {
+      .modal-box.open { animation: sheetUp .32s cubic-bezier(.34,1.2,.64,1); }
+    }
+    @media (min-width: 641px) {
+      .modal-box.open { animation: zoomSpring .3s cubic-bezier(.34,1.3,.64,1); }
+    }
+
+    /* ── Dashboard hero: float ──────────────────────────────────────────── */
+    .dash-hero { animation: fadeSlideUp .5s cubic-bezier(.34,1.15,.64,1) .1s both; }
+
+    /* ── Toast: always animated ─────────────────────────────────────────── */
+    .toast { animation: toastIn .35s cubic-bezier(.34,1.3,.64,1) both; }
+
   </style>
 </head>
 
@@ -6168,7 +6279,7 @@
         <i class="fas fa-lock l-ico"></i>
       </div>
 
-      <button class="l-btn login-submit btn-ripple" id="btnLogin" onclick="_doLogin()">
+      <button class="l-btn login-submit" id="btnLogin" onclick="_doLogin()">
         <i class="fas fa-sign-in-alt"></i> Sign In
       </button>
 
@@ -7565,17 +7676,12 @@ function _gasX(fn, args, timeout, onOk, onErr) {
 
       var cont = document.getElementById('content');
       if (cont) {
-        // Micro-flash out before switching content
-        cont.style.opacity = '0';
-        cont.style.transform = 'translateY(6px)';
-        cont.style.transition = 'opacity .12s ease, transform .12s ease';
-        setTimeout(function() {
-          cont.scrollTop = 0;
-          cont.innerHTML = _skelKpi(4) + _skel(3);
-          cont.style.opacity = '1';
-          cont.style.transform = '';
-          cont.style.transition = '';
-        }, 90);
+        cont.scrollTop = 0;
+        cont.innerHTML = _skelKpi(4) + _skel(3);
+        // Subtle fade without hiding content (no opacity:0 timing risks)
+        cont.style.opacity = '0.7';
+        cont.style.transition = 'opacity .15s ease';
+        requestAnimationFrame(function() { cont.style.opacity = '1'; cont.style.transition = ''; });
       }
 
       var views = {
@@ -15754,10 +15860,8 @@ function _loadSetupTasks() {
         wrapper.appendChild(tbl);
       });
 
-      // 2. Add view-enter to main content area for page-load animation
-      content.className = content.className.replace(/\bview-enter\b/,'');
-      void content.offsetWidth; // trigger reflow
-      content.classList.add('view-enter');
+      // 2. Content visible immediately — subtle slide for item-level animations only
+      // Removed: content.classList.add('view-enter') was causing blank screen on slow mobile
 
       // 3. Stagger .anim-item cards — reset animation to replay
       var items = content.querySelectorAll('.anim-item');
