@@ -4736,6 +4736,178 @@
         overflow-wrap: break-word;
       }
     } /* end @media 640px */
+
+    /* ══════════════════════════════════════════════════════════════
+       MOBILE VIEW FIXES — All views native-aligned
+       Every grid, table, layout fixed for ≤640px
+    ══════════════════════════════════════════════════════════════ */
+    @media (max-width: 640px) {
+
+      /* ── GLOBAL: remove horizontal overflow everywhere ── */
+      #content * { max-width: 100%; box-sizing: border-box; }
+      #content { overflow-x: hidden !important; }
+
+      /* ── ALL multi-col grids → single or 2-col ── */
+      [style*="grid-template-columns: repeat(3"],
+      [style*="grid-template-columns:repeat(3"],
+      [style*="grid-template-columns: 1fr 1fr 1fr"],
+      [style*="grid-template-columns:1fr 1fr 1fr"] {
+        grid-template-columns: 1fr 1fr !important;
+      }
+      [style*="grid-template-columns: repeat(4"],
+      [style*="grid-template-columns:repeat(4"],
+      [style*="grid-template-columns: 1fr 1fr 1fr 1fr"] {
+        grid-template-columns: 1fr 1fr !important;
+      }
+      [style*="grid-template-columns: repeat(5"],
+      [style*="grid-template-columns:repeat(5"],
+      [style*="grid-template-columns: repeat(6"],
+      [style*="grid-template-columns:repeat(6"],
+      [style*="grid-template-columns: repeat(7"],
+      [style*="grid-template-columns: repeat(8"],
+      [style*="grid-template-columns:repeat(8"] {
+        grid-template-columns: 1fr 1fr !important;
+      }
+
+      /* ── Fixed-width sidebar layouts → stack ── */
+      [style*="grid-template-columns: 300px"],
+      [style*="grid-template-columns:300px"],
+      [style*="grid-template-columns: 320px"],
+      [style*="grid-template-columns:320px"],
+      [style*="grid-template-columns: 340px"],
+      [style*="grid-template-columns:340px"],
+      [style*="grid-template-columns: 380px"],
+      [style*="grid-template-columns:380px"],
+      [style*="grid-template-columns: 1fr 300px"],
+      [style*="grid-template-columns:1fr 300px"],
+      [style*="grid-template-columns: 1fr 320px"],
+      [style*="grid-template-columns:1fr 320px"] {
+        grid-template-columns: 1fr !important;
+      }
+
+      /* ── TABLES: horizontal scroll wrapper ── */
+      table { font-size: 11px !important; }
+      .tw, [style*="overflow-x: auto"] { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+      th, td { white-space: nowrap; padding: 6px 8px !important; font-size: 11px !important; }
+      /* Muster table specifically */
+      .muster-tbl, #mstrGridTable { font-size: 10px !important; }
+      .muster-tbl th, .muster-tbl td,
+      #mstrGridTable th, #mstrGridTable td { padding: 5px 6px !important; font-size: 10px !important; }
+      .mst-emp { min-width: 80px !important; max-width: 90px !important; font-size: 10px !important; }
+
+      /* ── DASHBOARD ── */
+      .dash-hero { padding: 16px !important; border-radius: 18px !important; }
+      .dash-hero h2 { font-size: 18px !important; }
+      #dashQuickAct { grid-template-columns: repeat(4,1fr) !important; gap: 6px !important; }
+      .qa-tile { padding: 10px 4px !important; }
+      .qa-icon { width: 38px !important; height: 38px !important; font-size: 17px !important; }
+      .qa-lbl  { font-size: 10px !important; line-height: 1.2 !important; }
+      /* Announcement card in dash */
+      .ann-card { padding: 12px !important; }
+
+      /* ── CHECKLIST ── */
+      .csetup-grid { grid-template-columns: 1fr !important; }
+      .cl-row { font-size: 13px !important; }
+
+      /* ── DELEGATION ── */
+      .deleg-card { padding: 13px !important; }
+      .deleg-meta { flex-wrap: wrap !important; gap: 4px !important; }
+
+      /* ── ATTENDANCE ── */
+      .att-punch-card { padding: 16px !important; }
+      .att-punch-card .btn { width: 100% !important; }
+      /* Attendance calendar grid */
+      .att-cal { font-size: 11px !important; }
+      .att-cal-day { min-height: 32px !important; font-size: 10px !important; }
+
+      /* ── LEAVE MANAGEMENT ── */
+      .leave-card { padding: 12px !important; }
+      .lbal-grid { grid-template-columns: 1fr !important; }
+      .leave-type-card { flex-direction: column !important; }
+
+      /* ── EM DASHBOARD ── */
+      .em-grid { grid-template-columns: 1fr !important; }
+      .em-stat-row { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
+      /* EM doer detail */
+      .em-detail { padding: 12px !important; }
+
+      /* ── EMPLOYEE DIRECTORY ── */
+      .emp-card { padding: 12px !important; }
+      .emp-card-grid { grid-template-columns: 1fr !important; }
+      /* Profile detail in emp dir */
+      [style*="grid-template-columns: 200px"],
+      [style*="grid-template-columns:200px"] { grid-template-columns: 1fr !important; }
+
+      /* ── ANALYTICS (Checklist / Delegation / Attendance) ── */
+      .ana-filter-bar { flex-wrap: wrap !important; gap: 8px !important; }
+      .ana-filter-bar select { flex: 1 !important; min-width: 0 !important; }
+      /* Chart containers */
+      canvas { max-width: 100% !important; height: 200px !important; }
+      .chart-wrap { overflow-x: auto !important; }
+
+      /* ── HOLIDAY CALENDAR ── */
+      .hol-cal-grid { grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr !important; }
+      .hol-cal-day { padding: 4px 2px !important; font-size: 10px !important; min-height: 36px !important; }
+      .hol-cal-header { font-size: 10px !important; padding: 4px 2px !important; }
+
+      /* ── ACTIVITY FEED ── */
+      .feed-item { padding: 12px !important; gap: 10px !important; }
+      .feed-ava  { width: 34px !important; height: 34px !important; flex-shrink: 0 !important; }
+
+      /* ── ANNOUNCEMENTS ── */
+      .ann-post-form { padding: 14px !important; }
+      .ann-post-form textarea { min-height: 80px !important; }
+
+      /* ── MY PROFILE ── */
+      .profile-grid, [style*="grid-template-columns: 300px 1fr"],
+      [style*="grid-template-columns:300px 1fr"] { grid-template-columns: 1fr !important; }
+
+      /* ── MUSTER REPORT ── */
+      .muster-filters { flex-direction: column !important; }
+      .muster-filters select,
+      .muster-filters input { width: 100% !important; }
+      /* Muster table scroll */
+      #mstrGridWrap { overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; width: 100% !important; }
+      #mstrGridTable { font-size: 10px !important; min-width: 500px !important; }
+
+      /* ── FBAR (filter bars) ── */
+      .fbar { flex-wrap: wrap !important; gap: 8px !important; }
+      .fbar select, .fbar input[type="month"],
+      .fbar input[type="date"] { flex: 1 !important; min-width: 120px !important; }
+      .fbar .btn { flex: 0 0 auto !important; }
+
+      /* ── FORM ROWS ── */
+      .frow { flex-direction: column !important; gap: 0 !important; }
+      .frow .fgrp { width: 100% !important; }
+
+      /* ── MOD HEAD ── */
+      .mod-head { flex-direction: column !important; gap: 8px !important; align-items: flex-start !important; }
+      .mod-title { font-size: 18px !important; }
+      .mod-sub   { font-size: 12px !important; }
+      .mod-acts  { width: 100% !important; }
+      .mod-acts .btn { width: 100% !important; }
+
+      /* ── STAT BADGES / BDGS ── */
+      .bdg { font-size: 10px !important; padding: 2px 7px !important; }
+
+      /* ── SECTION TITLE ── */
+      .sec-title { font-size: 13px !important; }
+
+      /* ── ANN CARD (delegate/leave) ── */
+      .ann-card { border-radius: 14px !important; }
+
+      /* ── KPI strip ── */
+      .krow { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
+      .krow-3 { grid-template-columns: 1fr 1fr !important; }
+
+      /* ── CHECKLIST ANALYTICS - chart cards ── */
+      .cla-grid { grid-template-columns: 1fr !important; }
+      .cla-chart { height: 180px !important; }
+
+      /* ── SEARCH ── */
+      #fkSearch { padding: 12px 12px 20px !important; }
+      #fkSearchInp { font-size: 16px !important; }
+    }
     
 
     /* ══════════════════════════════════════════════════════════════════════
@@ -7253,6 +7425,56 @@
     var _V = null;   // Current view name
     var _ST = null;   // Current sub-tab
     var _D = {};     // Cached data store (empDir, todayTasks, etc.)
+
+    // ── Persistent cache (localStorage) ─────────────────────────────────
+    var _LC_KEY = 'fk_data_v1'; // bump version to bust cache on schema change
+    var _LC_TTL = 4 * 60 * 60 * 1000; // 4 hours max age
+
+    function _lcSave() {
+      try {
+        var payload = {
+          ts: Date.now(),
+          d: {
+            dashStats:    _D.dashStats    || null,
+            todayAtt:     _D.todayAtt     || null,
+            todayTasks:   _D.todayTasks   || null,
+            announcements:_D.announcements|| null,
+            leaveBalance: _D.leaveBalance || null,
+            holidays:     _D.holidays     || null,
+            myDelegations:_D.myDelegations|| null,
+            celebrations: _D.celebrations || null,
+            appConfig:    _D.appConfig    || null
+          }
+        };
+        localStorage.setItem(_LC_KEY, JSON.stringify(payload));
+      } catch(e) {} // quota exceeded — ignore
+    }
+
+    function _lcLoad() {
+      try {
+        var raw = localStorage.getItem(_LC_KEY);
+        if (!raw) return false;
+        var p = JSON.parse(raw);
+        if (!p || !p.ts || (Date.now() - p.ts) > _LC_TTL) return false;
+        // Restore into _D
+        var d = p.d;
+        if (d.dashStats)     _D.dashStats     = d.dashStats;
+        if (d.todayAtt)      _D.todayAtt      = d.todayAtt;
+        if (d.todayTasks)    _D.todayTasks    = d.todayTasks;
+        if (d.announcements) _D.announcements = d.announcements;
+        if (d.leaveBalance)  _D.leaveBalance  = d.leaveBalance;
+        if (d.holidays)      _D.holidays      = d.holidays;
+        if (d.myDelegations) _D.myDelegations = d.myDelegations;
+        if (d.celebrations)  _D.celebrations  = d.celebrations;
+        if (d.appConfig)     _D.appConfig     = d.appConfig;
+        _D.lastFetch = p.ts;
+        return true;
+      } catch(e) { return false; }
+    }
+
+    function _lcClear() {
+      try { localStorage.removeItem(_LC_KEY); } catch(e) {}
+    }
     var _refreshTimer = null;   // background auto-refresh interval handle
     var _AUTO_REFRESH_MS = 90000; // 90s — balance between freshness and GAS quota
 
@@ -7800,9 +8022,10 @@
     function _soHide() { document.getElementById('soOv').classList.remove('on'); }
 
     function _signOut() {
-      // 1. Clear ALL stored session data
+      // 1. Clear ALL stored session data + data cache
       try {
         _clearSession();
+        _lcClear(); // clear data cache so next user sees fresh data
         localStorage.removeItem('fk_session_v2');
         localStorage.removeItem('fk_dark');
         sessionStorage.clear();
@@ -8309,7 +8532,26 @@ function _gasX(fn, args, timeout, onOk, onErr) {
       _applySbCollapseState();
       _bootNtfs();
 
-      // ── ONE bulk call — load everything at login (35s timeout for GAS cold start) ──
+      // ── INSTANT BOOT: load from localStorage cache first ──────────────
+      var _hasCached = _lcLoad();
+      if (_hasCached) {
+        // Cache hit → show UI instantly, refresh in background
+        _hideSplash();
+        _loadV(window._pwaStartRoute || 'dash');
+        window._pwaStartRoute = null;
+        _updateMobNav && _updateMobNav('home');
+        // Small badge to show background refresh is happening
+        var _rb = document.createElement('div');
+        _rb.id = 'fkBgRefresh';
+        _rb.style.cssText = 'position:fixed;top:56px;right:10px;z-index:500;font-size:10px;font-weight:700;' +
+          'color:var(--tx3);background:var(--sur);padding:3px 8px;border-radius:99px;' +
+          'box-shadow:0 1px 6px rgba(0,0,0,.1);display:flex;align-items:center;gap:4px';
+        _rb.innerHTML = '<i class="fas fa-circle-notch fa-spin" style="font-size:9px;color:var(--P)"></i> syncing';
+        document.body.appendChild(_rb);
+        _startAutoRefresh();
+      }
+
+      // ── FETCH FRESH DATA (background if cached, blocking if not) ──
       _gasX('getAllData', [], 35000, function(d) {
         if (!d) return;
 
@@ -8340,6 +8582,7 @@ function _gasX(fn, args, timeout, onOk, onErr) {
         }
         if (d.myAttendance)  _D.myAttendance  = d.myAttendance;
         _D.lastFetch = Date.now();
+        _lcSave(); // persist to localStorage for instant next-load
         // Update cache toggle display
         var stEl = document.getElementById('cacheState');
         if (stEl) stEl.textContent = _cacheOk ? 'ON' : 'OFF';
@@ -8351,12 +8594,37 @@ function _gasX(fn, args, timeout, onOk, onErr) {
           badge.style.display = '';
         }
 
-        // Render dashboard with cached data
-        _hideSplash();
-        _loadV(window._pwaStartRoute || 'dash');
-        window._pwaStartRoute = null;
-        _updateMobNav && _updateMobNav('home');
-        _startAutoRefresh(); // keep data fresh in the background
+        // Fresh data arrived — show UI or silently update
+        var _bgBadge = document.getElementById('fkBgRefresh');
+        if (_bgBadge) { _bgBadge.remove(); } // remove syncing badge
+
+        if (!window._fkLoaded) {
+          // Cold start (no cache): show UI now
+          _hideSplash();
+          _loadV(window._pwaStartRoute || 'dash');
+          window._pwaStartRoute = null;
+          _updateMobNav && _updateMobNav('home');
+          _startAutoRefresh();
+        } else {
+          // Cache was shown: silently re-render ONLY current view with fresh data
+          window._pwaStartRoute = null;
+          _startAutoRefresh();
+          // Re-render current view quietly (user may have navigated)
+          if (window._curView) {
+            try { _loadV(window._curView, window._ST || null); } catch(e) {}
+          }
+          // Brief success flash
+          var _freshBadge = document.createElement('div');
+          _freshBadge.style.cssText = 'position:fixed;top:56px;right:10px;z-index:500;font-size:10px;font-weight:700;' +
+            'color:var(--G);background:var(--Gl);padding:3px 8px;border-radius:99px;' +
+            'transition:opacity .5s';
+          _freshBadge.textContent = '✓ Updated';
+          document.body.appendChild(_freshBadge);
+          setTimeout(function() {
+            _freshBadge.style.opacity = '0';
+            setTimeout(function() { _freshBadge.remove(); }, 500);
+          }, 1500);
+        }
 
       }, function() {
         // Fallback: getAllData itself failed/timed out. Still fetch
