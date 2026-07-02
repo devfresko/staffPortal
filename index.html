@@ -4599,127 +4599,38 @@
          PULL-TO-REFRESH
       ══════════════════════════════════════════════════════════════ */
       #fkPtr {
-        display: none; position: fixed; top: 0; left: 0; right: 0; z-index: 200;
-        height: 3px;
-        background: linear-gradient(90deg, var(--P), var(--T), var(--G));
-        animation: ptrSlide 1.4s linear infinite;
+        display: none;
+        position: fixed; top: 64px; left: 50%;
+        transform: translateX(-50%);
+        z-index: 999;
+        flex-direction: column; align-items: center;
+        gap: 6px;
+        background: var(--sur);
+        border-radius: 20px;
+        padding: 12px 20px 10px;
+        box-shadow: 0 4px 24px rgba(0,0,0,.15);
+        font-size: 12px; font-weight: 700; color: var(--tx2);
+        white-space: nowrap;
       }
-      @keyframes ptrSlide {
-        from { transform: translateX(-100%); }
-        to   { transform: translateX(100%); }
+      #fkPtr.show { display: flex; animation: safePop .2s cubic-bezier(.34,1.2,.64,1) forwards; }
+      #fkPtr .ptr-wrap { position:relative; width:36px; height:36px; }
+      #fkPtr .ptr-wrap::before {
+        content:''; position:absolute; inset:0;
+        border-radius:50%; background:#fff;
+        box-shadow:0 2px 8px rgba(0,0,0,.1);
       }
-
-      /* ══════════════════════════════════════════════════════════════
-         MOD HEAD & TABS
-      ══════════════════════════════════════════════════════════════ */
-      .mod-head {
-        flex-direction: column; align-items: stretch;
-        gap: 8px; margin-bottom: 12px;
+      #fkPtr .ptr-wrap::after {
+        content:''; position:absolute; inset:-4px;
+        border-radius:50%;
+        border:3px solid transparent;
+        border-top-color:#0A9396;
+        border-right-color:#0A9396;
+        animation: fkLogoSpin .8s linear infinite;
       }
-      .mod-head-right { justify-content: flex-start; flex-wrap: wrap; gap: 6px; }
-      .mod-title { font-size: 17px; }
-
-      .tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; flex-wrap: nowrap !important; scrollbar-width: none; }
-      .tabs::-webkit-scrollbar { display: none; }
-      .tab  { font-size: 11.5px; padding: 9px 10px; white-space: nowrap; flex-shrink: 0; }
-
-      /* ══════════════════════════════════════════════════════════════
-         KPI STRIPS
-      ══════════════════════════════════════════════════════════════ */
-      .krow   { grid-template-columns: repeat(2,1fr) !important; gap: 8px !important; }
-      .krow-3 { grid-template-columns: repeat(2,1fr) !important; }
-      .krow-5, .krow-6 { grid-template-columns: repeat(2,1fr) !important; }
-      .kpi { padding: 14px 12px; border-radius: 12px; }
-      .kpi-icon { width: 34px; height: 34px; font-size: 14px; border-radius: 10px; }
-      .kpi-val  { font-size: 22px; }
-      .kpi-lbl  { font-size: 10px; }
-
-      /* ══════════════════════════════════════════════════════════════
-         FILTER BARS
-      ══════════════════════════════════════════════════════════════ */
-      .ana-sel { font-size: 14px !important; min-height: 44px; border-radius: 12px; }
-      /* Mark team filter bars */
-      #tamFilters, #cmtFilters {
-        display: grid !important;
-        grid-template-columns: 1fr 1fr !important;
-        gap: 8px !important;
-        padding: 10px !important;
-      }
-      #tamFilters input[type="date"],
-      #cmtFilters input[type="date"],
-      #tamFilters button:last-child,
-      #cmtFilters button:last-child { grid-column: 1 / -1; }
-
-      /* ══════════════════════════════════════════════════════════════
-         TABLES
-      ══════════════════════════════════════════════════════════════ */
-      .tw { border-radius: var(--r2); }
-      .tw table { min-width: 420px; }
-      .tw thead th { font-size: 9.5px; padding: 8px 10px; }
-      .tw tbody td  { font-size: 12px;  padding: 8px 10px; }
-      .table-card { border-radius: var(--r); overflow: hidden; border: 1px solid var(--bdr); }
-
-      /* ══════════════════════════════════════════════════════════════
-         EM DASHBOARD
-      ══════════════════════════════════════════════════════════════ */
-      .em-heat-col { display: none !important; }
-      #emTableWrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-      .em-table th, .em-table td { font-size: 11px; padding: 7px 8px; white-space: nowrap; }
-
-      /* ══════════════════════════════════════════════════════════════
-         CARDS & DELEGATION
-      ══════════════════════════════════════════════════════════════ */
-      .dcard { border-radius: 12px !important; }
-      .dc-act { flex-wrap: wrap !important; }
-      .dc-act .btn-sm { flex: 1; min-width: 120px; justify-content: center; text-align: center; }
-
-      /* ══════════════════════════════════════════════════════════════
-         ATTENDANCE PUNCH CARD
-      ══════════════════════════════════════════════════════════════ */
-      .att-punch-card { border-radius: 20px !important; padding: 18px !important; }
-      .btn-checkin { font-size: 15px !important; min-height: 52px !important; border-radius: 14px !important; }
-
-      /* ══════════════════════════════════════════════════════════════
-         ANALYTICS
-      ══════════════════════════════════════════════════════════════ */
-      .att-sum  { grid-template-columns: repeat(2,1fr) !important; }
-      .wkgrid   { grid-template-columns: repeat(3,1fr) !important; }
-      .ana-kpi-row { grid-template-columns: repeat(2,1fr) !important; }
-      .da-kpi-strip { grid-template-columns: repeat(2,1fr) !important; }
-      .ana-charts-grid { grid-template-columns: 1fr !important; }
-      .da-grid3 { grid-template-columns: 1fr !important; }
-      .ana-chart-wide { grid-column: span 1 !important; }
-
-      /* ══════════════════════════════════════════════════════════════
-         EMPLOYEE DIRECTORY & PROFILE
-      ══════════════════════════════════════════════════════════════ */
-      .emp-grid { grid-template-columns: repeat(2,1fr) !important; gap: 10px !important; }
-      .emp-card { padding: 14px 10px !important; }
-      #edModules > div { grid-template-columns: 1fr !important; }
-      #edModules > div + div { grid-template-columns: 1fr !important; }
-
-      /* ══════════════════════════════════════════════════════════════
-         MARK TEAM ATTENDANCE — card rows
-      ══════════════════════════════════════════════════════════════ */
-      #tamList .adm-body > div { flex-wrap: wrap !important; align-items: flex-start; }
-      #tamList input[type="time"] { flex: 1; min-width: 90px; }
-
-      /* ══════════════════════════════════════════════════════════════
-         MISC
-      ══════════════════════════════════════════════════════════════ */
-      .hol-grid  { grid-template-columns: repeat(2,1fr) !important; gap: 8px !important; }
-      .muster-table th, .muster-table td { font-size: 10px !important; padding: 5px 6px !important; }
-      .sec-title { font-size: 13px !important; }
-
-      /* Global text wrap for mobile — prevents any content from overflowing */
-      #content * {
-        max-width: 100%;
-        box-sizing: border-box;
-      }
-      #content p, #content span:not(.badge):not(.pill),
-      #content .card > div, #content li {
-        word-break: break-word;
-        overflow-wrap: break-word;
+      #fkPtr .ptr-img {
+        position:absolute; inset:0;
+        width:100%; height:100%;
+        object-fit:contain; padding:7px; border-radius:50%;
       }
     } /* end @media 640px */
     
@@ -4909,12 +4820,8 @@
     @keyframes splashHide {
       to { opacity: 0; transform: scale(1.04); }
     }
-    @keyframes fkSpin { to { transform: rotate(360deg); } }
-    @keyframes fkPulse {
-      0%,100% { opacity:.6; transform:scale(.95); }
-      50%     { opacity:1;  transform:scale(1); }
-    }
-    @keyframes fkBar {
+    @keyframes fkLogoSpin { to { transform: rotate(360deg); } }
+    @keyframes fkBarSlide {
       0%   { transform: translateX(-100%); }
       50%  { transform: translateX(0%); }
       100% { transform: translateX(110%); }
@@ -6690,39 +6597,13 @@
 
     /* ── Mobile pull-to-refresh indicator ── */
     #fkPtr {
-      display: none;
-      position: fixed; top: 68px; left: 50%;
-      transform: translateX(-50%);
-      z-index: 999;
+      display: none; position: fixed; top: 60px; left: 50%;
+      transform: translateX(-50%) translateY(-10px);
+      background: var(--sur); border-radius: 50%; width: 38px; height: 38px;
+      box-shadow: var(--shad2); z-index: 99;
       align-items: center; justify-content: center;
-      flex-direction: column; gap: 8px;
-      background: var(--sur);
-      border-radius: 16px;
-      padding: 10px 18px;
-      box-shadow: 0 4px 20px rgba(0,0,0,.15);
-      font-size: 12px; font-weight: 700; color: var(--tx2);
     }
-    #fkPtr .ptr-ring {
-      width: 32px; height: 32px; position: relative;
-    }
-    #fkPtr .ptr-ring::before {
-      content: ''; position: absolute; inset: 0;
-      border-radius: 50%; background: #fff;
-      box-shadow: 0 2px 8px rgba(0,0,0,.1);
-    }
-    #fkPtr .ptr-ring::after {
-      content: ''; position: absolute; inset: -3px;
-      border-radius: 50%;
-      border: 2.5px solid transparent;
-      border-top-color: var(--P); border-right-color: var(--P);
-      animation: fkSpin .7s linear infinite;
-    }
-    #fkPtr .ptr-logo {
-      position: absolute; inset: 0;
-      width: 100%; height: 100%;
-      object-fit: contain; padding: 6px; border-radius: 50%;
-    }
-    #fkPtr.show { display: flex; animation: safePop .2s cubic-bezier(.34,1.2,.64,1) forwards; }
+    #fkPtr.show { display: flex; animation: safeIn .2s forwards; }
 
     /* ── Mobile page transition ── */
     @keyframes mobFadeUp {
@@ -6826,17 +6707,24 @@
       .tw thead th { font-size: 10px !important; padding: 6px 7px !important; }
       .tw tbody td { font-size: 11.5px !important; padding: 7px 7px !important; }
 
-      /* Mobile modals — centered (not bottom sheet) */
-      .modal-ov  { align-items: center !important; justify-content: center !important; padding: 16px !important; }
+      /* Mobile modals — centered popup */
+      .modal-ov {
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 20px !important;
+      }
       .modal-box {
         border-radius: 20px !important;
-        max-height: 88svh !important;
-        width: 100% !important; max-width: 360px !important;
+        max-height: 85svh !important;
+        width: 100% !important;
+        max-width: 380px !important;
         margin: 0 auto !important;
         position: relative !important;
-        bottom: auto !important; left: auto !important; right: auto !important; top: auto !important;
+        bottom: auto !important; left: auto !important;
+        right: auto !important; top: auto !important;
         transform: none !important;
         animation: safePop .25s cubic-bezier(.34,1.2,.64,1) both !important;
+        overflow-y: auto !important;
       }
       .modal-box::before { display: none !important; }
       .modal-title { font-size: 16px !important; font-weight: 800 !important; }
@@ -6984,9 +6872,17 @@
     background:linear-gradient(150deg,#005F73 0%,#0A9396 55%,#94D2BD 100%);
     flex-direction:column;align-items:center;justify-content:center;gap:0">
     <div style="animation:splashPop .5s cubic-bezier(.34,1.56,.64,1) both;display:flex;flex-direction:column;align-items:center;gap:20px">
-      <img src="https://fresko.co.in/wp-content/uploads/2025/08/Untitled-design-21.png" alt="Fresko"
-        style="width:88px;height:88px;object-fit:contain;filter:drop-shadow(0 4px 24px rgba(0,0,0,.25))"
-        onerror="this.style.display='none'">
+      <!-- Logo with white circle bg + green rotating ring -->
+      <div style="position:relative;width:96px;height:96px">
+        <!-- White circle background -->
+        <div style="position:absolute;inset:0;border-radius:50%;background:#fff;box-shadow:0 4px 24px rgba(0,0,0,.18)"></div>
+        <!-- Green rotating ring -->
+        <div style="position:absolute;inset:-5px;border-radius:50%;border:3.5px solid transparent;border-top-color:#0A9396;border-right-color:#0A9396;animation:fkLogoSpin .9s linear infinite"></div>
+        <!-- Logo inside -->
+        <img src="https://fresko.co.in/wp-content/uploads/2025/08/Untitled-design-21.png" alt="Fresko"
+          style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;padding:14px;border-radius:50%"
+          onerror="this.style.display='none'">
+      </div>
       <div style="color:#fff;font-size:22px;font-weight:900;letter-spacing:-.4px;text-align:center;
         text-shadow:0 2px 12px rgba(0,0,0,.2)">Fresko Staff Portal</div>
       <div id="fkSplashMsg" style="color:rgba(255,255,255,.8);font-size:13.5px;font-weight:600;
@@ -7005,8 +6901,8 @@
   <div class="scr" id="sApp">
     <!-- Pull-to-refresh indicator (mobile) -->
     <div id="fkPtr">
-      <div class="ptr-ring">
-        <img class="ptr-logo" src="https://fresko.co.in/wp-content/uploads/2025/08/Untitled-design-21.png" onerror="this.style.display='none'">
+      <div class="ptr-wrap">
+        <img class="ptr-img" src="https://fresko.co.in/wp-content/uploads/2025/08/Untitled-design-21.png" onerror="this.style.display='none'">
       </div>
       <span>Refreshing...</span>
     </div>
@@ -7323,7 +7219,7 @@
       var cur = window._curView || 'dash';
       // Clear in-memory cache for non-static data
       delete _D.dashStats; delete _D.todayAtt; delete _D.todayTasks;
-      delete _D.announcements; delete _D.myDelegations; delete _D.myAtt;
+      delete _D.announcements; delete _D.myDelegations; delete _D.myDelegationsMine; delete _D.myAtt;
       delete _D.lastFetch;
       _D.lastFetch = null;
       _gas('getDashboardStatsFresh', [], function (d) {
@@ -8215,7 +8111,7 @@ function _gasX(fn, args, timeout, onOk, onErr) {
 
     function _safeU() {
       _U = (_U && typeof _U === 'object') ? _U : {};
-      if (!_U['name'] || _U['name']==='User' || _U['name']==='Staff') _U['name'] = _U['full_name']||_U['Name']||'';
+      if (!_U['name']||_U['name']==='User'||_U['name']==='Staff') _U['name']=_U['full_name']||_U['Name']||'';
       if (!_U['emp_code']) _U['emp_code']='';
       if (!_U['email'])    _U['email']='';
       if (!_U['role'])     _U['role']='STAFF';
@@ -8261,31 +8157,44 @@ function _gasX(fn, args, timeout, onOk, onErr) {
           if (!window._fkLoaded) {
             var ct = document.getElementById('content');
             if (!ct) return;
-            var tips = ['Daily tasks Checklist mein track karo','GPS se attendance mark karo','Team ko tasks delegate karo','Analytics se performance dekho'];
+            var tips = [
+              'Daily KRA/KPI tasks Checklist mein track karo',
+              'GPS se attendance punch in/out karo',
+              'Team ko tasks assign karo — Delegation',
+              'Analytics se team performance dekho'
+            ];
             var ti = 0;
             ct.innerHTML =
-              '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:65vh;padding:24px;text-align:center">' +
-                // White card with logo + ring
-                '<div style="position:relative;width:88px;height:88px;margin-bottom:24px">' +
-                  // White circular background
-                  '<div style="position:absolute;inset:0;border-radius:50%;background:#fff;box-shadow:0 4px 20px rgba(0,0,0,.12)"></div>' +
-                  // Green spinning ring
-                  '<div style="position:absolute;inset:-5px;border-radius:50%;border:3px solid transparent;border-top-color:#0A9396;border-right-color:#0A9396;animation:fkSpin .9s linear infinite"></div>' +
-                  // Logo inside white circle
-                  '<img src="https://fresko.co.in/wp-content/uploads/2025/08/Untitled-design-21.png" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;padding:14px;border-radius:50%" onerror="this.style.display=\'none\'">' +
-                '</div>' +
-                '<div style="font-size:16px;font-weight:800;color:var(--tx);margin-bottom:6px">Loading your workspace...</div>' +
-                '<div id="_fkTip" style="font-size:13px;color:var(--tx2);min-height:18px;transition:opacity .3s;padding:0 16px;line-height:1.5">' + tips[0] + '</div>' +
-                '<div style="width:200px;height:3px;background:var(--bdr);border-radius:3px;overflow:hidden;margin-top:28px">' +
-                  '<div style="height:100%;width:40%;background:linear-gradient(90deg,var(--P),var(--Pd));border-radius:3px;animation:fkBar 1.6s ease-in-out infinite"></div>' +
-                '</div>' +
-              '</div>';
-            window._fkTipTimer = setInterval(function() {
-              ti = (ti+1) % tips.length;
+              '<div style="display:flex;flex-direction:column;align-items:center;' +
+              'justify-content:center;min-height:65vh;padding:24px;text-align:center">' +
+              // Logo with white circle + green ring (same as splash)
+              '<div style="position:relative;width:88px;height:88px;margin-bottom:22px">' +
+              '<div style="position:absolute;inset:0;border-radius:50%;background:#fff;' +
+              'box-shadow:0 4px 20px rgba(0,0,0,.12)"></div>' +
+              '<div style="position:absolute;inset:-5px;border-radius:50%;border:3.5px solid transparent;' +
+              'border-top-color:#0A9396;border-right-color:#0A9396;animation:fkLogoSpin .9s linear infinite"></div>' +
+              '<img src="https://fresko.co.in/wp-content/uploads/2025/08/Untitled-design-21.png" ' +
+              'style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;padding:13px;border-radius:50%" ' +
+              'onerror="this.style.display=\'none\'">' +
+              '</div>' +
+              '<div style="font-size:16px;font-weight:800;color:var(--tx);margin-bottom:6px">' +
+              'Loading your workspace...</div>' +
+              '<div id="_fkTip" style="font-size:13px;color:var(--tx2);min-height:18px;' +
+              'transition:opacity .3s;padding:0 16px;line-height:1.5">' + tips[0] + '</div>' +
+              '<div style="width:200px;height:3px;background:var(--bdr);border-radius:3px;' +
+              'overflow:hidden;margin-top:28px">' +
+              '<div style="height:100%;width:45%;background:linear-gradient(90deg,var(--P),var(--Pd));' +
+              'border-radius:3px;animation:fkBarSlide 1.6s ease-in-out infinite"></div>' +
+              '</div></div>';
+            window._fkTipTimer = setInterval(function () {
+              ti = (ti + 1) % tips.length;
               var el = document.getElementById('_fkTip');
               if (!el) { clearInterval(window._fkTipTimer); return; }
               el.style.opacity = '0';
-              setTimeout(function(){ var e2=document.getElementById('_fkTip'); if(e2){e2.textContent=tips[ti];e2.style.opacity='1';} }, 300);
+              setTimeout(function () {
+                var e2 = document.getElementById('_fkTip');
+                if (e2) { e2.textContent = tips[ti]; e2.style.opacity = '1'; }
+              }, 300);
             }, 2000);
           }
         }, 340);
@@ -10367,11 +10276,11 @@ function _loadSetupTasks() {
     function _loadDMine() {
       var pane = document.getElementById('dminePane');
       if (!pane) return;
-      // Use cache if available
-      if (_D.myDelegations) { _renderDelegCards(_D.myDelegations, 'dminePane', false); return; }
+      // Use SEPARATE cache key (not myDelegations which is set by dashboard)
+      if (_D.myDelegationsMine) { _renderDelegCards(_D.myDelegationsMine, 'dminePane', false); return; }
       pane.innerHTML = _skel(3, 'sk-h5');
       _gas('getMyDelegations', ['All'], function(dels) {
-        _D.myDelegations = dels;
+        _D.myDelegationsMine = dels;
         _renderDelegCards(dels, 'dminePane', false);
       }, function(e) { pane.innerHTML = '<div class="te">' + _esc(e.message) + '</div>'; });
     }
@@ -19146,7 +19055,7 @@ function _loadSetupTasks() {
         '<div class="mod-head">' +
         '<div><div class="mod-title">My Profile</div><div class="mod-sub">Account information, monthly stats and password management</div></div>' +
         '</div>' +
-        '<div style="display:grid;grid-template-columns:' + (_isMobile() ? '1fr' : '300px 1fr') + ';gap:' + (_isMobile() ? '14px' : '20px') + ';align-items:start">' +
+        '<div style="display:grid;grid-template-columns:' + (_isMobile() ? '1fr' : '300px 1fr') + ';gap:16px;align-items:start">' +
         '<div>' +
         '<div class="card card-nohover" style="text-align:center;padding-bottom:20px" id="profCard">' + _skel(3) + '</div>' +
         '</div>' +
@@ -19159,12 +19068,10 @@ function _loadSetupTasks() {
         '<div class="sec-title" style="margin-bottom:14px"><i class="fas fa-lock" style="color:var(--V)"></i> Change Password</div>' +
         '<div style="display:flex;flex-direction:column;gap:12px">' +
         '<div class="fgrp"><label>New Password <span class="req">★</span></label>' +
-        '<input type="password" id="profPw1" placeholder="Enter new password">' +
-        '</div>' +
+        '<input type="password" id="profPw1" placeholder="Enter new password"></div>' +
         '<div class="fgrp"><label>Confirm Password <span class="req">★</span></label>' +
-        '<input type="password" id="profPw2" placeholder="Confirm new password">' +
-        '</div>' +
-        '<button class="btn btn-sm btn-wide" onclick="_changePw()"><i class="fas fa-lock-open"></i> Update Password</button>' +
+        '<input type="password" id="profPw2" placeholder="Confirm new password"></div>' +
+        '<button class="btn btn-wide" onclick="_changePw()"><i class="fas fa-lock-open"></i> Update Password</button>' +
         '</div>' +
         '<div class="tip"><i class="fas fa-shield-halved"></i> Minimum 4 characters. Use a mix of letters and numbers for a stronger password.</div>' +
         '</div>' +
@@ -19342,7 +19249,7 @@ function _deactivateTask(uid) {
         pulling = false;
         if (ptr.classList.contains('show')) {
           _forceRefresh();
-          setTimeout(function () { if (ptr) ptr.classList.remove('show'); }, 1500);
+          setTimeout(function () { if (ptr) ptr.classList.remove('show'); }, 1200);
         }
       });
     })();
@@ -19479,7 +19386,7 @@ function _deactivateTask(uid) {
       var sApp   = document.getElementById('sApp');
       function showLogin() {
         if (sLogin) { sLogin.classList.add('on'); sLogin.style.display = ''; }
-        if (sApp)   { sApp.classList.remove('on'); sApp.style.display = 'none'; }
+        if (sApp)   { sApp.classList.remove('on'); }
       }
       try {
         var saved = _loadSession();
@@ -19496,7 +19403,7 @@ function _deactivateTask(uid) {
             if(si) si.textContent=_U.name.trim().split(' ').map(function(w){return w[0]||'';}).slice(0,2).join('').toUpperCase()||'?';
           } catch(ex){}
           if (sLogin) { sLogin.classList.remove('on'); sLogin.style.display = 'none'; }
-          if (sApp)   { sApp.classList.add('on'); sApp.style.display = ''; }
+          if (sApp)   sApp.classList.add('on');
           _bootApp();
         } else {
           if (saved) _clearSession();
