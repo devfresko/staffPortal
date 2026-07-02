@@ -7143,7 +7143,7 @@
       <p>You'll be returned to the login screen. Make sure you've saved any open work.</p>
       <div class="so-btns">
         <button class="btn btn-outline" onclick="_soHide()">Cancel</button>
-        <button class="btn btn-red" onclick="_clearSession();_U=null;_TOKEN=null;location.href=location.href.split('?')[0]">
+        <button class="btn btn-red" onclick="_signOut()">
           <i class="fas fa-sign-out-alt"></i> Sign Out
         </button>
       </div>
@@ -7798,6 +7798,46 @@
     ══════════════════════════════════════════════════════════ */
     function _soShow() { document.getElementById('soOv').classList.add('on'); }
     function _soHide() { document.getElementById('soOv').classList.remove('on'); }
+
+    function _signOut() {
+      // 1. Clear ALL stored session data
+      try {
+        _clearSession();
+        localStorage.removeItem('fk_session_v2');
+        localStorage.removeItem('fk_dark');
+        sessionStorage.clear();
+      } catch(e) {}
+
+      // 2. Reset global state
+      _U = null;
+      _TOKEN = null;
+
+      // 3. Stop all background timers
+      try {
+        if (window._autoRefreshTimer) clearInterval(window._autoRefreshTimer);
+        if (window._fkTipTimer)      clearInterval(window._fkTipTimer);
+      } catch(e) {}
+
+      // 4. Hide app, show login — no reload needed
+      var sApp   = document.getElementById('sApp');
+      var sLogin = document.getElementById('sLogin');
+      var soOv   = document.getElementById('soOv');
+
+      if (soOv)   soOv.classList.remove('on');
+      if (sApp)   { sApp.classList.remove('on'); sApp.style.display = 'none'; }
+      if (sLogin) { sLogin.classList.add('on'); sLogin.style.display = ''; }
+
+      // 5. Clear login fields for fresh entry
+      setTimeout(function() {
+        var em = document.getElementById('femail');
+        var pw = document.getElementById('fpass');
+        var er = document.getElementById('loginErr');
+        if (em) em.value = '';
+        if (pw) pw.value = '';
+        if (er) er.textContent = '';
+        if (em) em.focus();
+      }, 100);
+    }
 
     /* ══════════════════════════════════════════════════════════
        SIDEBAR MOBILE
