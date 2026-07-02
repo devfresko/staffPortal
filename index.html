@@ -124,20 +124,6 @@
       font-size: 16px;
     }
 
-    /* ═══ NATIVE APP PERFORMANCE ═══ */
-    * { touch-action: manipulation; box-sizing: border-box; }
-    a,button,[onclick],[role="button"] { -webkit-tap-highlight-color: transparent; }
-    .mob-nav,.tb,.sb,.modal-box { will-change: transform; transform: translateZ(0); }
-    #content { -webkit-overflow-scrolling: touch; overscroll-behavior-y: contain; }
-    @media (max-width:640px) {
-      .card { transition:none!important; box-shadow:0 1px 3px rgba(0,0,0,.08)!important; }
-      .card:hover { box-shadow:0 1px 3px rgba(0,0,0,.08)!important; transform:none!important; }
-      .modal-ov,.so-ov,#fkSearch,.ntf-panel { backdrop-filter:none!important; -webkit-backdrop-filter:none!important; }
-      .mob-page { animation-duration:.12s!important; }
-    }
-    .mob-nav { contain:layout style; }
-    #content { contain:layout style; }
-
     body {
       font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
       background: var(--bg);
@@ -4736,178 +4722,6 @@
         overflow-wrap: break-word;
       }
     } /* end @media 640px */
-
-    /* ══════════════════════════════════════════════════════════════
-       MOBILE VIEW FIXES — All views native-aligned
-       Every grid, table, layout fixed for ≤640px
-    ══════════════════════════════════════════════════════════════ */
-    @media (max-width: 640px) {
-
-      /* ── GLOBAL: remove horizontal overflow everywhere ── */
-      #content * { max-width: 100%; box-sizing: border-box; }
-      #content { overflow-x: hidden !important; }
-
-      /* ── ALL multi-col grids → single or 2-col ── */
-      [style*="grid-template-columns: repeat(3"],
-      [style*="grid-template-columns:repeat(3"],
-      [style*="grid-template-columns: 1fr 1fr 1fr"],
-      [style*="grid-template-columns:1fr 1fr 1fr"] {
-        grid-template-columns: 1fr 1fr !important;
-      }
-      [style*="grid-template-columns: repeat(4"],
-      [style*="grid-template-columns:repeat(4"],
-      [style*="grid-template-columns: 1fr 1fr 1fr 1fr"] {
-        grid-template-columns: 1fr 1fr !important;
-      }
-      [style*="grid-template-columns: repeat(5"],
-      [style*="grid-template-columns:repeat(5"],
-      [style*="grid-template-columns: repeat(6"],
-      [style*="grid-template-columns:repeat(6"],
-      [style*="grid-template-columns: repeat(7"],
-      [style*="grid-template-columns: repeat(8"],
-      [style*="grid-template-columns:repeat(8"] {
-        grid-template-columns: 1fr 1fr !important;
-      }
-
-      /* ── Fixed-width sidebar layouts → stack ── */
-      [style*="grid-template-columns: 300px"],
-      [style*="grid-template-columns:300px"],
-      [style*="grid-template-columns: 320px"],
-      [style*="grid-template-columns:320px"],
-      [style*="grid-template-columns: 340px"],
-      [style*="grid-template-columns:340px"],
-      [style*="grid-template-columns: 380px"],
-      [style*="grid-template-columns:380px"],
-      [style*="grid-template-columns: 1fr 300px"],
-      [style*="grid-template-columns:1fr 300px"],
-      [style*="grid-template-columns: 1fr 320px"],
-      [style*="grid-template-columns:1fr 320px"] {
-        grid-template-columns: 1fr !important;
-      }
-
-      /* ── TABLES: horizontal scroll wrapper ── */
-      table { font-size: 11px !important; }
-      .tw, [style*="overflow-x: auto"] { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
-      th, td { white-space: nowrap; padding: 6px 8px !important; font-size: 11px !important; }
-      /* Muster table specifically */
-      .muster-tbl, #mstrGridTable { font-size: 10px !important; }
-      .muster-tbl th, .muster-tbl td,
-      #mstrGridTable th, #mstrGridTable td { padding: 5px 6px !important; font-size: 10px !important; }
-      .mst-emp { min-width: 80px !important; max-width: 90px !important; font-size: 10px !important; }
-
-      /* ── DASHBOARD ── */
-      .dash-hero { padding: 16px !important; border-radius: 18px !important; }
-      .dash-hero h2 { font-size: 18px !important; }
-      #dashQuickAct { grid-template-columns: repeat(4,1fr) !important; gap: 6px !important; }
-      .qa-tile { padding: 10px 4px !important; }
-      .qa-icon { width: 38px !important; height: 38px !important; font-size: 17px !important; }
-      .qa-lbl  { font-size: 10px !important; line-height: 1.2 !important; }
-      /* Announcement card in dash */
-      .ann-card { padding: 12px !important; }
-
-      /* ── CHECKLIST ── */
-      .csetup-grid { grid-template-columns: 1fr !important; }
-      .cl-row { font-size: 13px !important; }
-
-      /* ── DELEGATION ── */
-      .deleg-card { padding: 13px !important; }
-      .deleg-meta { flex-wrap: wrap !important; gap: 4px !important; }
-
-      /* ── ATTENDANCE ── */
-      .att-punch-card { padding: 16px !important; }
-      .att-punch-card .btn { width: 100% !important; }
-      /* Attendance calendar grid */
-      .att-cal { font-size: 11px !important; }
-      .att-cal-day { min-height: 32px !important; font-size: 10px !important; }
-
-      /* ── LEAVE MANAGEMENT ── */
-      .leave-card { padding: 12px !important; }
-      .lbal-grid { grid-template-columns: 1fr !important; }
-      .leave-type-card { flex-direction: column !important; }
-
-      /* ── EM DASHBOARD ── */
-      .em-grid { grid-template-columns: 1fr !important; }
-      .em-stat-row { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
-      /* EM doer detail */
-      .em-detail { padding: 12px !important; }
-
-      /* ── EMPLOYEE DIRECTORY ── */
-      .emp-card { padding: 12px !important; }
-      .emp-card-grid { grid-template-columns: 1fr !important; }
-      /* Profile detail in emp dir */
-      [style*="grid-template-columns: 200px"],
-      [style*="grid-template-columns:200px"] { grid-template-columns: 1fr !important; }
-
-      /* ── ANALYTICS (Checklist / Delegation / Attendance) ── */
-      .ana-filter-bar { flex-wrap: wrap !important; gap: 8px !important; }
-      .ana-filter-bar select { flex: 1 !important; min-width: 0 !important; }
-      /* Chart containers */
-      canvas { max-width: 100% !important; height: 200px !important; }
-      .chart-wrap { overflow-x: auto !important; }
-
-      /* ── HOLIDAY CALENDAR ── */
-      .hol-cal-grid { grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr !important; }
-      .hol-cal-day { padding: 4px 2px !important; font-size: 10px !important; min-height: 36px !important; }
-      .hol-cal-header { font-size: 10px !important; padding: 4px 2px !important; }
-
-      /* ── ACTIVITY FEED ── */
-      .feed-item { padding: 12px !important; gap: 10px !important; }
-      .feed-ava  { width: 34px !important; height: 34px !important; flex-shrink: 0 !important; }
-
-      /* ── ANNOUNCEMENTS ── */
-      .ann-post-form { padding: 14px !important; }
-      .ann-post-form textarea { min-height: 80px !important; }
-
-      /* ── MY PROFILE ── */
-      .profile-grid, [style*="grid-template-columns: 300px 1fr"],
-      [style*="grid-template-columns:300px 1fr"] { grid-template-columns: 1fr !important; }
-
-      /* ── MUSTER REPORT ── */
-      .muster-filters { flex-direction: column !important; }
-      .muster-filters select,
-      .muster-filters input { width: 100% !important; }
-      /* Muster table scroll */
-      #mstrGridWrap { overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; width: 100% !important; }
-      #mstrGridTable { font-size: 10px !important; min-width: 500px !important; }
-
-      /* ── FBAR (filter bars) ── */
-      .fbar { flex-wrap: wrap !important; gap: 8px !important; }
-      .fbar select, .fbar input[type="month"],
-      .fbar input[type="date"] { flex: 1 !important; min-width: 120px !important; }
-      .fbar .btn { flex: 0 0 auto !important; }
-
-      /* ── FORM ROWS ── */
-      .frow { flex-direction: column !important; gap: 0 !important; }
-      .frow .fgrp { width: 100% !important; }
-
-      /* ── MOD HEAD ── */
-      .mod-head { flex-direction: column !important; gap: 8px !important; align-items: flex-start !important; }
-      .mod-title { font-size: 18px !important; }
-      .mod-sub   { font-size: 12px !important; }
-      .mod-acts  { width: 100% !important; }
-      .mod-acts .btn { width: 100% !important; }
-
-      /* ── STAT BADGES / BDGS ── */
-      .bdg { font-size: 10px !important; padding: 2px 7px !important; }
-
-      /* ── SECTION TITLE ── */
-      .sec-title { font-size: 13px !important; }
-
-      /* ── ANN CARD (delegate/leave) ── */
-      .ann-card { border-radius: 14px !important; }
-
-      /* ── KPI strip ── */
-      .krow { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
-      .krow-3 { grid-template-columns: 1fr 1fr !important; }
-
-      /* ── CHECKLIST ANALYTICS - chart cards ── */
-      .cla-grid { grid-template-columns: 1fr !important; }
-      .cla-chart { height: 180px !important; }
-
-      /* ── SEARCH ── */
-      #fkSearch { padding: 12px 12px 20px !important; }
-      #fkSearchInp { font-size: 16px !important; }
-    }
     
 
     /* ══════════════════════════════════════════════════════════════════════
@@ -5095,6 +4909,59 @@
     @keyframes splashHide { to { opacity:0; transform:scale(1.04); } }
     @keyframes fkLogoSpin { to { transform:rotate(360deg); } }
     @keyframes fkBarSlide { 0%{transform:translateX(-100%)} 50%{transform:translateX(0%)} 100%{transform:translateX(110%)} }
+    @keyframes lbBrandIn { from{opacity:0;transform:translateY(-16px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes lbSheetUp { from{transform:translateY(72px);opacity:0} to{transform:translateY(0);opacity:1} }
+
+    /* ── NATIVE PERF ── */
+    * { touch-action: manipulation; }
+    a,button,[onclick]{ -webkit-tap-highlight-color:transparent; }
+    .mob-nav,.tb,.sb{ will-change:transform; transform:translateZ(0); }
+    #content{ -webkit-overflow-scrolling:touch; overscroll-behavior-y:contain; }
+    @media(max-width:640px){
+      .card{ transition:none!important; box-shadow:0 1px 3px rgba(0,0,0,.08)!important; }
+      .modal-ov,.so-ov{ backdrop-filter:none!important; -webkit-backdrop-filter:none!important; }
+      .mob-page{ animation-duration:.12s!important; }
+    }
+
+    /* ── LOGIN MOBILE ── */
+    .l-mob-brand{
+      display:none;
+      flex-direction:column; align-items:center; justify-content:center;
+      text-align:center; padding:48px 24px 20px; flex:1;
+      animation:lbBrandIn .6s cubic-bezier(.34,1.1,.64,1) both;
+    }
+    @media(max-width:640px){
+      #sLogin{
+        flex-direction:column!important; align-items:stretch!important;
+        justify-content:flex-end!important; padding:0!important;
+        background:linear-gradient(160deg,#003040 0%,#005F73 45%,#0A9396 72%,#94D2BD 100%)!important;
+      }
+      .l-mob-brand{ display:flex!important; }
+      #lDeskLogo{ display:none!important; }
+      .lbox{
+        border-radius:28px 28px 0 0!important;
+        padding:8px 22px calc(28px + env(safe-area-inset-bottom,0px))!important;
+        max-width:100%!important; width:100%!important; margin:0!important;
+        animation:lbSheetUp .44s cubic-bezier(.34,1.1,.64,1) both!important;
+        box-shadow:0 -4px 32px rgba(0,0,0,.18)!important;
+        backdrop-filter:none!important; background:var(--sur)!important;
+      }
+      .lbox::before{
+        content:''!important; display:block!important;
+        width:40px; height:4px; border-radius:2px;
+        background:var(--bdr2); margin:0 auto 16px;
+      }
+      .lbox .l-logo-wrap{ display:none!important; }
+      .l-title{ font-size:19px!important; margin-bottom:3px!important; }
+      .l-sub{ font-size:13px!important; margin-bottom:18px!important; }
+      .l-field{ margin-bottom:11px!important; }
+      .l-field input{ font-size:16px!important; min-height:52px!important; border-radius:14px!important; }
+      .l-btn{ min-height:54px!important; font-size:16px!important; border-radius:14px!important; }
+    }
+    @media(min-width:641px){
+      .l-mob-brand{ display:none!important; }
+      #lDeskLogo{ display:block!important; }
+    }
     .fk-dot {
       width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,.9);
       animation: dotWave .9s ease-in-out infinite 1.2s ease-in-out infinite;
@@ -7080,34 +6947,33 @@
   <!-- ═══════════════════════════════════════════════════════════
      LOGIN SCREEN
 ═══════════════════════════════════════════════════════════ -->
-  <div class="scr on" id="sLogin" style="background:linear-gradient(135deg,#005F73 0%,#0A9396 40%,#94D2BD 100%)">
+  <div class="scr on" id="sLogin">
+    <div class="l-mob-brand">
+      <img src="https://fresko.co.in/wp-content/uploads/2025/08/Untitled-design-21.png" style="width:68px;height:68px;object-fit:contain;filter:drop-shadow(0 4px 16px rgba(0,0,0,.25))" onerror="this.style.display='none'">
+      <div style="color:#fff;font-size:22px;font-weight:900;margin-top:14px;letter-spacing:-.3px">Fresko Staff Portal</div>
+      <div style="color:rgba(255,255,255,.75);font-size:13px;margin-top:5px">Your workplace, anywhere</div>
+    </div>
     <div class="lbox">
-      <div class="l-logo-wrap login-logo">
+      <div class="l-logo-wrap" id="lDeskLogo">
         <img src="https://fresko.co.in/wp-content/uploads/2025/08/Untitled-design-21.png" alt="Fresko Logo"
           onerror="this.style.display='none';document.getElementById('lgFallback').style.display='flex'">
         <div class="l-logo-fallback" id="lgFallback" style="display:none">FK</div>
       </div>
-      <div class="l-title login-title">Fresko Staff Portal</div>
-      <div class="l-sub login-sub">Sign in to access your workspace</div>
-
-      <div class="l-field login-field">
+      <div class="l-title">Fresko Staff Portal</div>
+      <div class="l-sub">Sign in to access your workspace</div>
+      <div class="l-field">
         <label>Email Address</label>
-        <input type="email" id="femail" placeholder="you@fresko.co.in" autocomplete="email"
-          onkeydown="if(event.key==='Enter')document.getElementById('fpass').focus()">
+        <input type="email" id="femail" placeholder="you@fresko.co.in" autocomplete="email" onkeydown="if(event.key==='Enter')document.getElementById('fpass').focus()">
         <i class="fas fa-envelope l-ico"></i>
       </div>
-
-      <div class="l-field login-field">
+      <div class="l-field">
         <label>Password</label>
-        <input type="password" id="fpass" placeholder="••••••••" autocomplete="current-password"
-          onkeydown="if(event.key==='Enter')_doLogin()">
+        <input type="password" id="fpass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')_doLogin()">
         <i class="fas fa-lock l-ico"></i>
       </div>
-
-      <button class="l-btn login-submit" id="btnLogin" onclick="_doLogin()">
+      <button class="l-btn" id="btnLogin" onclick="_doLogin()">
         <i class="fas fa-sign-in-alt"></i> Sign In
       </button>
-
       <div class="l-err" id="loginErr"></div>
       <div class="l-footer">Fresko Staff Portal &nbsp;&bull;&nbsp; All rights reserved &copy; 2026</div>
     </div>
@@ -7127,9 +6993,7 @@
       <div style="position:relative;width:92px;height:92px">
         <div style="position:absolute;inset:0;border-radius:50%;background:#fff;box-shadow:0 4px 20px rgba(0,0,0,.15)"></div>
         <div style="position:absolute;inset:-5px;border-radius:50%;border:3.5px solid transparent;border-top-color:#0A9396;border-right-color:#0A9396;animation:fkLogoSpin .9s linear infinite"></div>
-        <img src="https://fresko.co.in/wp-content/uploads/2025/08/Untitled-design-21.png" alt="Fresko"
-          style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;padding:14px;border-radius:50%"
-          onerror="this.style.display='none'">
+        <img src="https://fresko.co.in/wp-content/uploads/2025/08/Untitled-design-21.png" alt="Fresko" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;padding:14px;border-radius:50%" onerror="this.style.display='none'">
       </div>
       <div style="color:#fff;font-size:22px;font-weight:900;letter-spacing:-.4px;text-align:center;
         text-shadow:0 2px 12px rgba(0,0,0,.2)">Fresko Staff Portal</div>
@@ -7308,16 +7172,21 @@
 ═══════════════════════════════════════════════════════════ -->
 
   <!-- Sign-out confirmation -->
-  <div class="so-ov" id="soOv">
+  <div class="so-ov" id="soOv" onclick="if(event.target===this)_soHide()">
     <div class="so-box">
-      <div style="font-size:40px;margin-bottom:12px">👋</div>
-      <h3>Sign Out?</h3>
-      <p>You'll be returned to the login screen. Make sure you've saved any open work.</p>
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg);border-radius:14px;border:1px solid var(--bdr);margin-bottom:16px;text-align:left">
+        <div style="width:40px;height:40px;border-radius:50%;background:var(--P);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;flex-shrink:0"><i class="fas fa-user" style="font-size:15px"></i></div>
+        <div style="min-width:0">
+          <div id="soUserName" style="font-size:14px;font-weight:800;color:var(--tx)">—</div>
+          <div id="soUserDept" style="font-size:12px;color:var(--tx2);margin-top:2px">Staff</div>
+        </div>
+      </div>
+      <div style="font-size:32px;margin-bottom:8px;text-align:center">👋</div>
+      <h3 style="text-align:center">Sign Out?</h3>
+      <p style="text-align:center;font-size:13px;color:var(--tx3)">You'll be returned to the login screen.</p>
       <div class="so-btns">
-        <button class="btn btn-outline" onclick="_soHide()">Cancel</button>
-        <button class="btn btn-red" onclick="_signOut()">
-          <i class="fas fa-sign-out-alt"></i> Sign Out
-        </button>
+        <button class="btn btn-outline" onclick="_soHide()"><i class="fas fa-times"></i> Cancel</button>
+        <button class="btn btn-red" onclick="_signOut()"><i class="fas fa-sign-out-alt"></i> Sign Out</button>
       </div>
     </div>
   </div>
@@ -7424,57 +7293,11 @@
     }
     var _V = null;   // Current view name
     var _ST = null;   // Current sub-tab
-    var _D = {};     // Cached data store (empDir, todayTasks, etc.)
-
-    // ── Persistent cache (localStorage) ─────────────────────────────────
-    var _LC_KEY = 'fk_data_v1'; // bump version to bust cache on schema change
-    var _LC_TTL = 4 * 60 * 60 * 1000; // 4 hours max age
-
-    function _lcSave() {
-      try {
-        var payload = {
-          ts: Date.now(),
-          d: {
-            dashStats:    _D.dashStats    || null,
-            todayAtt:     _D.todayAtt     || null,
-            todayTasks:   _D.todayTasks   || null,
-            announcements:_D.announcements|| null,
-            leaveBalance: _D.leaveBalance || null,
-            holidays:     _D.holidays     || null,
-            myDelegations:_D.myDelegations|| null,
-            celebrations: _D.celebrations || null,
-            appConfig:    _D.appConfig    || null
-          }
-        };
-        localStorage.setItem(_LC_KEY, JSON.stringify(payload));
-      } catch(e) {} // quota exceeded — ignore
-    }
-
-    function _lcLoad() {
-      try {
-        var raw = localStorage.getItem(_LC_KEY);
-        if (!raw) return false;
-        var p = JSON.parse(raw);
-        if (!p || !p.ts || (Date.now() - p.ts) > _LC_TTL) return false;
-        // Restore into _D
-        var d = p.d;
-        if (d.dashStats)     _D.dashStats     = d.dashStats;
-        if (d.todayAtt)      _D.todayAtt      = d.todayAtt;
-        if (d.todayTasks)    _D.todayTasks    = d.todayTasks;
-        if (d.announcements) _D.announcements = d.announcements;
-        if (d.leaveBalance)  _D.leaveBalance  = d.leaveBalance;
-        if (d.holidays)      _D.holidays      = d.holidays;
-        if (d.myDelegations) _D.myDelegations = d.myDelegations;
-        if (d.celebrations)  _D.celebrations  = d.celebrations;
-        if (d.appConfig)     _D.appConfig     = d.appConfig;
-        _D.lastFetch = p.ts;
-        return true;
-      } catch(e) { return false; }
-    }
-
-    function _lcClear() {
-      try { localStorage.removeItem(_LC_KEY); } catch(e) {}
-    }
+    var _D = {};
+    var _LC_KEY='fk_data_v1', _LC_TTL=4*60*60*1000;
+    function _lcSave(){try{localStorage.setItem(_LC_KEY,JSON.stringify({ts:Date.now(),d:{dashStats:_D.dashStats||null,todayAtt:_D.todayAtt||null,todayTasks:_D.todayTasks||null,announcements:_D.announcements||null,leaveBalance:_D.leaveBalance||null,holidays:_D.holidays||null,myDelegations:_D.myDelegations||null,celebrations:_D.celebrations||null,appConfig:_D.appConfig||null}}));}catch(e){}}
+    function _lcLoad(){try{var r=localStorage.getItem(_LC_KEY);if(!r)return false;var p=JSON.parse(r);if(!p||!p.ts||(Date.now()-p.ts)>_LC_TTL)return false;var d=p.d;if(d.dashStats)_D.dashStats=d.dashStats;if(d.todayAtt)_D.todayAtt=d.todayAtt;if(d.todayTasks)_D.todayTasks=d.todayTasks;if(d.announcements)_D.announcements=d.announcements;if(d.leaveBalance)_D.leaveBalance=d.leaveBalance;if(d.holidays)_D.holidays=d.holidays;if(d.myDelegations)_D.myDelegations=d.myDelegations;if(d.celebrations)_D.celebrations=d.celebrations;if(d.appConfig)_D.appConfig=d.appConfig;_D.lastFetch=p.ts;return true;}catch(e){return false;}}
+    function _lcClear(){try{localStorage.removeItem(_LC_KEY);}catch(e){}}
     var _refreshTimer = null;   // background auto-refresh interval handle
     var _AUTO_REFRESH_MS = 90000; // 90s — balance between freshness and GAS quota
 
@@ -7491,7 +7314,7 @@
           if (d.todayAtt)     _D.todayAtt     = d.todayAtt;
           if (d.announcements) _D.announcements = d.announcements;
           if (d.myDelegations) _D.myDelegations = d.myDelegations;
-          _D.lastFetch = Date.now();
+          _D.lastFetch = Date.now(); _lcSave();
           // If currently on the dashboard, silently re-render the KPI strip
           var cur = window._curView || '';
           if (cur === 'dash') {
@@ -8018,48 +7841,34 @@
     /* ══════════════════════════════════════════════════════════
        SIGN-OUT DIALOG
     ══════════════════════════════════════════════════════════ */
-    function _soShow() { document.getElementById('soOv').classList.add('on'); }
-    function _soHide() { document.getElementById('soOv').classList.remove('on'); }
-
+    function _soShow() {
+      try{
+        var nm=(_U&&_U.name)||'User', rl=(_U&&_U.role?_U.role+' · '+(_U.dept||''):'Staff');
+        var n=document.getElementById('soUserName'),r=document.getElementById('soUserDept');
+        if(n)n.textContent=nm; if(r)r.textContent=rl;
+      }catch(e){}
+      document.getElementById('soOv').classList.add('on');
+      document.body.style.overflow='hidden';
+    }
+    function _soHide() {
+      document.getElementById('soOv').classList.remove('on');
+      document.body.style.overflow='';
+    }
     function _signOut() {
-      // 1. Clear ALL stored session data + data cache
-      try {
-        _clearSession();
-        _lcClear(); // clear data cache so next user sees fresh data
-        localStorage.removeItem('fk_session_v2');
-        localStorage.removeItem('fk_dark');
-        sessionStorage.clear();
-      } catch(e) {}
-
-      // 2. Reset global state
-      _U = null;
-      _TOKEN = null;
-
-      // 3. Stop all background timers
-      try {
-        if (window._autoRefreshTimer) clearInterval(window._autoRefreshTimer);
-        if (window._fkTipTimer)      clearInterval(window._fkTipTimer);
-      } catch(e) {}
-
-      // 4. Hide app, show login — no reload needed
-      var sApp   = document.getElementById('sApp');
-      var sLogin = document.getElementById('sLogin');
-      var soOv   = document.getElementById('soOv');
-
-      if (soOv)   soOv.classList.remove('on');
-      if (sApp)   { sApp.classList.remove('on'); sApp.style.display = 'none'; }
-      if (sLogin) { sLogin.classList.add('on'); sLogin.style.display = ''; }
-
-      // 5. Clear login fields for fresh entry
-      setTimeout(function() {
-        var em = document.getElementById('femail');
-        var pw = document.getElementById('fpass');
-        var er = document.getElementById('loginErr');
-        if (em) em.value = '';
-        if (pw) pw.value = '';
-        if (er) er.textContent = '';
-        if (em) em.focus();
-      }, 100);
+      try{ _clearSession(); localStorage.removeItem('fk_session_v2'); sessionStorage.clear(); }catch(e){}
+      _U=null; _TOKEN=null;
+      window._fkLoaded=false;
+      try{ if(window._autoRefreshTimer)clearInterval(window._autoRefreshTimer); }catch(e){}
+      var sApp=document.getElementById('sApp'), sLogin=document.getElementById('sLogin'), soOv=document.getElementById('soOv');
+      if(soOv)soOv.classList.remove('on');
+      document.body.style.overflow='';
+      if(sApp){sApp.classList.remove('on');}
+      if(sLogin){sLogin.classList.add('on');sLogin.style.display='';}
+      var mn=document.getElementById('mobNav'); if(mn)mn.style.display='none';
+      setTimeout(function(){
+        var em=document.getElementById('femail'),pw=document.getElementById('fpass'),er=document.getElementById('loginErr');
+        if(em)em.value=''; if(pw)pw.value=''; if(er)er.textContent='';
+      },100);
     }
 
     /* ══════════════════════════════════════════════════════════
@@ -8443,14 +8252,11 @@ function _gasX(fn, args, timeout, onOk, onErr) {
        APP BOOTSTRAP
     ══════════════════════════════════════════════════════════ */
 
-    // Haptic helper
-    function _vib(ms) { try { if(navigator.vibrate) navigator.vibrate(ms||12); } catch(e){} }
-
     function _safeU() {
       _U=(_U&&typeof _U==='object')?_U:{};
       if(!_U['name']||_U['name']==='User'||_U['name']==='Staff')_U['name']=_U['full_name']||_U['Name']||'';
-      if(!_U['emp_code'])_U['emp_code']='';if(!_U['email'])_U['email']='';
-      if(!_U['role'])_U['role']='STAFF';if(!_U['dept'])_U['dept']='';if(!_U['photo'])_U['photo']='';
+      if(!_U['emp_code'])_U['emp_code']=''; if(!_U['email'])_U['email']='';
+      if(!_U['role'])_U['role']='STAFF'; if(!_U['dept'])_U['dept']=''; if(!_U['photo'])_U['photo']='';
       if(_U['need_attendance']===undefined)_U['need_attendance']=true;
       if(_U['need_location']===undefined)_U['need_location']=true;
       return _U;
@@ -8463,6 +8269,8 @@ function _gasX(fn, args, timeout, onOk, onErr) {
       // Switch screens
       document.getElementById('sLogin').classList.remove('on');
       document.getElementById('sApp').classList.add('on');
+      window._fkLoaded = false;
+      var _mn=document.getElementById('mobNav'); if(_mn)_mn.style.display='';
       // Show animated skeleton IMMEDIATELY so user sees activity
       var c0 = document.getElementById('content');
       if (c0 && typeof _skelKpi === 'function') {
@@ -8486,12 +8294,12 @@ function _gasX(fn, args, timeout, onOk, onErr) {
         clearInterval(splashMsgTimer);
         if (!splash) return;
         splash.style.animation = 'splashHide .35s cubic-bezier(.4,0,.2,1) forwards';
-        setTimeout(function () {
-          splash.style.display = 'none';
-          if (!window._fkLoaded) {
+        setTimeout(function(){
+          splash.style.display='none';
+          if(!window._fkLoaded){
             var ct=document.getElementById('content');
             if(!ct)return;
-            var tips=['Daily KRA/KPI tasks Checklist mein track karo','GPS se attendance punch karo','Team ko tasks assign karo — Delegation','Analytics se performance dekho'];
+            var tips=['Daily KRA/KPI tasks Checklist mein track karo','GPS se attendance punch karo','Team ko tasks assign karo','Analytics se performance dekho'];
             var ti=0;
             ct.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:65vh;padding:24px;text-align:center">'+
               '<div style="position:relative;width:88px;height:88px;margin-bottom:22px">'+
@@ -8532,26 +8340,16 @@ function _gasX(fn, args, timeout, onOk, onErr) {
       _applySbCollapseState();
       _bootNtfs();
 
-      // ── INSTANT BOOT: load from localStorage cache first ──────────────
-      var _hasCached = _lcLoad();
-      if (_hasCached) {
-        // Cache hit → show UI instantly, refresh in background
-        _hideSplash();
-        _loadV(window._pwaStartRoute || 'dash');
-        window._pwaStartRoute = null;
-        _updateMobNav && _updateMobNav('home');
-        // Small badge to show background refresh is happening
-        var _rb = document.createElement('div');
-        _rb.id = 'fkBgRefresh';
-        _rb.style.cssText = 'position:fixed;top:56px;right:10px;z-index:500;font-size:10px;font-weight:700;' +
-          'color:var(--tx3);background:var(--sur);padding:3px 8px;border-radius:99px;' +
-          'box-shadow:0 1px 6px rgba(0,0,0,.1);display:flex;align-items:center;gap:4px';
-        _rb.innerHTML = '<i class="fas fa-circle-notch fa-spin" style="font-size:9px;color:var(--P)"></i> syncing';
+      window._fkLoaded=false;
+      var _hasCached=_lcLoad();
+      if(_hasCached){
+        _hideSplash(); _loadV(window._pwaStartRoute||'dash'); window._pwaStartRoute=null;
+        _updateMobNav&&_updateMobNav('home'); _startAutoRefresh();
+        var _rb=document.createElement('div'); _rb.id='fkBgSync';
+        _rb.style.cssText='position:fixed;top:56px;right:10px;z-index:500;font-size:10px;font-weight:700;color:var(--tx3);background:var(--sur);padding:3px 8px;border-radius:99px;box-shadow:0 1px 6px rgba(0,0,0,.1);display:flex;align-items:center;gap:4px';
+        _rb.innerHTML='<i class="fas fa-circle-notch fa-spin" style="font-size:9px;color:var(--P)"></i> syncing';
         document.body.appendChild(_rb);
-        _startAutoRefresh();
       }
-
-      // ── FETCH FRESH DATA (background if cached, blocking if not) ──
       _gasX('getAllData', [], 35000, function(d) {
         if (!d) return;
 
@@ -8582,7 +8380,6 @@ function _gasX(fn, args, timeout, onOk, onErr) {
         }
         if (d.myAttendance)  _D.myAttendance  = d.myAttendance;
         _D.lastFetch = Date.now();
-        _lcSave(); // persist to localStorage for instant next-load
         // Update cache toggle display
         var stEl = document.getElementById('cacheState');
         if (stEl) stEl.textContent = _cacheOk ? 'ON' : 'OFF';
@@ -8594,36 +8391,13 @@ function _gasX(fn, args, timeout, onOk, onErr) {
           badge.style.display = '';
         }
 
-        // Fresh data arrived — show UI or silently update
-        var _bgBadge = document.getElementById('fkBgRefresh');
-        if (_bgBadge) { _bgBadge.remove(); } // remove syncing badge
-
-        if (!window._fkLoaded) {
-          // Cold start (no cache): show UI now
-          _hideSplash();
-          _loadV(window._pwaStartRoute || 'dash');
-          window._pwaStartRoute = null;
-          _updateMobNav && _updateMobNav('home');
-          _startAutoRefresh();
+        var _rb2=document.getElementById('fkBgSync'); if(_rb2)_rb2.remove();
+        if(!window._fkLoaded){
+          _hideSplash(); _loadV(window._pwaStartRoute||'dash');
+          window._pwaStartRoute=null; _updateMobNav&&_updateMobNav('home'); _startAutoRefresh();
         } else {
-          // Cache was shown: silently re-render ONLY current view with fresh data
-          window._pwaStartRoute = null;
-          _startAutoRefresh();
-          // Re-render current view quietly (user may have navigated)
-          if (window._curView) {
-            try { _loadV(window._curView, window._ST || null); } catch(e) {}
-          }
-          // Brief success flash
-          var _freshBadge = document.createElement('div');
-          _freshBadge.style.cssText = 'position:fixed;top:56px;right:10px;z-index:500;font-size:10px;font-weight:700;' +
-            'color:var(--G);background:var(--Gl);padding:3px 8px;border-radius:99px;' +
-            'transition:opacity .5s';
-          _freshBadge.textContent = '✓ Updated';
-          document.body.appendChild(_freshBadge);
-          setTimeout(function() {
-            _freshBadge.style.opacity = '0';
-            setTimeout(function() { _freshBadge.remove(); }, 500);
-          }, 1500);
+          window._pwaStartRoute=null; _startAutoRefresh();
+          try{if(window._curView)_loadV(window._curView,window._ST||null);}catch(e){}
         }
 
       }, function() {
@@ -8661,9 +8435,7 @@ function _gasX(fn, args, timeout, onOk, onErr) {
     function _loadV(view, subTab) {
       window._fkLoaded=true;
       if(window._fkTipTimer){clearInterval(window._fkTipTimer);window._fkTipTimer=null;}
-      _V = view;
-      _ST = subTab || null;
-      window._curView = view; // tracked for background auto-refresh
+      _V=view; _ST=subTab||null; window._curView=view;
       _closeSb();
       var ct=document.getElementById('content');if(ct)ct.scrollTop=0;
 
@@ -10089,16 +9861,18 @@ function _gasX(fn, args, timeout, onOk, onErr) {
     }
 
     function _ctodayForm() {
-      return '<div class="fbar">' +
-        '<label>Employee:</label>' +
-        '<select id="ckEmp" onchange="_loadToday()">' +
+      return '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">' +
+        '<div style="display:flex;align-items:center;gap:8px">' +
+        '<label style="font-size:12px;font-weight:700;color:var(--tx2);white-space:nowrap">Employee</label>' +
+        '<select id="ckEmp" onchange="_loadToday()" style="flex:1;min-width:0">' +
         '<option value="' + _U.emp_code + '">' + _esc((_U&&_U.name)||'Me') + ' (Me)</option>' +
         '</select>' +
-        '<label>Date:</label>' +
-        '<input type="date" id="ckDate" value="' + _today() + '" onchange="_loadToday()">' +
-        '<button class="btn btn-sm" onclick="_loadToday()"><i class="fas fa-search"></i> Load</button>' +
-        '<div class="fbar-spacer"></div>' +
-        
+        '</div>' +
+        '<div style="display:flex;align-items:center;gap:8px">' +
+        '<label style="font-size:12px;font-weight:700;color:var(--tx2);white-space:nowrap">Date</label>' +
+        '<input type="date" id="ckDate" value="' + _today() + '" onchange="_loadToday()" style="flex:1;min-width:0">' +
+        '<button class="btn btn-sm" style="flex-shrink:0" onclick="_loadToday()"><i class="fas fa-search"></i> Load</button>' +
+        '</div>' +
         '</div>' +
         '<div id="ckProgress" style="margin-bottom:14px"></div>' +
         '<div id="ckList"></div>';
@@ -10155,7 +9929,7 @@ function _gasX(fn, args, timeout, onOk, onErr) {
         '</optgroup>' +
         '</select></div>' +
         '<div class="fgrp"><label>Start Date <span class="req">★</span></label>' +
-        '<input type="datetime-local" id="csStartDate" value="' + _today() + 'T09:00"></div>' +
+        '<input type="datetime-local" id="csStartDate" value="' + _today() + '"></div>' +
         '</div>' +
         '<div id="csFreqX"></div>' +
         '<div style="margin-top:8px;padding:10px 14px;background:var(--sur2);border-radius:8px;font-size:12px;color:var(--tx2)">' +
@@ -19402,7 +19176,7 @@ function _loadSetupTasks() {
         '<div class="mod-head">' +
         '<div><div class="mod-title">My Profile</div><div class="mod-sub">Account information, monthly stats and password management</div></div>' +
         '</div>' +
-        '<div style="display:grid;grid-template-columns:' + (_isMobile() ? '1fr' : '300px 1fr') + ';gap:16px;align-items:start">' +
+        '<div style="display:grid;grid-template-columns:' + (_isMobile()?'1fr':'300px 1fr') + ';gap:16px;align-items:start">' +
         '<div>' +
         '<div class="card card-nohover" style="text-align:center;padding-bottom:20px" id="profCard">' + _skel(3) + '</div>' +
         '</div>' +
@@ -19514,70 +19288,6 @@ function _loadSetupTasks() {
       navigator.serviceWorker.register('sw.js').catch(function(){});
     }
 
-    // ── Offline detection ────────────────────────────────────────────
-    function _updateOnlineStatus() {
-      var bar = document.getElementById('fkOffline');
-      if (!bar) return;
-      if (!navigator.onLine) {
-        bar.style.display = 'block';
-      } else {
-        bar.style.display = 'none';
-      }
-    }
-    window.addEventListener('online',  _updateOnlineStatus);
-    window.addEventListener('offline', function() {
-      _updateOnlineStatus();
-      try { if(navigator.vibrate) navigator.vibrate([50,30,50]); } catch(e){}
-    });
-
-    // ── PWA Install Prompt ───────────────────────────────────────────
-    var _deferredInstall = null;
-    window.addEventListener('beforeinstallprompt', function(e) {
-      e.preventDefault();
-      _deferredInstall = e;
-      // Show install banner only if not already installed
-      if (!window.matchMedia('(display-mode: standalone)').matches) {
-        setTimeout(_showInstallBanner, 3000); // show after 3s
-      }
-    });
-
-    function _showInstallBanner() {
-      if (!_deferredInstall) return;
-      var existing = document.getElementById('fkInstallBar');
-      if (existing) return;
-      var bar = document.createElement('div');
-      bar.id = 'fkInstallBar';
-      bar.style.cssText = 'position:fixed;bottom:64px;left:12px;right:12px;z-index:8888;' +
-        'background:var(--P);color:#fff;border-radius:16px;padding:12px 16px;' +
-        'display:flex;align-items:center;gap:12px;box-shadow:0 4px 24px rgba(0,95,115,.4);' +
-        'animation:safePop .3s cubic-bezier(.34,1.2,.64,1) both;';
-      bar.innerHTML =
-        '<img src="https://fresko.co.in/wp-content/uploads/2025/08/Untitled-design-21.png" ' +
-        'style="width:36px;height:36px;object-fit:contain;background:#fff;border-radius:8px;padding:4px;flex-shrink:0">' +
-        '<div style="flex:1;min-width:0">' +
-        '<div style="font-size:13px;font-weight:800">Install Fresko App</div>' +
-        '<div style="font-size:11px;opacity:.85">Home screen pe add karo — faster access</div>' +
-        '</div>' +
-        '<button onclick="_doInstall()" style="background:#fff;color:var(--P);border:none;border-radius:10px;padding:8px 14px;font-weight:800;font-size:13px;cursor:pointer;flex-shrink:0;font-family:inherit">Install</button>' +
-        '<button onclick="document.getElementById(\'fkInstallBar\').remove()" style="background:transparent;border:none;color:#fff;font-size:18px;cursor:pointer;padding:0 0 0 4px;opacity:.8">×</button>';
-      document.body.appendChild(bar);
-      // Auto-hide after 8s
-      setTimeout(function() { if(bar.parentNode) bar.remove(); }, 8000);
-    }
-
-    function _doInstall() {
-      if (!_deferredInstall) return;
-      _deferredInstall.prompt();
-      _deferredInstall.userChoice.then(function(r) {
-        if (r.outcome === 'accepted') {
-          var b = document.getElementById('fkInstallBar');
-          if (b) b.remove();
-          _toast('App install ho gayi! 🎉', 'ok');
-        }
-        _deferredInstall = null;
-      });
-    }
-
 
 function _deactivateTask(uid) {
   _openModal(
@@ -19671,12 +19381,12 @@ function _deactivateTask(uid) {
     // ── Bottom nav: routing ──────────────────────────────────────────────
     var _mbnRoutes = { home:'dash', check:'check', attend:'attend', deleg:'deleg', profile:'profile', leave:'leave' };
     function _mbNav(key) {
-      // Haptic: short tap vibration (native nav feel)
-      try { if (navigator.vibrate) navigator.vibrate(8); } catch(e){}
+      try{if(navigator.vibrate)navigator.vibrate(8);}catch(e){}
       _closeSb();
       _loadV(_mbnRoutes[key] || key);
       _updateMobNav(key);
     }
+    function _vib(ms){try{if(navigator.vibrate)navigator.vibrate(ms||12);}catch(e){}}
     function _updateMobNav(activeKey) {
       var keyMap = { dash:'home', check:'check', attend:'attend', leave:'leave', deleg:'deleg', profile:'profile' };
       var mapped = keyMap[activeKey] || activeKey;
@@ -19798,19 +19508,30 @@ function _deactivateTask(uid) {
 
     // Runs AFTER all functions are defined — safe to call _bootApp here
     (function _autoRestoreSession() {
-      var sLogin=document.getElementById('sLogin'),sApp=document.getElementById('sApp');
-      function showLogin(){if(sLogin){sLogin.classList.add('on');sLogin.style.display='';}if(sApp)sApp.classList.remove('on');}
-      try{
+      var sLogin=document.getElementById('sLogin'), sApp=document.getElementById('sApp');
+      function showLogin(){
+        if(sLogin){sLogin.classList.add('on');sLogin.style.display='';}
+        if(sApp)sApp.classList.remove('on');
+        var mn=document.getElementById('mobNav'); if(mn)mn.style.display='none';
+      }
+      try {
         var saved=_loadSession();
-        var good=saved&&saved.user&&saved.user.name&&saved.user.name!=='User'&&saved.user.name!=='Staff'&&saved.user.name.trim()!=='';
+        var good=saved&&saved.user&&saved.user.name
+          &&saved.user.name!=='User'&&saved.user.name!=='Staff'&&saved.user.name.trim()!=='';
         if(saved&&saved.user&&saved.token&&saved.user.emp_code&&good){
-          _U=saved.user;_TOKEN=saved.token;_saveSession(_U,_TOKEN);
-          try{var sn=document.getElementById('sbName'),sr=document.getElementById('sbRole'),si=document.getElementById('sbAvaInitials');if(sn)sn.textContent=_U.name;if(sr)sr.textContent=(_U.role||'STAFF')+' · '+(_U.dept||'');if(si)si.textContent=_U.name.trim().split(' ').map(function(w){return w[0]||'';}).slice(0,2).join('').toUpperCase()||'?';}catch(ex){}
+          _U=saved.user; _TOKEN=saved.token; _saveSession(_U,_TOKEN);
+          try{
+            var sn=document.getElementById('sbName'),sr=document.getElementById('sbRole'),si=document.getElementById('sbAvaInitials');
+            if(sn)sn.textContent=_U.name;
+            if(sr)sr.textContent=(_U.role||'STAFF')+' · '+(_U.dept||'');
+            if(si)si.textContent=_U.name.trim().split(' ').map(function(w){return w[0]||'';}).slice(0,2).join('').toUpperCase()||'?';
+          }catch(ex){}
           if(sLogin){sLogin.classList.remove('on');sLogin.style.display='none';}
           if(sApp)sApp.classList.add('on');
+          var mn=document.getElementById('mobNav'); if(mn)mn.style.display='';
           _bootApp();
-        }else{if(saved)_clearSession();showLogin();}
-      }catch(e){showLogin();}
+        } else { if(saved)_clearSession(); showLogin(); }
+      } catch(e){ showLogin(); }
     })();
 
 
@@ -19830,7 +19551,7 @@ function _deactivateTask(uid) {
 
   </script>
   <!-- ── Mobile Bottom Navigation ── -->
-  <nav class="mob-nav" id="mobNav" aria-label="Mobile navigation">
+  <nav class="mob-nav" id="mobNav" aria-label="Mobile navigation" style="display:none">
     <div class="mob-nav-inner">
       <button class="mob-nav-item active" id="mbn-home" onclick="_mbNav('dash')" aria-label="Home">
         <span class="mob-nav-pill"><i class="fas fa-house"></i></span>
@@ -19855,14 +19576,6 @@ function _deactivateTask(uid) {
     </div>
   </nav>
   <div class="safe-bot"></div>
-
-  <!-- Offline banner -->
-  <div id="fkOffline" style="display:none;position:fixed;top:54px;left:0;right:0;z-index:9990;
-    background:#1e293b;color:#fff;text-align:center;padding:8px 16px;font-size:12px;font-weight:700;
-    letter-spacing:.3px">
-    <i class="fas fa-wifi-slash" style="margin-right:6px;color:#f87171"></i>
-    No internet — showing cached data
-  </div>
 </body>
 
 </html>
