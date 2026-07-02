@@ -264,9 +264,12 @@
    LOGIN SCREEN
 ══════════════════════════════════════════════════════════════════════ */
     #sLogin {
-      align-items: stretch;
-      justify-content: flex-end;
-      background: linear-gradient(160deg,#003845 0%,#005F73 40%,#0A9396 72%,#94D2BD 100%);
+      align-items: center;
+      justify-content: center;
+      background:
+        radial-gradient(ellipse at 80% 10%, rgba(10, 147, 150, .55) 0%, transparent 50%),
+        radial-gradient(ellipse at 10% 90%, rgba(0, 95, 115, .4) 0%, transparent 60%),
+        linear-gradient(135deg, #001219 0%, #01353f 100%);
       position: relative;
       overflow: hidden;
     }
@@ -333,48 +336,39 @@
       pointer-events: none;
     }
 
-    /* ── lbox: mobile = bottom sheet, desktop = centered card ── */
     .lbox {
-      background: var(--sur);
-      border-radius: 28px 28px 0 0;
-      padding: 12px 24px calc(32px + env(safe-area-inset-bottom,0px));
+      background: rgba(255, 255, 255, .97);
+      backdrop-filter: blur(32px) saturate(1.8);
+      -webkit-backdrop-filter: blur(32px) saturate(1.8);
+      border-radius: 28px;
+      padding: 52px 48px;
       width: 100%;
-      max-width: 100%;
-      box-shadow: 0 -6px 40px rgba(0,0,0,.22);
+      max-width: 448px;
+      box-shadow:
+        0 4px 24px rgba(0, 0, 0, .12),
+        0 40px 100px rgba(0, 0, 0, .45),
+        inset 0 1px 0 rgba(255, 255, 255, .9),
+        inset 0 -1px 0 rgba(0,0,0,.04);
       position: relative;
       z-index: 10;
-      animation: lbUp .48s cubic-bezier(.34,1.1,.64,1) forwards;
+      animation: pop .45s cubic-bezier(.34,1.2,.64,1) forwards;
+      border: 1px solid rgba(255, 255, 255, .6);
     }
-    @keyframes lbUp {
-      from { transform: translateY(80px); opacity: 0; }
-      to   { transform: translateY(0);    opacity: 1; }
-    }
-    /* Drag handle */
+    /* Subtle glow ring behind login box */
     .lbox::before {
       content: '';
-      display: block;
-      width: 40px; height: 4px;
-      border-radius: 2px;
-      background: var(--bdr2);
-      margin: 0 auto 20px;
+      position: absolute;
+      inset: -2px;
+      border-radius: 30px;
+      background: linear-gradient(135deg, rgba(10,147,150,.3) 0%, rgba(0,95,115,.2) 100%);
+      z-index: -1;
+      filter: blur(16px);
+      opacity: .6;
     }
-    body.dark .lbox { background: var(--sur); }
-    /* Desktop override */
-    @media (min-width:641px) {
-      #sLogin { align-items:center; justify-content:center; }
-      .lbox {
-        border-radius: 28px;
-        padding: 52px 48px;
-        max-width: 448px;
-        box-shadow: 0 40px 100px rgba(0,0,0,.45);
-        animation: lbPop .45s cubic-bezier(.34,1.2,.64,1) forwards;
-      }
-      .lbox::before { display:none; }
-      .l-brand-top  { display:none !important; }
-    }
-    @keyframes lbPop {
-      from { transform:scale(.93) translateY(16px); opacity:0; }
-      to   { transform:scale(1)   translateY(0);    opacity:1; }
+
+    body.dark .lbox {
+      background: rgba(30, 41, 59, .98);
+      border-color: rgba(255, 255, 255, .07);
     }
 
     .l-logo-wrap {
@@ -436,16 +430,14 @@
 
     .l-field input {
       width: 100%;
-      padding: 14px 14px 14px 44px;
+      padding: 12px 14px 12px 42px;
       border: 1.5px solid var(--bdr);
-      border-radius: 14px;
-      font-size: 16px;
+      border-radius: 11px;
+      font-size: 14px;
       background: var(--bg);
       color: var(--tx);
       transition: all .2s;
       outline: none;
-      -webkit-appearance: none;
-      appearance: none;
     }
 
     .l-field input:focus {
@@ -470,25 +462,33 @@
 
     .l-btn {
       width: 100%;
-      padding: 16px;
-      font-size: 16px;
-      font-weight: 800;
+      padding: 14px;
+      font-size: 15px;
+      font-weight: 700;
       border: none;
-      border-radius: 16px;
-      background: linear-gradient(135deg, var(--P) 0%, var(--Pd) 100%);
+      border-radius: 11px;
+      background: linear-gradient(135deg, var(--P), var(--Pd));
       color: #fff;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 10px;
-      margin-top: 10px;
-      min-height: 56px;
-      box-shadow: 0 6px 24px rgba(0,95,115,.38);
-      transition: transform .15s, box-shadow .15s;
+      gap: 9px;
+      margin-top: 6px;
+      box-shadow: 0 4px 16px rgba(0, 95, 115, .35);
+      transition: all .2s;
       font-family: inherit;
     }
-    .l-btn:active { transform: scale(.97); box-shadow: 0 2px 8px rgba(0,95,115,.2); }
+
+    .l-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 24px rgba(0, 95, 115, .4);
+    }
+
+    .l-btn:active {
+      transform: none;
+      box-shadow: none;
+    }
 
     .l-err {
       margin-top: 14px;
@@ -506,23 +506,6 @@
 
     .l-err.on {
       display: block;
-    }
-
-    /* Brand top (mobile only) */
-    .l-brand-top {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      flex: 1;
-      padding: 40px 20px 24px;
-      z-index: 5;
-      animation: lbBrandIn .6s cubic-bezier(.34,1.1,.64,1) forwards;
-      pointer-events: none;
-    }
-    @keyframes lbBrandIn {
-      from { opacity:0; transform:translateY(-16px); }
-      to   { opacity:1; transform:translateY(0); }
     }
 
     .l-footer {
@@ -6849,6 +6832,12 @@
     }
 
   
+    /* Desktop: hide mobile brand */
+    @media (min-width: 641px) {
+      #sLogin .l-brand-mob { display: none !important; }
+      #sLogin { background: linear-gradient(135deg,#005F73 0%,#0A9396 40%,#94D2BD 100%) !important; }
+    }
+
     /* ── Splash: always fullscreen, same on mobile + desktop ── */
     #fkSplash {
       position: fixed !important;
@@ -6892,52 +6881,149 @@
     .so-ov {
       display: none;
       position: fixed; inset: 0; z-index: 9999;
-      background: rgba(0,0,0,.55);
-      backdrop-filter: blur(6px);
-      -webkit-backdrop-filter: blur(6px);
-      align-items: flex-end;
-      justify-content: center;
+      background: rgba(0,0,0,.6);
+      backdrop-filter: blur(4px);
+      align-items: center; justify-content: center;
+      padding: 20px;
     }
     .so-ov.on { display: flex !important; }
     .so-box {
       background: var(--sur);
-      border-radius: 28px 28px 0 0;
-      padding: 10px 20px calc(28px + env(safe-area-inset-bottom,0px));
+      border-radius: 24px;
+      padding: 32px 24px 24px;
       text-align: center;
-      width: 100%; max-width: 100%;
-      box-shadow: 0 -4px 32px rgba(0,0,0,.2);
-      animation: soUp .3s cubic-bezier(.34,1.1,.64,1) forwards;
+      max-width: 320px; width: 100%;
+      box-shadow: 0 24px 64px rgba(0,0,0,.3);
+      animation: safePop .3s cubic-bezier(.34,1.3,.64,1) forwards;
     }
-    @keyframes soUp {
-      from { transform:translateY(60px); opacity:.2; }
-      to   { transform:translateY(0);    opacity:1;  }
+    .so-box h3 { font-size: 20px; font-weight: 800; margin-bottom: 8px; color: var(--tx); }
+    .so-box p  { font-size: 13.5px; color: var(--tx3); margin-bottom: 24px; line-height: 1.5; }
+    .so-btns   { display: flex; gap: 10px; }
+    .so-btns .btn { flex: 1; min-height: 48px !important; }
+    @media (max-width:640px) {
+      .so-ov  { align-items: flex-end !important; padding: 0 !important; }
+      .so-box {
+        border-radius: 28px 28px 0 0 !important;
+        padding: 10px 20px calc(28px + env(safe-area-inset-bottom,0px)) !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        animation: soUp .3s cubic-bezier(.34,1.1,.64,1) both !important;
+      }
+      @keyframes soUp {
+        from { transform:translateY(60px); opacity:0; }
+        to   { transform:translateY(0);    opacity:1; }
+      }
+      .so-box::before {
+        content:'' !important; display:block !important;
+        width:40px; height:4px; border-radius:2px;
+        background:var(--bdr2); margin:0 auto 18px;
+        position:static !important; inset:auto !important;
+        filter:none !important; opacity:1 !important;
+      }
+      .so-btns { flex-direction: row !important; gap: 10px !important; }
+      .so-btns .btn { flex: 1 !important; min-height: 52px !important; }
     }
-    .so-box::before {
-      content:''; display:block;
-      width:40px; height:4px; border-radius:2px;
-      background:var(--bdr2); margin:0 auto 20px;
-    }
-    /* User info row */
-    .so-user {
-      display:flex; align-items:center; gap:12px;
-      padding:12px 14px; background:var(--bg);
-      border-radius:14px; border:1px solid var(--bdr);
-      margin-bottom:20px; text-align:left;
-    }
-    .so-ava {
-      width:42px; height:42px; border-radius:50%;
-      background:var(--P); color:#fff;
-      display:flex; align-items:center; justify-content:center;
-      font-size:15px; font-weight:900; flex-shrink:0;
-    }
-    .so-box h3 { font-size:18px; font-weight:900; margin-bottom:4px; color:var(--tx); }
-    .so-box p  { font-size:12.5px; color:var(--tx3); margin-bottom:18px; }
-    .so-btns   { display:flex; gap:10px; }
-    .so-btns .btn { flex:1; min-height:52px !important; border-radius:14px !important; font-size:15px !important; font-weight:700 !important; }
-    @media (min-width:641px) {
-      .so-ov  { align-items:center; }
-      .so-box { border-radius:24px; max-width:340px; padding:28px 24px 24px; }
-      .so-box::before { display:none; }
+
+    /* ════════════════════════════════════════════════════
+       LOGIN SCREEN — MOBILE FULL FIX
+       Desktop: centered floating card (current look, fine)
+       Mobile:  full-width bottom sheet, brand shown above
+    ════════════════════════════════════════════════════ */
+    @media (max-width: 640px) {
+
+      /* sLogin: flex column, brand on top, card at bottom */
+      #sLogin {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        justify-content: flex-end !important;
+        padding: 0 !important;
+        background: linear-gradient(160deg,#003040 0%,#005F73 45%,#0A9396 75%,#94D2BD 100%) !important;
+      }
+
+      /* Brand area above card */
+      #sLogin .l-brand-mob {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 48px 24px 24px;
+        animation: lbIn .6s cubic-bezier(.34,1.1,.64,1) both;
+      }
+      @keyframes lbIn {
+        from { opacity:0; transform:translateY(-20px); }
+        to   { opacity:1; transform:translateY(0); }
+      }
+      #sLogin .l-brand-mob img {
+        width: 72px; height: 72px;
+        object-fit: contain;
+        filter: drop-shadow(0 4px 18px rgba(0,0,0,.3));
+        margin-bottom: 16px;
+      }
+      #sLogin .l-brand-mob .lbm-name {
+        color: #fff;
+        font-size: 23px; font-weight: 900;
+        letter-spacing: -.4px;
+        text-shadow: 0 2px 10px rgba(0,0,0,.2);
+      }
+      #sLogin .l-brand-mob .lbm-sub {
+        color: rgba(255,255,255,.72);
+        font-size: 13px; margin-top: 5px;
+      }
+
+      /* Card: bottom sheet */
+      .lbox {
+        border-radius: 28px 28px 0 0 !important;
+        padding: 10px 22px calc(28px + env(safe-area-inset-bottom,0px)) !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        margin: 0 !important;
+        animation: lbUp .46s cubic-bezier(.34,1.1,.64,1) both !important;
+        box-shadow: 0 -4px 32px rgba(0,0,0,.18) !important;
+      }
+      @keyframes lbUp {
+        from { transform:translateY(70px); opacity:0; }
+        to   { transform:translateY(0);    opacity:1; }
+      }
+
+      /* Drag handle */
+      .lbox::before {
+        content: '' !important;
+        display: block !important;
+        width: 40px; height: 4px;
+        border-radius: 2px;
+        background: var(--bdr2);
+        margin: 0 auto 18px;
+        position: static !important;
+        inset: auto !important;
+        filter: none !important;
+        opacity: 1 !important;
+        background-image: none !important;
+      }
+
+      /* Hide logo inside card on mobile (shown above) */
+      .lbox .l-logo-wrap { display: none !important; }
+
+      /* Title smaller */
+      .l-title { font-size: 20px !important; margin-bottom: 4px !important; }
+      .l-sub   { font-size: 13px !important; margin-bottom: 22px !important; }
+
+      /* Inputs: 16px prevents iOS zoom */
+      .l-field input {
+        font-size: 16px !important;
+        padding: 14px 14px 14px 44px !important;
+        border-radius: 14px !important;
+        min-height: 52px !important;
+      }
+      .l-field { margin-bottom: 14px !important; }
+
+      /* Button: big tap target */
+      .l-btn {
+        min-height: 54px !important;
+        font-size: 16px !important;
+        border-radius: 14px !important;
+        margin-top: 8px !important;
+      }
     }
 
   </style>
@@ -6951,25 +7037,22 @@
 ═══════════════════════════════════════════════════════════ -->
   <div class="scr on" id="sLogin">
 
-    <!-- Mobile: brand visible above card -->
-    <div class="l-brand-top" id="lBrandTop">
+    <!-- Mobile brand (hidden on desktop via CSS) -->
+    <div class="l-brand-mob">
       <img src="https://fresko.co.in/wp-content/uploads/2025/08/Untitled-design-21.png"
-        style="width:70px;height:70px;object-fit:contain;filter:drop-shadow(0 4px 20px rgba(0,0,0,.3))"
         onerror="this.style.display='none'">
-      <div style="color:#fff;font-size:22px;font-weight:900;margin-top:14px;letter-spacing:-.3px">Fresko Staff Portal</div>
-      <div style="color:rgba(255,255,255,.72);font-size:13px;margin-top:4px">Your workplace, anywhere</div>
+      <div class="lbm-name">Fresko Staff Portal</div>
+      <div class="lbm-sub">Your workplace, anywhere</div>
     </div>
 
-    <!-- Login card -->
     <div class="lbox">
-      <!-- Desktop logo only -->
-      <div class="l-logo-wrap" id="deskLogo" style="display:none">
+      <!-- Desktop: logo inside card -->
+      <div class="l-logo-wrap">
         <img src="https://fresko.co.in/wp-content/uploads/2025/08/Untitled-design-21.png" alt="Fresko Logo"
-          onerror="this.style.display='none'">
+          onerror="this.style.display='none';document.getElementById('lgFallback').style.display='flex'">
         <div class="l-logo-fallback" id="lgFallback" style="display:none">FK</div>
       </div>
-
-      <div class="l-title">Welcome back 👋</div>
+      <div class="l-title">Fresko Staff Portal</div>
       <div class="l-sub">Sign in to access your workspace</div>
 
       <div class="l-field">
@@ -6987,11 +7070,11 @@
       </div>
 
       <button class="l-btn" id="btnLogin" onclick="_doLogin()">
-        <i class="fas fa-arrow-right-to-bracket"></i> Sign In
+        <i class="fas fa-sign-in-alt"></i> Sign In
       </button>
 
       <div class="l-err" id="loginErr"></div>
-      <div class="l-footer">© 2026 Fresko &nbsp;·&nbsp; All rights reserved</div>
+      <div class="l-footer">Fresko Staff Portal &nbsp;&bull;&nbsp; All rights reserved &copy; 2026</div>
     </div>
   </div>
 
@@ -7185,26 +7268,25 @@
      OVERLAYS & GLOBAL DIALOGS
 ═══════════════════════════════════════════════════════════ -->
 
-  <!-- Sign-out confirmation — mobile bottom sheet -->
-  <div class="so-ov" id="soOv" onclick="if(event.target===this)_soHide()">
-    <div class="so-box" id="soBox">
-      <!-- User info -->
-      <div class="so-user" id="soUserRow">
-        <div class="so-ava" id="soAva">?</div>
-        <div style="flex:1;min-width:0">
-          <div id="soName" style="font-size:14px;font-weight:800;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">—</div>
-          <div id="soRole" style="font-size:11.5px;color:var(--tx2);margin-top:2px">Staff</div>
+  <!-- Sign-out confirmation -->
+  <div class="so-ov" id="soOv">
+    <div class="so-box">
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg);border-radius:14px;border:1px solid var(--bdr);margin-bottom:18px;text-align:left">
+        <div style="width:40px;height:40px;border-radius:50%;background:var(--P);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:15px;flex-shrink:0">
+          <i class="fas fa-user" style="font-size:16px"></i>
         </div>
-        <div style="font-size:10px;font-weight:800;color:var(--G);background:var(--Gl);padding:3px 9px;border-radius:99px;flex-shrink:0">Online</div>
+        <div style="min-width:0">
+          <div id="soUserName" style="font-size:14px;font-weight:800;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">—</div>
+          <div id="soUserDept" style="font-size:11.5px;color:var(--tx2);margin-top:2px">Staff</div>
+        </div>
       </div>
+      <div style="font-size:36px;margin-bottom:10px">👋</div>
       <h3>Sign Out?</h3>
       <p>You'll be returned to the login screen.</p>
       <div class="so-btns">
-        <button class="btn btn-outline" onclick="_soHide()">
-          <i class="fas fa-times"></i> Cancel
-        </button>
-        <button class="btn btn-red" onclick="_soConfirm()">
-          <i class="fas fa-right-from-bracket"></i> Sign Out
+        <button class="btn btn-outline" onclick="_soHide()">Cancel</button>
+        <button class="btn btn-red" onclick="_clearSession();_U=null;_TOKEN=null;location.href=location.href.split('?')[0]">
+          <i class="fas fa-sign-out-alt"></i> Sign Out
         </button>
       </div>
     </div>
@@ -7857,30 +7939,22 @@
        SIGN-OUT DIALOG
     ══════════════════════════════════════════════════════════ */
     function _soShow() {
+      // Populate user name in signout dialog
       try {
-        var nm = (_U && _U.name && _U.name !== 'User') ? _U.name : 'User';
-        var rl = (_U && _U.role) ? _U.role + (' · ' + (_U.dept||'')).trim() : 'Staff';
-        var ini = nm.trim().split(' ').map(function(w){return w[0]||'';}).slice(0,2).join('').toUpperCase()||'?';
-        var n=document.getElementById('soName'), r=document.getElementById('soRole'), a=document.getElementById('soAva');
-        if(n) n.textContent=nm; if(r) r.textContent=rl; if(a) a.textContent=ini;
-      } catch(e){}
+        var nm  = (_U && _U.name)  || 'User';
+        var dep = (_U && _U.dept)  || '';
+        var rol = (_U && _U.role)  || 'Staff';
+        var soN = document.getElementById('soUserName');
+        var soD = document.getElementById('soUserDept');
+        if (soN) soN.textContent = nm;
+        if (soD) soD.textContent = rol + (dep ? ' · ' + dep : '');
+      } catch(e) {}
       document.getElementById('soOv').classList.add('on');
-      document.body.style.overflow='hidden';
+      document.body.style.overflow = 'hidden';
     }
     function _soHide() {
-      var box=document.getElementById('soBox');
-      if(box){box.style.transition='transform .22s cubic-bezier(.4,0,.2,1)';box.style.transform='translateY(100%)';}
-      setTimeout(function(){
-        document.getElementById('soOv').classList.remove('on');
-        document.body.style.overflow='';
-        if(box){box.style.transition='';box.style.transform='';}
-      },220);
-    }
-    function _soConfirm() {
-      _clearSession(); _U=null; _TOKEN=null;
-      var box=document.getElementById('soBox');
-      if(box){box.style.transition='transform .25s';box.style.transform='translateY(100%)';}
-      setTimeout(function(){location.href=location.href.split('?')[0];},260);
+      document.getElementById('soOv').classList.remove('on');
+      document.body.style.overflow = '';
     }
 
     /* ══════════════════════════════════════════════════════════
@@ -8207,20 +8281,6 @@ function _gasX(fn, args, timeout, onOk, onErr) {
     /* ══════════════════════════════════════════════════════════
        LOGIN
     ══════════════════════════════════════════════════════════ */
-    // On desktop: show logo, update title
-    (function() {
-      if (window.innerWidth >= 641) {
-        var dl = document.getElementById('deskLogo');
-        var bt = document.getElementById('lBrandTop');
-        var lt = document.querySelector('.l-title');
-        var ls = document.querySelector('.l-sub');
-        if (dl) dl.style.display = '';
-        if (bt) bt.style.display = 'none';
-        if (lt) lt.textContent   = 'Fresko Staff Portal';
-        if (ls) ls.textContent   = 'Sign in to access your workspace';
-      }
-    })();
-
     function _doLogin() {
       var email = document.getElementById('femail').value.trim();
       var pass  = document.getElementById('fpass').value.trim();
@@ -8279,23 +8339,10 @@ function _gasX(fn, args, timeout, onOk, onErr) {
     ══════════════════════════════════════════════════════════ */
 
     function _safeU() {
+      // Use bracket notation — prevents regex from breaking assignments
       _U = (_U && typeof _U === 'object') ? _U : {};
-      // Only set defaults for truly missing fields — never overwrite real values
-      if (!_U['emp_code']) _U['emp_code'] = '';
-      if (!_U['email'])    _U['email']    = '';
-      if (!_U['role'])     _U['role']     = 'STAFF';
-      if (!_U['dept'])     _U['dept']     = '';
-      if (!_U['photo'])    _U['photo']    = '';
-      // name: only set fallback if completely missing
-      if (!_U['name'] || _U['name'] === 'User') {
-        // Try to get from DOM in case login just happened
-        try {
-          var sn = document.getElementById('sbName');
-          if (sn && sn.textContent && sn.textContent !== 'Loading...' && sn.textContent !== 'User') {
-            _U['name'] = sn.textContent;
-          }
-        } catch(e2){}
-      }
+      var defs = {name:'User',emp_code:'',email:'',role:'STAFF',dept:'',photo:''};
+      for (var k in defs) { if (!_U[k]) _U[k] = defs[k]; }
       if (_U['need_attendance'] === undefined) _U['need_attendance'] = true;
       if (_U['need_location']   === undefined) _U['need_location']   = true;
       return _U;
@@ -8349,15 +8396,12 @@ function _gasX(fn, args, timeout, onOk, onErr) {
       document.getElementById('sbName').textContent = _su.name || 'User';
       document.getElementById('sbRole').textContent = (_su.role||'STAFF')+' · '+(_su.dept || '');
 
-      // ── NeedAttendance: show or hide attendance UI ──
-      var mbnAtt = document.getElementById('mbn-attend');
-      var nvAtt  = document.getElementById('nv-attend');
-      if (_su.need_attendance === false) {
+      // ── NeedAttendance = No: hide ALL attendance UI ──
+      if (_su.need_attendance===false) {
+        var mbnAtt = document.getElementById('mbn-attend');
         if (mbnAtt) mbnAtt.style.display = 'none';
+        var nvAtt  = document.getElementById('nv-attend');
         if (nvAtt)  nvAtt.style.display  = 'none';
-      } else {
-        if (mbnAtt) mbnAtt.style.display = '';
-        if (nvAtt)  nvAtt.style.display  = '';
       }
 
       if (_isManager()) document.getElementById('mgrNav').style.display = '';
@@ -19518,50 +19562,27 @@ function _deactivateTask(uid) {
 
     // Runs AFTER all functions are defined — safe to call _bootApp here
     (function _autoRestoreSession() {
-      var sLogin = document.getElementById('sLogin');
-      var sApp   = document.getElementById('sApp');
-
-      function showLogin() {
-        if (sLogin) { sLogin.classList.add('on'); sLogin.style.display = ''; }
-        if (sApp)   { sApp.classList.remove('on'); }
-      }
-
       try {
         var saved = _loadSession();
-
-        // Valid session: must have emp_code AND a real name (not 'User'/'Staff'/empty)
-        var hasValidUser = saved && saved.user && saved.token
-          && saved.user.emp_code
-          && saved.user.name
-          && saved.user.name !== 'User'
-          && saved.user.name !== 'Staff'
-          && saved.user.name.trim() !== '';
-
-        if (hasValidUser) {
+        // VALIDATE: user must have emp_code (not empty/null) — else corrupt session
+        if (saved && saved.user && saved.token && saved.user.emp_code) {
           _U     = saved.user;
           _TOKEN = saved.token;
           _saveSession(_U, _TOKEN);
-          // Set sbName BEFORE sApp shows
-          try {
-            var sn = document.getElementById('sbName');
-            var sr = document.getElementById('sbRole');
-            var si = document.getElementById('sbAvaInitials');
-            if (sn) sn.textContent = _U.name;
-            if (sr) sr.textContent = (_U.role||'STAFF') + ' · ' + (_U.dept||'');
-            if (si) si.textContent = _U.name.trim().split(' ')
-              .map(function(w){return w[0]||'';}).slice(0,2).join('').toUpperCase()||'?';
-          } catch(ex){}
+          var sLogin = document.getElementById('sLogin');
+          var sApp   = document.getElementById('sApp');
           if (sLogin) { sLogin.classList.remove('on'); sLogin.style.display = 'none'; }
           if (sApp)   sApp.classList.add('on');
           _bootApp();
-        } else {
-          // No session, expired, corrupt, or bad name — clear and show login
-          if (saved) _clearSession();
-          showLogin();
+        } else if (saved) {
+          // Corrupt session — clear it and show login fresh
+          _clearSession();
+          console.warn('[Session] Corrupt session cleared — showing login');
+          var sLogin = document.getElementById('sLogin');
+          if (sLogin) { sLogin.classList.add('on'); sLogin.style.display = ''; }
         }
       } catch(e) {
         console.warn('[Session] Restore failed:', e.message);
-        showLogin();
       }
     })();
 
@@ -19592,7 +19613,7 @@ function _deactivateTask(uid) {
         <span class="mob-nav-pill"><i class="fas fa-list-check"></i></span>
         <span>Tasks</span>
       </button>
-      <button class="mob-nav-item" id="mbn-attend" onclick="_mbNav('attend')" aria-label="Attendance">
+      <button class="mob-nav-item" id="mbn-attend" onclick="_mbNav('attend')" aria-label="Attendance" style="display:none">
         <span class="mob-nav-pill"><i class="fas fa-clock"></i></span>
         <span>Attendance</span>
       </button>
