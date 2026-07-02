@@ -6693,7 +6693,7 @@
       from { opacity: .3; transform: translateY(10px); }
       to   { opacity: 1;  transform: none; }
     }
-    .mob-page { animation: mobFadeUp .22s cubic-bezier(.4,0,.2,1) forwards; }
+    /* mob-page removed — was causing opacity:.3 blank on mobile */
 
     /* ══════════════════════════════════════════════════════════════════════
        @media (max-width: 640px) — Full mobile shell
@@ -7261,7 +7261,7 @@
       _refreshTimer = setInterval(function () {
         if (document.hidden) return; // skip when tab is in background
         _gas('getDashboardStatsFresh', [], function (d) {
-          if (!d) return;
+          if (!d) { _hideSplash(); _loadV('dash'); return; }
           if (d.dashStats)    _D.dashStats    = d.dashStats;
           if (d.todayAtt)     _D.todayAtt     = d.todayAtt;
           if (d.announcements) _D.announcements = d.announcements;
@@ -8216,11 +8216,7 @@ function _gasX(fn, args, timeout, onOk, onErr) {
       function _hideSplash() {
         clearInterval(splashMsgTimer);
         if (!splash) return;
-        // Show skeleton in content area BEFORE hiding splash — no blank gap
-        var cont = document.getElementById('content');
-        if (cont && typeof _skelKpi === 'function') {
-          cont.innerHTML = _skelKpi(4) + _skel(3);
-        }
+        // splash hides cleanly
         splash.style.animation = 'splashHide .35s cubic-bezier(.4,0,.2,1) forwards';
         setTimeout(function () { splash.style.display = 'none'; }, 340);
       }
@@ -8369,10 +8365,7 @@ function _gasX(fn, args, timeout, onOk, onErr) {
       if (cont) {
         cont.scrollTop = 0;
         cont.innerHTML = _skelKpi(4) + _skel(3);
-        // Subtle fade without hiding content (no opacity:0 timing risks)
-        cont.style.opacity = '0.7';
-        cont.style.transition = 'opacity .15s ease';
-        requestAnimationFrame(function() { cont.style.opacity = '1'; cont.style.transition = ''; });
+        // content always visible - no opacity tricks
       }
 
       var views = {
@@ -8392,6 +8385,9 @@ function _gasX(fn, args, timeout, onOk, onErr) {
         attana: _vAttAna,
         muster: _vMuster
       };
+
+      // IMPORTANT: ensure content is always visible
+      if (cont) { cont.style.opacity = '1'; cont.style.visibility = 'visible'; }
 
       if (views[view]) {
         views[view]();
@@ -19247,13 +19243,8 @@ function _deactivateTask(uid) {
 
     // ── Page transition ──────────────────────────────────────────────────
     function _mobAnimate() {
-      if (!_isMobile()) return;
-      var ct = document.getElementById('content');
-      if (!ct) return;
-      ct.classList.remove('mob-page');
-      void ct.offsetWidth;
-      ct.classList.add('mob-page');
-      setTimeout(function(){ ct.classList.remove('mob-page'); }, 350);
+      // Removed: mob-page animation had opacity:.3 start which blanked content on mobile
+      // Page transition is handled by content rendering itself
     }
 
     // ── Pull-to-refresh ──────────────────────────────────────────────────
