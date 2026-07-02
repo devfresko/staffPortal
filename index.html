@@ -7011,6 +7011,11 @@
           </div>
           <i class="fas fa-chevron-right" style="font-size:10px;color:#475569;margin-left:auto;flex-shrink:0"></i>
         </div>
+        <!-- Emergency logout — always visible, tappable even before data loads -->
+        <div onclick="_soShow()" title="Sign Out" style="display:flex;align-items:center;gap:8px;padding:8px 18px 4px;cursor:pointer;opacity:.6" id="sbQuickSignout">
+          <i class="fas fa-right-from-bracket" style="font-size:11px;color:var(--R)"></i>
+          <span style="font-size:11px;color:var(--R);font-weight:700">Sign Out</span>
+        </div>
       </div>
 
       <nav class="sb-nav" id="sbNav">
@@ -8203,10 +8208,56 @@ function _gasX(fn, args, timeout, onOk, onErr) {
       // Switch screens
       document.getElementById('sLogin').classList.remove('on');
       document.getElementById('sApp').classList.add('on');
-      // Show animated skeleton IMMEDIATELY so user sees activity
+      // Show branded loading screen with tips while getAllData loads
       var c0 = document.getElementById('content');
-      if (c0 && typeof _skelKpi === 'function') {
-        c0.innerHTML = _skelKpi(4) + _skel(3);
+      if (c0) {
+        var tips = [
+          '<i class="fas fa-list-check" style="color:var(--P)"></i> Track your daily KRA / KPI tasks in Checklist',
+          '<i class="fas fa-calendar-check" style="color:var(--T)"></i> Mark attendance with GPS verification',
+          '<i class="fas fa-people-arrows" style="color:var(--V)"></i> Delegate and follow up on tasks easily',
+          '<i class="fas fa-chart-pie" style="color:var(--G)"></i> View team analytics and performance reports',
+          '<i class="fas fa-umbrella-beach" style="color:var(--O)"></i> Apply for leave and track your balance'
+        ];
+        var tipIdx = 0;
+        c0.innerHTML =
+          '<div id="fkLoadScreen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;' +
+          'min-height:60vh;padding:32px 20px;text-align:center">' +
+          // Logo
+          '<img src="https://fresko.co.in/wp-content/uploads/2025/08/Untitled-design-21.png" ' +
+          'style="width:64px;height:64px;object-fit:contain;margin-bottom:20px;animation:splashPop .5s cubic-bezier(.34,1.56,.64,1) both" ' +
+          'onerror="this.style.display=\'none\'">' +
+          // Animated ring
+          '<div style="position:relative;width:56px;height:56px;margin-bottom:24px">' +
+          '<div style="position:absolute;inset:0;border-radius:50%;border:3px solid var(--Pl)"></div>' +
+          '<div style="position:absolute;inset:0;border-radius:50%;border:3px solid transparent;border-top-color:var(--P);animation:spin .8s linear infinite"></div>' +
+          '</div>' +
+          '<div style="font-size:15px;font-weight:800;color:var(--tx);margin-bottom:8px">Setting up your workspace…</div>' +
+          '<div id="fkLoadTip" style="font-size:13px;color:var(--tx2);min-height:22px;transition:opacity .3s;padding:0 16px;line-height:1.5">' +
+          tips[0] + '</div>' +
+          // Skeleton below tip for structure
+          '<div style="width:100%;max-width:340px;margin-top:32px">' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">' +
+          '<div class="sk" style="height:72px;border-radius:14px"></div>' +
+          '<div class="sk" style="height:72px;border-radius:14px"></div>' +
+          '</div>' +
+          '<div class="sk" style="height:16px;border-radius:8px;margin-bottom:8px"></div>' +
+          '<div class="sk" style="height:16px;border-radius:8px;width:80%;margin-bottom:8px"></div>' +
+          '<div class="sk" style="height:16px;border-radius:8px;width:65%"></div>' +
+          '</div>' +
+          '</div>';
+        // Rotate tips every 2s
+        var tipEl = document.getElementById('fkLoadTip');
+        if (tipEl) {
+          window._tipTimer = setInterval(function() {
+            tipIdx = (tipIdx + 1) % tips.length;
+            if (tipEl) {
+              tipEl.style.opacity = '0';
+              setTimeout(function() {
+                if (tipEl) { tipEl.innerHTML = tips[tipIdx]; tipEl.style.opacity = '1'; }
+              }, 300);
+            }
+          }, 2200);
+        }
       }
 
       // Show the Fresko splash while getAllData loads
@@ -8369,6 +8420,8 @@ function _gasX(fn, args, timeout, onOk, onErr) {
        VIEW ROUTER — single dispatcher (sidebar .nv, session, charts)
     ══════════════════════════════════════════════════════════ */
     function _loadV(view, subTab) {
+      // Clear loading tips timer if still running
+      if (window._tipTimer) { clearInterval(window._tipTimer); window._tipTimer = null; }
       _V = view;
       _ST = subTab || null;
       window._curView = view; // tracked for background auto-refresh
@@ -13885,10 +13938,13 @@ function _loadSetupTasks(skipEmpReload) {
     }
 
     function _lreqForm() {
-      return '<div class="fbar">' +
+      return '<div class="fbar" style="flex-wrap:wrap;gap:8px">' +
         '<label>Month:</label>' +
         '<input type="month" id="lreqMonth" value="' + _currMonth() + '">' +
         '<button class="btn btn-sm" onclick="_loadMyLeaves()"><i class="fas fa-search"></i> Load</button>' +
+        '<button class="btn btn-outline btn-sm" onclick="document.getElementById(\'lreqMonth\').value=\'\';_loadMyLeaves()">All Time</button>' +
+        '<div class="fbar-spacer"></div>' +
+        '<button class="btn btn-sm" onclick="_openLeaveReq()"><i class="fas fa-plus"></i> New Request</button>' +
         '</div><div id="lreqList">' + _skel(4) + '</div>';
     }
 
@@ -13901,6 +13957,7 @@ function _loadSetupTasks(skipEmpReload) {
       _gas('getLeaveRequests', [{ for: 'own' }], function (reqs) {
         _D.myLeaves = reqs || [];
         var filtered = reqs.filter(function (r) {
+          // Empty month = show all; otherwise filter by month
           return !month || String(r.from_date || '').substring(0, 7) === month;
         });
 
@@ -13935,16 +13992,23 @@ function _loadSetupTasks(skipEmpReload) {
               return '<div class="ann-card" style="border-left-color:' + g.clr + ';margin-bottom:8px">' +
                 '<div style="display:flex;align-items:flex-start;gap:14px">' +
                 '<div style="flex:1;min-width:0">' +
-                '<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">' +
+                '<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;flex-wrap:wrap">' +
                 '<span style="font-size:13px;font-weight:800">' + _esc(r.leave_type||'—') + '</span>' +
                 '<span style="background:var(--Pl);color:var(--P);padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700">' + (r.num_days||1) + ' day' + (r.num_days!==1?'s':'') + '</span>' +
+                _statusBadge(r.status||'Pending') +
                 '</div>' +
                 '<div style="font-size:13px;color:var(--tx2);margin-bottom:4px"><i class="fas fa-calendar-range"></i> ' + _fmtDate(r.from_date) + ' — ' + _fmtDate(r.to_date) + '</div>' +
                 (r.reason ? '<div style="font-size:12px;color:var(--tx3);margin-bottom:3px"><i class="fas fa-comment"></i> ' + _esc(r.reason) + '</div>' : '') +
-                (r.remark ? '<div style="font-size:12px;color:var(--I);margin-bottom:3px"><i class="fas fa-reply"></i> <em>' + _esc(r.remark) + '</em></div>' : '') +
+                (r.remark ? '<div style="font-size:12px;color:var(--I);margin-bottom:3px"><i class="fas fa-reply"></i> Manager: <em>' + _esc(r.remark) + '</em></div>' : '') +
                 '<div style="font-size:11px;color:var(--tx4);margin-top:4px"><i class="fas fa-clock"></i> ' + _fmtDateTime(r.requested_at) +
                 (r.approved_by ? ' &nbsp;·&nbsp; <i class="fas fa-user-check"></i> ' + _esc(r.approved_by) : '') + '</div>' +
-                '</div></div></div>';
+                '</div>' +
+                (r.status === 'Pending' ?
+                  '<div style="flex-shrink:0;display:flex;align-items:flex-start;padding-top:4px">' +
+                  '<button class="btn btn-red btn-xs" onclick="_cancelMyLeave(\'' + _esc(r.request_id) + '\')">' +
+                  '<i class="fas fa-times"></i> Cancel</button></div>'
+                : '') +
+                '</div></div>';
             }).join('') +
             '</div></div>';
         });
@@ -13962,6 +14026,21 @@ function _loadSetupTasks(skipEmpReload) {
         var chev = hdr.querySelector('.fa-chevron-down,.fa-chevron-up');
         if (chev) { chev.className = chev.className.replace(open ? 'fa-chevron-down' : 'fa-chevron-up', open ? 'fa-chevron-up' : 'fa-chevron-down'); }
       }
+    }
+
+    function _cancelMyLeave(requestId) {
+      _openModal(
+        '<i class="fas fa-times-circle" style="color:var(--R)"></i> Cancel Leave Request',
+        '<p style="font-size:14px;color:var(--tx2);line-height:1.6">Are you sure you want to cancel this leave request? This action cannot be undone.</p>',
+        function() {
+          _closeModal();
+          _gas('cancelLeaveRequest', [requestId], function() {
+            _toast('Leave request cancelled', 'ok');
+            _loadMyLeaves();
+          }, function(e) { _toast('Error: ' + e.message, 'err'); });
+        },
+        '<i class="fas fa-times"></i> Yes, Cancel'
+      );
     }
 
     function _lbalForm() {
@@ -13996,7 +14075,7 @@ function _loadSetupTasks(skipEmpReload) {
           }).join('') +
           '</div>' +
           '<div class="card card-nohover">' +
-          '<div class="sec-title" style="margin-bottom:16px"><i class="fas fa-list-check" style="color:var(--P)"></i> Leave Type Breakdown — ' + month + '</div>' +
+          '<div class="sec-title" style="margin-bottom:16px"><i class="fas fa-list-check" style="color:var(--P)"></i> Leave Type Breakdown — All Time</div>' +
           '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">' +
           [
             { lbl: 'Sick Leave', val: s.sick_leave || 0, c: 'var(--R)', ico: 'fa-heart-pulse' },
@@ -14064,14 +14143,14 @@ function _loadSetupTasks(skipEmpReload) {
     }
 
     function _laprvForm() {
-      return '<div class="fbar">' +
+      return '<div class="fbar" style="flex-wrap:wrap;gap:8px">' +
         '<label>Status:</label>' +
         '<select id="laprvStatus" onchange="_loadLeaveApprovals()">' +
         '<option value="Pending">Pending</option><option value="All">All</option>' +
         '<option value="Approved">Approved</option><option value="Rejected">Rejected</option>' +
         '</select>' +
         '<div class="fbar-spacer"></div>' +
-        
+        '<button class="btn btn-xs btn-outline" onclick="_exportLeaveApprovals()"><i class="fas fa-download"></i> Export</button>' +
         '</div><div id="laprvList">' + _skel(4) + '</div>';
     }
 
@@ -14129,11 +14208,14 @@ function _loadSetupTasks(skipEmpReload) {
                 (r.remark ? '<div style="font-size:12px;color:var(--I)"><i class="fas fa-reply"></i> <em>' + _esc(r.remark) + '</em></div>' : '') +
                 '</div>' +
                 (r.status === 'Pending' ?
-                  '<div style="display:flex;flex-direction:column;gap:7px;flex-shrink:0">' +
-                  '<button class="btn btn-sm" style="background:var(--G)" onclick="_approveLeave(\'' + _esc(r.request_id) + '\',\'Approved\')"><i class="fas fa-check"></i> Approve</button>' +
-                  '<button class="btn btn-sm btn-red" onclick="_approveLeave(\'' + _esc(r.request_id) + '\',\'Rejected\')"><i class="fas fa-times"></i> Reject</button>' +
+                  '<div style="display:flex;flex-direction:column;gap:7px;flex-shrink:0;min-width:90px">' +
+                  '<button class="btn btn-sm" style="background:var(--G);white-space:nowrap" onclick="_approveLeave(\'' + _esc(r.request_id) + '\',\'Approved\')"><i class="fas fa-check"></i> Approve</button>' +
+                  '<button class="btn btn-sm btn-red" style="white-space:nowrap" onclick="_approveLeave(\'' + _esc(r.request_id) + '\',\'Rejected\')"><i class="fas fa-times"></i> Reject</button>' +
                   '</div>' :
-                  '<span style="font-size:11px;color:var(--tx3);font-weight:700">' + _esc(r.approved_by||'') + '</span>'
+                  '<div style="text-align:right;flex-shrink:0">' +
+                  '<span style="font-size:10px;color:var(--tx3);font-weight:700;display:block">' + _esc(r.status||'') + '</span>' +
+                  '<span style="font-size:10px;color:var(--tx3)">' + _esc(r.approved_by||'') + '</span>' +
+                  '</div>'
                 ) +
                 '</div></div>';
             }).join('') +
@@ -14166,38 +14248,60 @@ function _loadSetupTasks(skipEmpReload) {
     }
 
     function _openLeaveReq() {
+      // Get leave types from AppConfig or use defaults
+      var lvTypes = ['Sick Leave','Paid Leave','Casual Leave','Comp Off','WFH','LWP'];
+      if (_D.appConfig && _D.appConfig.LEAVE_TYPES) {
+        var cfgTypes = String(_D.appConfig.LEAVE_TYPES).split(',').map(function(s){ return s.trim(); }).filter(Boolean);
+        if (cfgTypes.length) lvTypes = cfgTypes;
+      }
+
       _openModal(
         '<i class="fas fa-umbrella-beach" style="color:var(--T)"></i> Submit Leave Request',
-        '<div class="frow">' +
         '<div class="fgrp"><label>Leave Type <span class="req">★</span></label>' +
         '<select id="mLvType">' +
-        '<option>Sick Leave</option><option>Paid Leave</option><option>Casual Leave</option>' +
-        '<option>Comp Off</option><option>WFH</option><option>LWP</option>' +
-        '</select>' +
-        '</div>' +
-        '</div>' +
+        lvTypes.map(function(t){ return '<option value="'+_esc(t)+'">'+_esc(t)+'</option>'; }).join('') +
+        '</select></div>' +
         '<div class="frow">' +
-        '<div class="fgrp"><label>From Date <span class="req">★</span></label><input type="date" id="mLvFrom" value="' + _today() + '"></div>' +
-        '<div class="fgrp"><label>To Date <span class="req">★</span></label><input type="date" id="mLvTo" value="' + _today() + '"></div>' +
+        '<div class="fgrp"><label>From Date <span class="req">★</span></label>' +
+        '<input type="date" id="mLvFrom" value="' + _today() + '" onchange="_lvCalcDays()"></div>' +
+        '<div class="fgrp"><label>To Date <span class="req">★</span></label>' +
+        '<input type="date" id="mLvTo" value="' + _today() + '" onchange="_lvCalcDays()"></div>' +
         '</div>' +
-        '<div class="fgrp"><label>Reason</label><textarea id="mLvReason" rows="3" placeholder="Brief reason for leave..."></textarea></div>' +
-        '<div class="tip"><i class="fas fa-info-circle"></i> Your manager will be notified. Approved leaves appear in your leave calendar.</div>',
+        '<div id="mLvDaysHint" style="display:none;font-size:12px;font-weight:800;color:var(--P);padding:6px 10px;background:var(--Pl);border-radius:8px;margin-bottom:8px;text-align:center"></div>' +
+        '<div class="fgrp"><label>Reason</label>' +
+        '<textarea id="mLvReason" rows="3" placeholder="Brief reason for leave..."></textarea></div>' +
+        '<div class="tip"><i class="fas fa-info-circle"></i> Your manager will be notified via WhatsApp. Approved leaves appear in your leave calendar.</div>',
         function () {
-          var type = document.getElementById('mLvType') ? document.getElementById('mLvType').value : '';
-          var from = document.getElementById('mLvFrom') ? document.getElementById('mLvFrom').value : '';
-          var to = document.getElementById('mLvTo') ? document.getElementById('mLvTo').value : '';
-          var reason = document.getElementById('mLvReason') ? document.getElementById('mLvReason').value : '';
+          var type   = (document.getElementById('mLvType')   ||{}).value || '';
+          var from   = (document.getElementById('mLvFrom')   ||{}).value || '';
+          var to     = (document.getElementById('mLvTo')     ||{}).value || '';
+          var reason = (document.getElementById('mLvReason') ||{}).value || '';
           if (!from || !to) { _toast('From and To dates are required', 'err'); return; }
           if (!_validDateRange(from, to)) { _toast('From date must be on or before To date', 'err'); return; }
           _closeModal();
           _gas('requestLeave', [{ leave_type: type, from_date: from, to_date: to, reason: reason }], function (r) {
-            _toast('Leave request submitted! ID: ' + r.request_id, 'ok');
+            _toast('✓ Leave request submitted! ID: ' + r.request_id, 'ok');
             _addNtf('Leave request submitted', 'fa-umbrella-beach', 'var(--Tl)', 'var(--T)');
             _loadMyLeaves();
           }, function (e) { _toast('Error: ' + e.message, 'err'); });
         },
         '<i class="fas fa-paper-plane"></i> Submit Request'
       );
+      // Trigger initial day count
+      setTimeout(_lvCalcDays, 50);
+    }
+
+    function _lvCalcDays() {
+      var from = (document.getElementById('mLvFrom')||{}).value || '';
+      var to   = (document.getElementById('mLvTo')  ||{}).value || '';
+      var hint = document.getElementById('mLvDaysHint');
+      if (!hint) return;
+      if (!from || !to) { hint.style.display = 'none'; return; }
+      var fD = new Date(from), tD = new Date(to);
+      if (isNaN(fD) || isNaN(tD) || fD > tD) { hint.style.display = 'none'; return; }
+      var days = Math.round((tD - fD) / 86400000) + 1;
+      hint.textContent = days + ' day' + (days !== 1 ? 's' : '') + ' selected';
+      hint.style.display = '';
     }
 
     function _exportLeaves() {
@@ -19476,6 +19580,13 @@ function _deactivateTask(uid) {
           _U     = saved.user;
           _TOKEN = saved.token;
           _saveSession(_U, _TOKEN);
+          // Set sbName BEFORE sApp becomes visible — no "Loading..." flash
+          var sbN = document.getElementById('sbName');
+          var sbR = document.getElementById('sbRole');
+          var sbI = document.getElementById('sbAvaInitials');
+          if (sbN) sbN.textContent = _U.name || 'Staff';
+          if (sbR) sbR.textContent = (_U.role||'STAFF') + ' · ' + (_U.dept||'');
+          if (sbI && _U.name) sbI.textContent = (_U.name||'').split(' ').map(function(w){return w[0]||'';}).slice(0,2).join('').toUpperCase() || '?';
           var sLogin = document.getElementById('sLogin');
           var sApp   = document.getElementById('sApp');
           if (sLogin) { sLogin.classList.remove('on'); sLogin.style.display = 'none'; }
