@@ -344,7 +344,6 @@
       padding: 52px 48px;
       width: 100%;
       max-width: 448px;
-      margin: 0 auto;
       box-shadow:
         0 4px 24px rgba(0, 0, 0, .12),
         0 40px 100px rgba(0, 0, 0, .45),
@@ -550,9 +549,6 @@
     }
 
     .csetup-grid { display: grid; grid-template-columns: 380px 1fr; gap: 20px; }
-    .profile-grid { display: grid; grid-template-columns: 300px 1fr; gap: 20px; align-items: start; }
-    @media (max-width: 640px) { .profile-grid { grid-template-columns: 1fr !important; } }
-    @media (max-width: 960px) { .csetup-grid { grid-template-columns: 1fr; } }
 
     /* ── Muster Table ─────────────────────────────────────── */
     .muster-tbl { border-collapse: collapse; font-size: 12px; min-width: 100%; }
@@ -4913,12 +4909,6 @@
     @keyframes splashHide {
       to { opacity: 0; transform: scale(1.04); }
     }
-    @keyframes fkRing { to { transform: rotate(360deg); } }
-    @keyframes fkBar {
-      0%   { transform: translateX(-100%); }
-      50%  { transform: translateX(0%); }
-      100% { transform: translateX(100%); }
-    }
     .fk-dot {
       width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,.9);
       animation: dotWave .9s ease-in-out infinite 1.2s ease-in-out infinite;
@@ -6741,16 +6731,12 @@
 
       /* Sidebar: slide in from left */
       .sb {
-        position: fixed; top: 0; left: 0;
-        height: calc(100svh - 56px - env(safe-area-inset-bottom,0px));
+        position: fixed; top: 0; left: 0; height: 100vh;
         z-index: var(--z-sb, 100);
         transform: translateX(-100%);
         transition: transform .26s cubic-bezier(.4,0,.2,1);
         box-shadow: none;
         width: 276px !important;
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
-        padding-bottom: 8px;
       }
       .sb.mob-open {
         transform: translateX(0);
@@ -6836,50 +6822,6 @@
 
       /* Hero card */
       .dash-hero { border-radius: 20px !important; padding: 18px 16px !important; }
-
-      /* Skeleton: more visible on mobile */
-      .sk {
-        background: linear-gradient(
-          105deg,
-          #dde5ef 25%,
-          #c8d6e3 45%,
-          #eef2f7 50%,
-          #c8d6e3 55%,
-          #dde5ef 75%
-        ) !important;
-        background-size: 400% 100% !important;
-      }
-      body.dark .sk {
-        background: linear-gradient(
-          105deg,
-          #273344 25%,
-          #334155 45%,
-          #3a4a5c 50%,
-          #334155 55%,
-          #273344 75%
-        ) !important;
-        background-size: 400% 100% !important;
-      }
-
-      /* Login screen — full width centered on mobile */
-      #sLogin { align-items: center; justify-content: center; padding: 16px; }
-      .lbox {
-        padding: 36px 24px !important;
-        border-radius: 24px !important;
-        width: 100% !important;
-        max-width: 100% !important;
-        margin: 0 !important;
-      }
-      .l-logo-wrap img { height: 48px !important; }
-      .l-title { font-size: 20px !important; }
-
-      /* Profile page: stack on mobile */
-      .profile-grid { grid-template-columns: 1fr !important; }
-
-      /* My Profile - fix 2col layout */
-      #content > div[style*="grid-template-columns:300px"] {
-        grid-template-columns: 1fr !important;
-      }
     }
 
     @media (max-width: 375px) {
@@ -8238,8 +8180,9 @@ function _gasX(fn, args, timeout, onOk, onErr) {
     function _safeU() {
       // Use bracket notation — prevents regex from breaking assignments
       _U = (_U && typeof _U === 'object') ? _U : {};
-      var defs = {name:'User',emp_code:'',email:'',role:'STAFF',dept:'',photo:''};
-      for (var k in defs) { if (!_U[k]) _U[k] = defs[k]; }
+      var defs = {name:'',emp_code:'',email:'',role:'STAFF',dept:'',photo:''};
+      for (var k in defs) { if (_U[k] === undefined || _U[k] === null) _U[k] = defs[k]; }
+      if (!_U['name']) _U['name'] = 'Staff'; // fallback only if truly empty
       if (_U['need_attendance'] === undefined) _U['need_attendance'] = true;
       if (_U['need_location']   === undefined) _U['need_location']   = true;
       return _U;
@@ -8274,54 +8217,9 @@ function _gasX(fn, args, timeout, onOk, onErr) {
       function _hideSplash() {
         clearInterval(splashMsgTimer);
         if (!splash) return;
+        // splash hides cleanly
         splash.style.animation = 'splashHide .35s cubic-bezier(.4,0,.2,1) forwards';
-        setTimeout(function () {
-          splash.style.display = 'none';
-          // Mobile: show branded loading screen instead of blank grey
-          if (!window._fkViewReady) {
-            var ct = document.getElementById('content');
-            if (ct) {
-              var tips = [
-                'Checklist — daily KRA/KPI tasks track karo',
-                'Attendance — GPS se punch in/out karo',
-                'Delegation — tasks assign aur follow-up karo',
-                'Leave — apply karo aur balance dekho',
-                'Analytics — team performance check karo'
-              ];
-              var ti = 0;
-              ct.innerHTML =
-                '<div style="display:flex;flex-direction:column;align-items:center;' +
-                'justify-content:center;min-height:60vh;padding:24px;text-align:center">' +
-                '<img src="https://fresko.co.in/wp-content/uploads/2025/08/Untitled-design-21.png" ' +
-                'style="width:56px;height:56px;object-fit:contain;margin-bottom:18px;opacity:.9" ' +
-                'onerror="this.style.display=\'none\'">' +
-                '<div style="position:relative;width:48px;height:48px;margin-bottom:20px">' +
-                '<div style="position:absolute;inset:0;border-radius:50%;border:3px solid var(--Pl)"></div>' +
-                '<div style="position:absolute;inset:0;border-radius:50%;border:3px solid transparent;' +
-                'border-top-color:var(--P);animation:fkRing .8s linear infinite"></div>' +
-                '</div>' +
-                '<div style="font-size:15px;font-weight:800;color:var(--tx);margin-bottom:8px">' +
-                'Workspace load ho raha hai...</div>' +
-                '<div id="_fkTip" style="font-size:13px;color:var(--tx2);line-height:1.6;' +
-                'min-height:20px;transition:opacity .3s;padding:0 16px">' + tips[0] + '</div>' +
-                '<div style="width:200px;height:3px;background:var(--bdr);border-radius:3px;' +
-                'overflow:hidden;margin-top:28px">' +
-                '<div style="height:100%;background:var(--P);border-radius:3px;' +
-                'animation:fkBar 1.4s ease-in-out infinite"></div>' +
-                '</div></div>';
-              window._fkTipTimer = setInterval(function () {
-                ti = (ti + 1) % tips.length;
-                var el = document.getElementById('_fkTip');
-                if (!el) { clearInterval(window._fkTipTimer); return; }
-                el.style.opacity = '0';
-                setTimeout(function () {
-                  var e2 = document.getElementById('_fkTip');
-                  if (e2) { e2.textContent = tips[ti]; e2.style.opacity = '1'; }
-                }, 300);
-              }, 2200);
-            }
-          }
-        }, 340);
+        setTimeout(function () { splash.style.display = 'none'; }, 340);
       }
 
       // Set up user avatar in sidebar
@@ -8338,12 +8236,16 @@ function _gasX(fn, args, timeout, onOk, onErr) {
       document.getElementById('sbName').textContent = _su.name || 'User';
       document.getElementById('sbRole').textContent = (_su.role||'STAFF')+' · '+(_su.dept || '');
 
-      // ── NeedAttendance = No: hide ALL attendance UI ──
-      if (_su.need_attendance===false) {
-        var mbnAtt = document.getElementById('mbn-attend');
+      // ── NeedAttendance: show/hide attendance UI ──
+      var mbnAtt = document.getElementById('mbn-attend');
+      var nvAtt  = document.getElementById('nv-attend');
+      if (_su.need_attendance === false) {
         if (mbnAtt) mbnAtt.style.display = 'none';
-        var nvAtt  = document.getElementById('nv-attend');
         if (nvAtt)  nvAtt.style.display  = 'none';
+      } else {
+        // Explicitly show (HTML default is none — must show on login)
+        if (mbnAtt) mbnAtt.style.display = '';
+        if (nvAtt)  nvAtt.style.display  = '';
       }
 
       if (_isManager()) document.getElementById('mgrNav').style.display = '';
@@ -8433,8 +8335,6 @@ function _gasX(fn, args, timeout, onOk, onErr) {
        VIEW ROUTER — single dispatcher (sidebar .nv, session, charts)
     ══════════════════════════════════════════════════════════ */
     function _loadV(view, subTab) {
-      window._fkViewReady = true;
-      if (window._fkTipTimer) { clearInterval(window._fkTipTimer); window._fkTipTimer = null; }
       _V = view;
       _ST = subTab || null;
       window._curView = view; // tracked for background auto-refresh
@@ -8496,6 +8396,7 @@ function _gasX(fn, args, timeout, onOk, onErr) {
         cont.style.opacity = '1';
         cont.style.visibility = 'visible';
         cont.style.display = 'block';
+        cont.style.minHeight = '50vh';
       }
 
       if (views[view]) {
@@ -19180,7 +19081,7 @@ function _loadSetupTasks() {
         '<div class="mod-head">' +
         '<div><div class="mod-title">My Profile</div><div class="mod-sub">Account information, monthly stats and password management</div></div>' +
         '</div>' +
-        '<div style="display:grid;grid-template-columns:300px 1fr;gap:20px;align-items:start" class="profile-grid">' +
+        '<div style="display:grid;grid-template-columns:300px 1fr;gap:20px;align-items:start">' +
         '<div>' +
         '<div class="card card-nohover" style="text-align:center;padding-bottom:20px" id="profCard">' + _skel(3) + '</div>' +
         '</div>' +
@@ -19390,7 +19291,7 @@ function _deactivateTask(uid) {
       _updateMobNav(key);
     }
     function _updateMobNav(activeKey) {
-      var keyMap = { dash:'home', check:'check', attend:'attend', leave:'leave' };
+      var keyMap = { dash:'home', check:'check', attend:'attend', leave:'leave', deleg:'deleg' };
       var mapped = keyMap[activeKey] || activeKey;
       document.querySelectorAll('.mob-nav-item').forEach(function(el) {
         el.classList.remove('active');
@@ -19410,9 +19311,9 @@ function _deactivateTask(uid) {
       var items = [
         {ico:'fa-bolt',          lbl:'Activity',   key:'feed'},
         {ico:'fa-bullhorn',      lbl:'Announce',   key:'ann'},
-        {ico:'fa-people-arrows', lbl:'Delegation', key:'deleg'},
         {ico:'fa-calendar-days', lbl:'Holidays',   key:'holcal'},
         {ico:'fa-circle-user',   lbl:'Profile',    key:'profile'},
+        {ico:'fa-umbrella-beach',lbl:'Leave Bal',  key:'leave'},
       ];
       if (_isManager && _isManager()) {
         items = items.concat([
@@ -19490,7 +19391,7 @@ function _deactivateTask(uid) {
     var _origLoadV = _loadV;
     _loadV = function(route, sub) {
       _origLoadV(route, sub);
-      var navMap = { dash:'home', check:'check', attend:'attend', leave:'leave' };
+      var navMap = { dash:'home', check:'check', attend:'attend', leave:'leave', deleg:'deleg' };
       _updateMobNav(navMap[route] || 'more');
       _mobAnimate();
     };
@@ -19517,13 +19418,16 @@ function _deactivateTask(uid) {
           _U     = saved.user;
           _TOKEN = saved.token;
           _saveSession(_U, _TOKEN);
-          // Set name BEFORE sApp shows → no "Loading..." flash ever
+          // Set name BEFORE sApp shows — prevents "Loading..." flash
           try {
-            var _sn=document.getElementById('sbName'), _sr=document.getElementById('sbRole'), _si=document.getElementById('sbAvaInitials');
-            if(_sn) _sn.textContent = _U.name||'Staff';
-            if(_sr) _sr.textContent = (_U.role||'STAFF')+' · '+(_U.dept||'');
-            if(_si&&_U.name) _si.textContent=_U.name.trim().split(' ').map(function(w){return w[0]||'';}).slice(0,2).join('').toUpperCase()||'?';
-          } catch(ex){}
+            var _sn = document.getElementById('sbName');
+            var _sr = document.getElementById('sbRole');
+            var _si = document.getElementById('sbAvaInitials');
+            if (_sn && _U.name) _sn.textContent = _U.name;
+            if (_sr) _sr.textContent = (_U.role||'STAFF') + ' · ' + (_U.dept||'');
+            if (_si && _U.name) _si.textContent = _U.name.trim().split(' ')
+              .map(function(w){return w[0]||'';}).slice(0,2).join('').toUpperCase() || '?';
+          } catch(ex) {}
           var sLogin = document.getElementById('sLogin');
           var sApp   = document.getElementById('sApp');
           if (sLogin) { sLogin.classList.remove('on'); sLogin.style.display = 'none'; }
@@ -19568,13 +19472,17 @@ function _deactivateTask(uid) {
         <span class="mob-nav-pill"><i class="fas fa-list-check"></i></span>
         <span>Tasks</span>
       </button>
-      <button class="mob-nav-item" id="mbn-attend" onclick="_mbNav('attend')" aria-label="Attendance" style="display:none">
+      <button class="mob-nav-item" id="mbn-attend" onclick="_mbNav('attend')" aria-label="Attendance">
         <span class="mob-nav-pill"><i class="fas fa-clock"></i></span>
-        <span>Attendance</span>
+        <span>Attend</span>
       </button>
       <button class="mob-nav-item" id="mbn-leave" onclick="_mbNav('leave')" aria-label="Leave">
         <span class="mob-nav-pill"><i class="fas fa-calendar-days"></i></span>
         <span>Leave</span>
+      </button>
+      <button class="mob-nav-item" id="mbn-deleg" onclick="_mbNav('deleg')" aria-label="Delegate">
+        <span class="mob-nav-pill"><i class="fas fa-people-arrows"></i></span>
+        <span>Delegate</span>
       </button>
     </div>
   </nav>
