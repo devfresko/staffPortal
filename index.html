@@ -6831,6 +6831,75 @@
       .qa-lbl   { font-size: 9px !important; }
     }
 
+  
+    /* ── Splash: always fullscreen, same on mobile + desktop ── */
+    #fkSplash {
+      position: fixed !important;
+      inset: 0 !important;
+      z-index: 9999 !important;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+    }
+    #fkSplash .splash-logo {
+      animation: splashPop .5s cubic-bezier(.34,1.56,.64,1) both;
+    }
+    #fkSplash .splash-title {
+      animation: safeIn .4s .3s forwards;
+    }
+    #fkSplash .splash-msg {
+      animation: safeIn .4s .5s forwards;
+      color: rgba(255,255,255,.75);
+      font-size: 13px; font-weight: 600;
+      margin-top: 4px;
+    }
+    #fkSplash .fk-dots {
+      display: flex; gap: 7px; margin-top: 20px;
+    }
+    .fk-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: rgba(255,255,255,.9);
+      animation: dotWave .9s ease-in-out infinite !important;
+    }
+    .fk-dot:nth-child(2) { animation-delay: .18s !important; }
+    .fk-dot:nth-child(3) { animation-delay: .36s !important; }
+    @keyframes dotWave {
+      0%, 100% { transform: translateY(0); opacity: .5; }
+      45%       { transform: translateY(-10px); opacity: 1; }
+    }
+
+  
+    /* ── Sign Out overlay — mobile fix ── */
+    .so-ov {
+      display: none;
+      position: fixed; inset: 0; z-index: 9999;
+      background: rgba(0,0,0,.6);
+      backdrop-filter: blur(4px);
+      align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    .so-ov.on { display: flex !important; }
+    .so-box {
+      background: var(--sur);
+      border-radius: 24px;
+      padding: 32px 24px 24px;
+      text-align: center;
+      max-width: 320px; width: 100%;
+      box-shadow: 0 24px 64px rgba(0,0,0,.3);
+      animation: safePop .3s cubic-bezier(.34,1.3,.64,1) forwards;
+    }
+    .so-box h3 { font-size: 20px; font-weight: 800; margin-bottom: 8px; color: var(--tx); }
+    .so-box p  { font-size: 13.5px; color: var(--tx3); margin-bottom: 24px; line-height: 1.5; }
+    .so-btns   { display: flex; gap: 10px; }
+    .so-btns .btn { flex: 1; min-height: 48px !important; }
+    @media (max-width:640px) {
+      .so-box { padding: 28px 20px 20px; }
+      .so-btns { flex-direction: column; }
+      .so-btns .btn { width: 100%; }
+    }
+
   </style>
 </head>
 
@@ -7071,7 +7140,7 @@
       <p>You'll be returned to the login screen. Make sure you've saved any open work.</p>
       <div class="so-btns">
         <button class="btn btn-outline" onclick="_soHide()">Cancel</button>
-        <button class="btn btn-red" onclick="_clearSession();location.reload()">
+        <button class="btn btn-red" onclick="_clearSession();_U=null;_TOKEN=null;location.href=location.href.split('?')[0]">
           <i class="fas fa-sign-out-alt"></i> Sign Out
         </button>
       </div>
@@ -8074,6 +8143,19 @@ function _gasX(fn, args, timeout, onOk, onErr) {
         btn.style.opacity = '1'; btn.style.pointerEvents = 'auto';
         if (r && r.success && r.user) {
           _U = r.user;
+          // Update sidebar display with real user name (was showing 'User' during load)
+          try {
+            var sbName = document.getElementById('sbName');
+            var sbRole = document.getElementById('sbRole');
+            var sbAva  = document.getElementById('sbAva');
+            if (sbName && _U.name) sbName.textContent = _U.name;
+            if (sbRole && _U.role) sbRole.textContent = (_U.role||'STAFF') + ' · ' + (_U.dept||'');
+            if (sbAva  && _U.name) {
+              var ini = _initials ? _initials(_U.name) : _U.name.charAt(0);
+              if (_U.photo) { sbAva.innerHTML = '<img src="' + _U.photo + '" style="border-radius:50%;width:100%;height:100%;object-fit:cover" alt="">'; } else if (ini) { sbAva.innerHTML = ini; }
+              else sbAva.innerHTML = ini;
+            }
+          } catch(e2) {}
           _TOKEN = r.user.email + ':' + (r.user.role || 'STAFF').toLowerCase();
           // Save session so page refresh doesn't log out
           _saveSession(_U, _TOKEN);
@@ -19330,20 +19412,22 @@ function _deactivateTask(uid) {
     (function _autoRestoreSession() {
       try {
         var saved = _loadSession();
-        if (saved && saved.user && saved.token) {
+        // VALIDATE: user must have emp_code (not empty/null) — else corrupt session
+        if (saved && saved.user && saved.token && saved.user.emp_code) {
           _U     = saved.user;
           _TOKEN = saved.token;
-          // Refresh TTL on each restore
           _saveSession(_U, _TOKEN);
-          // Hide login, boot app — don't show login screen at all
           var sLogin = document.getElementById('sLogin');
           var sApp   = document.getElementById('sApp');
-          if (sLogin) {
-            sLogin.classList.remove('on');
-            sLogin.style.display = 'none';
-          }
+          if (sLogin) { sLogin.classList.remove('on'); sLogin.style.display = 'none'; }
           if (sApp)   sApp.classList.add('on');
           _bootApp();
+        } else if (saved) {
+          // Corrupt session — clear it and show login fresh
+          _clearSession();
+          console.warn('[Session] Corrupt session cleared — showing login');
+          var sLogin = document.getElementById('sLogin');
+          if (sLogin) { sLogin.classList.add('on'); sLogin.style.display = ''; }
         }
       } catch(e) {
         console.warn('[Session] Restore failed:', e.message);
