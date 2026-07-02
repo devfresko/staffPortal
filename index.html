@@ -288,21 +288,6 @@
       overflow: hidden;
     }
 
-    /* Mobile: brand top visible, card is bottom sheet */
-    .l-mob-brand {
-      display: none; /* hidden on desktop */
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      padding: 48px 24px 20px;
-      animation: lbBrandIn .6s cubic-bezier(.34,1.1,.64,1) both;
-    }
-    @keyframes lbBrandIn {
-      from { opacity:0; transform:translateY(-16px); }
-      to   { opacity:1; transform:translateY(0); }
-    }
-
     /* Animated background circles */
     #sLogin::before,
     #sLogin::after {
@@ -367,6 +352,8 @@
 
     .lbox {
       background: rgba(255, 255, 255, .97);
+      backdrop-filter: blur(32px) saturate(1.8);
+      -webkit-backdrop-filter: blur(32px) saturate(1.8);
       border-radius: 28px;
       padding: 52px 48px;
       width: 100%;
@@ -374,7 +361,8 @@
       box-shadow:
         0 4px 24px rgba(0, 0, 0, .12),
         0 40px 100px rgba(0, 0, 0, .45),
-        inset 0 1px 0 rgba(255, 255, 255, .9);
+        inset 0 1px 0 rgba(255, 255, 255, .9),
+        inset 0 -1px 0 rgba(0,0,0,.04);
       position: relative;
       z-index: 10;
       animation: pop .45s cubic-bezier(.34,1.2,.64,1) forwards;
@@ -4675,13 +4663,6 @@
       #cmtFilters input[type="date"],
       #tamFilters button:last-child,
       #cmtFilters button:last-child { grid-column: 1 / -1; }
-      /* Override min-width on filter children */
-      #cmtFilters select,
-      #cmtFilters input,
-      #tamFilters select,
-      #tamFilters input { min-width: 0 !important; width: 100% !important; }
-      #cmtFilters button,
-      #tamFilters button { min-width: 0 !important; }
 
       /* ══════════════════════════════════════════════════════════════
          TABLES
@@ -4754,65 +4735,6 @@
         word-break: break-word;
         overflow-wrap: break-word;
       }
-
-      /* ── LOGIN — Mobile bottom sheet ───────────────────────────── */
-      #sLogin {
-        flex-direction: column !important;
-        align-items: stretch !important;
-        justify-content: flex-end !important;
-        padding: 0 !important;
-        background: linear-gradient(160deg,#003040 0%,#005F73 45%,#0A9396 72%,#94D2BD 100%) !important;
-      }
-      .l-mob-brand {
-        display: flex !important;
-        flex: 1;
-      }
-      #lDeskLogo { display: none !important; }
-      .lbox {
-        border-radius: 28px 28px 0 0 !important;
-        padding: 8px 22px calc(28px + env(safe-area-inset-bottom,0px)) !important;
-        max-width: 100% !important;
-        width: 100% !important;
-        margin: 0 !important;
-        animation: lbSheetUp .44s cubic-bezier(.34,1.1,.64,1) both !important;
-        box-shadow: 0 -4px 32px rgba(0,0,0,.18) !important;
-        backdrop-filter: none !important;
-        background: var(--sur) !important;
-      }
-      @keyframes lbSheetUp {
-        from { transform:translateY(72px); opacity:0; }
-        to   { transform:translateY(0); opacity:1; }
-      }
-      .lbox::before {
-        content: '' !important;
-        display: block !important;
-        width: 40px; height: 4px;
-        border-radius: 2px;
-        background: var(--bdr2);
-        margin: 0 auto 16px;
-      }
-      .lbox .l-logo-wrap { display: none !important; }
-      .l-title { font-size: 19px !important; margin-bottom: 3px !important; }
-      .l-sub   { font-size: 13px !important; margin-bottom: 20px !important; }
-      .l-field { margin-bottom: 12px !important; }
-      .l-field input {
-        font-size: 16px !important;
-        padding: 14px 14px 14px 44px !important;
-        border-radius: 14px !important;
-        min-height: 52px !important;
-      }
-      .l-btn {
-        min-height: 54px !important;
-        font-size: 16px !important;
-        border-radius: 14px !important;
-        margin-top: 6px !important;
-      }
-      .l-footer { font-size: 10px !important; margin-top: 16px !important; }
-
-      /* ── Hide mob-nav on login screen ──── */
-      .mob-nav-login-hidden { display: none !important; }
-
-    } /* end @media 640px — LOGIN */
     } /* end @media 640px */
 
     /* ══════════════════════════════════════════════════════════════
@@ -5172,12 +5094,6 @@
     }
     @keyframes splashHide { to { opacity:0; transform:scale(1.04); } }
     @keyframes fkLogoSpin { to { transform:rotate(360deg); } }
-    /* Desktop: show logo in card, hide mobile brand */
-    @media (min-width: 641px) {
-      .l-mob-brand { display: none !important; }
-      #lDeskLogo   { display: block !important; }
-      #sLogin { align-items: center !important; justify-content: center !important; }
-    }
     @keyframes fkBarSlide { 0%{transform:translateX(-100%)} 50%{transform:translateX(0%)} 100%{transform:translateX(110%)} }
     .fk-dot {
       width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,.9);
@@ -7164,41 +7080,31 @@
   <!-- ═══════════════════════════════════════════════════════════
      LOGIN SCREEN
 ═══════════════════════════════════════════════════════════ -->
-  <div class="scr on" id="sLogin">
-    <!-- Mobile: brand shown above card on teal bg -->
-    <div class="l-mob-brand" id="lMobBrand">
-      <img src="https://fresko.co.in/wp-content/uploads/2025/08/Untitled-design-21.png"
-        style="width:68px;height:68px;object-fit:contain;filter:drop-shadow(0 4px 16px rgba(0,0,0,.25))"
-        onerror="this.style.display='none'">
-      <div style="color:#fff;font-size:22px;font-weight:900;margin-top:14px;letter-spacing:-.3px">Fresko Staff Portal</div>
-      <div style="color:rgba(255,255,255,.75);font-size:13px;margin-top:5px">Your workplace, anywhere</div>
-    </div>
-
+  <div class="scr on" id="sLogin" style="background:linear-gradient(135deg,#005F73 0%,#0A9396 40%,#94D2BD 100%)">
     <div class="lbox">
-      <!-- Desktop only logo -->
-      <div class="l-logo-wrap" id="lDeskLogo">
+      <div class="l-logo-wrap login-logo">
         <img src="https://fresko.co.in/wp-content/uploads/2025/08/Untitled-design-21.png" alt="Fresko Logo"
           onerror="this.style.display='none';document.getElementById('lgFallback').style.display='flex'">
         <div class="l-logo-fallback" id="lgFallback" style="display:none">FK</div>
       </div>
-      <div class="l-title">Fresko Staff Portal</div>
-      <div class="l-sub">Sign in to access your workspace</div>
+      <div class="l-title login-title">Fresko Staff Portal</div>
+      <div class="l-sub login-sub">Sign in to access your workspace</div>
 
-      <div class="l-field">
+      <div class="l-field login-field">
         <label>Email Address</label>
         <input type="email" id="femail" placeholder="you@fresko.co.in" autocomplete="email"
           onkeydown="if(event.key==='Enter')document.getElementById('fpass').focus()">
         <i class="fas fa-envelope l-ico"></i>
       </div>
 
-      <div class="l-field">
+      <div class="l-field login-field">
         <label>Password</label>
         <input type="password" id="fpass" placeholder="••••••••" autocomplete="current-password"
           onkeydown="if(event.key==='Enter')_doLogin()">
         <i class="fas fa-lock l-ico"></i>
       </div>
 
-      <button class="l-btn" id="btnLogin" onclick="_doLogin()">
+      <button class="l-btn login-submit" id="btnLogin" onclick="_doLogin()">
         <i class="fas fa-sign-in-alt"></i> Sign In
       </button>
 
@@ -8128,8 +8034,6 @@
       // 2. Reset global state
       _U = null;
       _TOKEN = null;
-      window._fkLoaded = false;  // reset so loading screen shows on next login
-      window._fkTipTimer = null;
 
       // 3. Stop all background timers
       try {
@@ -8559,7 +8463,6 @@ function _gasX(fn, args, timeout, onOk, onErr) {
       // Switch screens
       document.getElementById('sLogin').classList.remove('on');
       document.getElementById('sApp').classList.add('on');
-      var _mn=document.getElementById('mobNav'); if(_mn)_mn.style.display='';
       // Show animated skeleton IMMEDIATELY so user sees activity
       var c0 = document.getElementById('content');
       if (c0 && typeof _skelKpi === 'function') {
@@ -8630,8 +8533,6 @@ function _gasX(fn, args, timeout, onOk, onErr) {
       _bootNtfs();
 
       // ── INSTANT BOOT: load from localStorage cache first ──────────────
-      // Reset loading flag for this boot
-      window._fkLoaded = false;
       var _hasCached = _lcLoad();
       if (_hasCached) {
         // Cache hit → show UI instantly, refresh in background
@@ -10188,18 +10089,16 @@ function _gasX(fn, args, timeout, onOk, onErr) {
     }
 
     function _ctodayForm() {
-      return '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">' +
-        '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
-        '<label style="font-size:12px;font-weight:700;color:var(--tx2);white-space:nowrap">Employee</label>' +
-        '<select id="ckEmp" onchange="_loadToday()" style="flex:1;min-width:0">' +
+      return '<div class="fbar">' +
+        '<label>Employee:</label>' +
+        '<select id="ckEmp" onchange="_loadToday()">' +
         '<option value="' + _U.emp_code + '">' + _esc((_U&&_U.name)||'Me') + ' (Me)</option>' +
         '</select>' +
-        '</div>' +
-        '<div style="display:flex;align-items:center;gap:8px">' +
-        '<label style="font-size:12px;font-weight:700;color:var(--tx2);white-space:nowrap">Date</label>' +
-        '<input type="date" id="ckDate" value="' + _today() + '" onchange="_loadToday()" style="flex:1;min-width:0">' +
-        '<button class="btn btn-sm" style="flex-shrink:0" onclick="_loadToday()"><i class="fas fa-search"></i> Load</button>' +
-        '</div>' +
+        '<label>Date:</label>' +
+        '<input type="date" id="ckDate" value="' + _today() + '" onchange="_loadToday()">' +
+        '<button class="btn btn-sm" onclick="_loadToday()"><i class="fas fa-search"></i> Load</button>' +
+        '<div class="fbar-spacer"></div>' +
+        
         '</div>' +
         '<div id="ckProgress" style="margin-bottom:14px"></div>' +
         '<div id="ckList"></div>';
@@ -10256,14 +10155,14 @@ function _gasX(fn, args, timeout, onOk, onErr) {
         '</optgroup>' +
         '</select></div>' +
         '<div class="fgrp"><label>Start Date <span class="req">★</span></label>' +
-        '<input type="date" id="csStartDate" value="' + _today() + '"></div>' +
+        '<input type="datetime-local" id="csStartDate" value="' + _today() + 'T09:00"></div>' +
         '</div>' +
         '<div id="csFreqX"></div>' +
         '<div style="margin-top:8px;padding:10px 14px;background:var(--sur2);border-radius:8px;font-size:12px;color:var(--tx2)">' +
         '<i class="fas fa-info-circle" style="color:var(--P)"></i> ' +
         'Task will be saved to Task List and recurring checklist rows will be auto-generated in ChecklistMaster.' +
         '</div>' +
-        '<button class="btn btn-wide" id="btnSaveTask" onclick="_saveTask()" style="margin-top:14px;white-space:normal;line-height:1.3"><i class="fas fa-plus"></i> Add Task & Generate Checklist</button>' +
+        '<button class="btn btn-wide" id="btnSaveTask" onclick="_saveTask()" style="margin-top:14px"><i class="fas fa-plus"></i> Add Task & Generate Checklist</button>' +
         '</div>' +
         '<div class="card card-nohover card-sm">' +
         '<div class="sec-title" style="margin-bottom:14px"><i class="fas fa-list" style="color:var(--tx2)"></i> Active Tasks</div>' +
@@ -19900,7 +19799,7 @@ function _deactivateTask(uid) {
     // Runs AFTER all functions are defined — safe to call _bootApp here
     (function _autoRestoreSession() {
       var sLogin=document.getElementById('sLogin'),sApp=document.getElementById('sApp');
-      function showLogin(){if(sLogin){sLogin.classList.add('on');sLogin.style.display='';}if(sApp)sApp.classList.remove('on');var _mn=document.getElementById('mobNav');if(_mn)_mn.style.display='none';}
+      function showLogin(){if(sLogin){sLogin.classList.add('on');sLogin.style.display='';}if(sApp)sApp.classList.remove('on');}
       try{
         var saved=_loadSession();
         var good=saved&&saved.user&&saved.user.name&&saved.user.name!=='User'&&saved.user.name!=='Staff'&&saved.user.name.trim()!=='';
@@ -19909,7 +19808,6 @@ function _deactivateTask(uid) {
           try{var sn=document.getElementById('sbName'),sr=document.getElementById('sbRole'),si=document.getElementById('sbAvaInitials');if(sn)sn.textContent=_U.name;if(sr)sr.textContent=(_U.role||'STAFF')+' · '+(_U.dept||'');if(si)si.textContent=_U.name.trim().split(' ').map(function(w){return w[0]||'';}).slice(0,2).join('').toUpperCase()||'?';}catch(ex){}
           if(sLogin){sLogin.classList.remove('on');sLogin.style.display='none';}
           if(sApp)sApp.classList.add('on');
-          var _mn2=document.getElementById('mobNav');if(_mn2)_mn2.style.display='';
           _bootApp();
         }else{if(saved)_clearSession();showLogin();}
       }catch(e){showLogin();}
