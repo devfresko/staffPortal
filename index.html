@@ -8341,15 +8341,6 @@ function _gasX(fn, args, timeout, onOk, onErr) {
       _bootNtfs();
 
       window._fkLoaded=false;
-      var _hasCached=_lcLoad();
-      if(_hasCached){
-        _hideSplash(); _loadV(window._pwaStartRoute||'dash'); window._pwaStartRoute=null;
-        _updateMobNav&&_updateMobNav('home'); _startAutoRefresh();
-        var _rb=document.createElement('div'); _rb.id='fkBgSync';
-        _rb.style.cssText='position:fixed;top:56px;right:10px;z-index:500;font-size:10px;font-weight:700;color:var(--tx3);background:var(--sur);padding:3px 8px;border-radius:99px;box-shadow:0 1px 6px rgba(0,0,0,.1);display:flex;align-items:center;gap:4px';
-        _rb.innerHTML='<i class="fas fa-circle-notch fa-spin" style="font-size:9px;color:var(--P)"></i> syncing';
-        document.body.appendChild(_rb);
-      }
       _gasX('getAllData', [], 35000, function(d) {
         if (!d) return;
 
@@ -8391,14 +8382,12 @@ function _gasX(fn, args, timeout, onOk, onErr) {
           badge.style.display = '';
         }
 
-        var _rb2=document.getElementById('fkBgSync'); if(_rb2)_rb2.remove();
-        if(!window._fkLoaded){
-          _hideSplash(); _loadV(window._pwaStartRoute||'dash');
-          window._pwaStartRoute=null; _updateMobNav&&_updateMobNav('home'); _startAutoRefresh();
-        } else {
-          window._pwaStartRoute=null; _startAutoRefresh();
-          try{if(window._curView)_loadV(window._curView,window._ST||null);}catch(e){}
-        }
+        // Render dashboard
+        _hideSplash();
+        _loadV(window._pwaStartRoute || 'dash');
+        window._pwaStartRoute = null;
+        _updateMobNav && _updateMobNav('home');
+        _startAutoRefresh();
 
       }, function() {
         // Fallback: getAllData itself failed/timed out. Still fetch
