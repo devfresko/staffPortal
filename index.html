@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#005F73">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -13,13 +13,10 @@
   <link rel="apple-touch-icon" href="icon-180.png">
   <title>Fresko Staff Portal — v3.0</title>
 
-  <!-- External Assets — non-render-blocking for faster mobile FCP -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" media="print" onload="this.media='all'">
-  <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"></noscript>
+  <!-- External Assets -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <link
-    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap"
     rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
 
@@ -6910,22 +6907,44 @@
   ══════════════════════════════════════════════════════════════════════ */
 
   /* ── Login screen: perfect on small phones ───────────────────── */
+  /* LOGIN — centered card on mobile (same look as desktop) */
   @media (max-width: 640px) {
-    #sLogin { align-items: flex-end; padding-bottom: 0; }
+    #sLogin {
+      align-items: center !important;
+      justify-content: center !important;
+      padding: 20px 16px !important;
+    }
     .lbox {
-      border-radius: 28px 28px 0 0 !important;
-      padding: 32px 24px max(24px, env(safe-area-inset-bottom, 24px)) !important;
+      border-radius: 28px !important;
+      padding: 36px 24px 28px !important;
       max-width: 100% !important;
       width: 100% !important;
       margin: 0 !important;
-      box-shadow: 0 -8px 48px rgba(0,0,0,.35) !important;
-      animation: sheetUp .4s cubic-bezier(.34,1.1,.64,1) forwards !important;
+      box-shadow:
+        0 4px 24px rgba(0,0,0,.14),
+        0 24px 60px rgba(0,0,0,.40),
+        inset 0 1px 0 rgba(255,255,255,.9) !important;
+      animation: pop .4s cubic-bezier(.34,1.2,.64,1) both !important;
     }
+    .l-logo-wrap { margin-bottom: 18px !important; }
     .l-logo-wrap img { height: 52px !important; }
-    .l-title { font-size: 22px !important; }
+    .l-title { font-size: 21px !important; }
     .l-sub   { font-size: 13px !important; margin-bottom: 24px !important; }
-    .l-field input { min-height: 52px !important; font-size: 16px !important; padding: 14px 14px 14px 44px !important; }
-    .l-btn   { min-height: 54px !important; font-size: 16px !important; border-radius: 16px !important; }
+    .l-field { margin-bottom: 14px !important; }
+    .l-field input {
+      min-height: 50px !important;
+      font-size: 16px !important;
+      padding: 13px 14px 13px 42px !important;
+      border-radius: 12px !important;
+    }
+    .l-field .l-ico { bottom: 14px !important; }
+    .l-btn {
+      min-height: 50px !important;
+      font-size: 15px !important;
+      border-radius: 12px !important;
+      margin-top: 4px !important;
+    }
+    .l-footer { margin-top: 18px !important; }
   }
 
   /* ── App shell: fixed layout, no scroll leaks ───────────────── */
