@@ -549,6 +549,7 @@
     }
 
     .csetup-grid { display: grid; grid-template-columns: 380px 1fr; gap: 20px; }
+    @media (max-width: 960px) { .csetup-grid { grid-template-columns: 1fr; } }
 
     /* ── Muster Table ─────────────────────────────────────── */
     .muster-tbl { border-collapse: collapse; font-size: 12px; min-width: 100%; }
@@ -9835,11 +9836,13 @@ function _gasX(fn, args, timeout, onOk, onErr) {
     }
     function _csetupForm() {
       return '<div class="csetup-grid">' +
+        // ── LEFT: Add New Task form ──────────────────────────────────────────
         '<div class="card card-nohover card-sm">' +
         '<div class="sec-title" style="margin-bottom:14px"><i class="fas fa-plus-circle" style="color:var(--P)"></i> Add New Task</div>' +
-        '<div class="form-g">' +
         '<div class="fgrp"><label>Employee <span class="req">★</span></label>' +
-        '<select id="csEmp" onchange="_csEmpChg(this)"><option value="">-- Select Employee --</option></select></div>' +
+        '<select id="csEmp" onchange="_csEmpChg(this)"><option value="">-- Select Employee --</option></select>' +
+        '<div id="csEmpHint" style="display:none;font-size:11px;color:var(--P);font-weight:700;margin-top:4px;padding:4px 8px;background:var(--Pl);border-radius:6px"></div>' +
+        '</div>' +
         '<div class="fgrp"><label>Task Name <span class="req">★</span></label>' +
         '<input type="text" id="csTask" placeholder="e.g. Daily Report Submission" maxlength="120"></div>' +
         '<div class="fgrp"><label>Frequency <span class="req">★</span></label>' +
@@ -9861,16 +9864,16 @@ function _gasX(fn, args, timeout, onOk, onErr) {
         '<option value="ELast">ELast — Last Weekday of Month</option>' +
         '</optgroup>' +
         '</select></div>' +
-        '<div class="fgrp"><label>Start Date <span class="req">★</span></label>' +
-        '<input type="datetime-local" id="csStartDate" value="' + _today() + 'T09:00"></div>' +
-        '</div>' +
         '<div id="csFreqX"></div>' +
-        '<div style="margin-top:8px;padding:10px 14px;background:var(--sur2);border-radius:8px;font-size:12px;color:var(--tx2)">' +
-        '<i class="fas fa-info-circle" style="color:var(--P)"></i> ' +
+        '<div class="fgrp"><label>Start Date <span class="req">★</span></label>' +
+        '<input type="date" id="csStartDate" value="' + _today() + '"></div>' +
+        '<div style="padding:10px 14px;background:var(--Il);border-radius:8px;font-size:12px;color:var(--tx2);margin-bottom:4px">' +
+        '<i class="fas fa-info-circle" style="color:var(--I)"></i> ' +
         'Task will be saved to Task List and recurring checklist rows will be auto-generated in ChecklistMaster.' +
         '</div>' +
-        '<button class="btn btn-wide" id="btnSaveTask" onclick="_saveTask()" style="margin-top:14px"><i class="fas fa-plus"></i> Add Task & Generate Checklist</button>' +
+        '<button class="btn btn-wide" id="btnSaveTask" onclick="_saveTask()" style="margin-top:10px"><i class="fas fa-plus"></i> Add Task & Generate Checklist</button>' +
         '</div>' +
+        // ── RIGHT: Active Tasks list ─────────────────────────────────────────
         '<div class="card card-nohover card-sm">' +
         '<div class="sec-title" style="margin-bottom:14px"><i class="fas fa-list" style="color:var(--tx2)"></i> Active Tasks</div>' +
         '<div id="setupTaskList">' + _skel(4, 'sk-h4') + '</div>' +
@@ -10009,33 +10012,47 @@ function _gasX(fn, args, timeout, onOk, onErr) {
       _downloadCSV('task_history_' + _today() + '.csv', rows);
     }
 
-function _loadSetupTasks() {
+function _loadSetupTasks(skipEmpReload) {
   var el = document.getElementById('setupTaskList');
   if (!el) return;
   el.innerHTML = _skel(3, 'sk-h4');
 
-  // ── Employee dropdown — hamesha fresh load ──
-  if (_isManager()) {
+  // ── Employee dropdown — load once, reuse cache ──
+  // skipEmpReload=true after saveTask so dropdown doesn't reset on the user
+  if (_isManager() && !skipEmpReload) {
     var sel = document.getElementById('csEmp');
-    if (sel) {
+    if (sel && sel.options.length <= 1) {
+      // Only hit GAS if not already populated
       sel.innerHTML = '<option value="">⏳ Loading...</option>';
-      _gas('getDoerList', [], function(doers) {
-        _D.doers = doers;
-        var s = document.getElementById('csEmp');
-        if (!s) return;
-        s.innerHTML = '<option value="">-- Select Employee --</option>' +
-          doers.map(function(d) {
+      var doersCache = _D.doers;
+      if (doersCache && doersCache.length) {
+        sel.innerHTML = '<option value="">-- Select Employee --</option>' +
+          doersCache.map(function(d) {
             return '<option value="' + _esc(d.emp_id) + '" ' +
               'data-dept="' + _esc(d.department) + '" ' +
               'data-email="' + _esc(d.email || '') + '">' +
               _esc(d.name) + ' (' + _esc(d.department) + ')' +
               '</option>';
           }).join('');
-      }, function(e) {
-        var s = document.getElementById('csEmp');
-        if (s) s.innerHTML = '<option value="">-- Select Employee --</option>';
-        _toast('Employee load failed: ' + e.message, 'err');
-      });
+      } else {
+        _gas('getDoerList', [], function(doers) {
+          _D.doers = doers;
+          var s = document.getElementById('csEmp');
+          if (!s) return;
+          s.innerHTML = '<option value="">-- Select Employee --</option>' +
+            doers.map(function(d) {
+              return '<option value="' + _esc(d.emp_id) + '" ' +
+                'data-dept="' + _esc(d.department) + '" ' +
+                'data-email="' + _esc(d.email || '') + '">' +
+                _esc(d.name) + ' (' + _esc(d.department) + ')' +
+                '</option>';
+            }).join('');
+        }, function(e) {
+          var s = document.getElementById('csEmp');
+          if (s) s.innerHTML = '<option value="">-- Select Employee --</option>';
+          _toast('Employee load failed: ' + e.message, 'err');
+        });
+      }
     }
   }
 
@@ -10136,7 +10153,15 @@ function _loadSetupTasks() {
     }
 
     function _csEmpChg(sel) {
-      // Auto-populate email when employee selected
+      // Show selected employee's dept as a confirmation hint below select
+      if (!sel) return;
+      var opt = sel.options[sel.selectedIndex];
+      var dept = opt ? (opt.getAttribute('data-dept') || '') : '';
+      var empHint = document.getElementById('csEmpHint');
+      if (empHint) {
+        empHint.textContent = dept ? ('Dept: ' + dept) : '';
+        empHint.style.display = dept ? '' : 'none';
+      }
     }
 
     function _csFreqChg() {
@@ -10199,7 +10224,7 @@ function _loadSetupTasks() {
       var email      = empOpt     ? (empOpt.getAttribute('data-email') || '') : '';
       var task       = taskInp    ? taskInp.value.trim()     : '';
       var freq       = freqSel    ? freqSel.value            : 'D';
-      var startDate = startInp ? startInp.value : _today();
+      var startDate = startInp ? (startInp.value || '').split('T')[0] : _today();
 
       if (!_req(empId,     'Employee'))   { _endSub('btnSaveTask'); return; }
       if (!_req(task,      'Task Name'))  { _endSub('btnSaveTask'); return; }
@@ -10235,8 +10260,10 @@ function _loadSetupTasks() {
     }
     if (taskInp) taskInp.value = '';
     if (startInp) startInp.value = _today();
-    document.getElementById('csFreqX').innerHTML = '';
-    _loadSetupTasks();
+    var freqXEl = document.getElementById('csFreqX');
+    if (freqXEl) freqXEl.innerHTML = '';
+    // skipEmpReload=true so employee dropdown keeps its state (don't interrupt user)
+    _loadSetupTasks(true);
   } else {
     _endSub('btnSaveTask');
     _toast('Error: ' + (r && r.error ? r.error : 'Unknown error'), 'err');
