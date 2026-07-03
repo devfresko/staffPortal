@@ -8026,7 +8026,7 @@
     function _lbShow() { _gasActive++; var b=document.getElementById('fkLb'); if(b) b.style.opacity='1'; }
     function _lbHide() { _gasActive=Math.max(0,_gasActive-1); if(!_gasActive){var b=document.getElementById('fkLb');if(b){b.style.opacity='0';}} }
 
-    function _gas(fn, args, onOk, onErr) {
+    function _gas(fn, args, onOk, onErr, _retryCount) {
   _lbShow();
   var sendArgs = (args || []).concat([_U]);
   var cb  = '_cb' + Date.now() + Math.floor(Math.random() * 9999);
@@ -8035,15 +8035,23 @@
 
   var done   = false;
   var script = document.createElement('script');
+  var retries = _retryCount || 0;
 
   var timer = setTimeout(function() {
     if (done) return;
     done = true; _lbHide();
     script.remove();
     delete window[cb];
+    // Auto-retry once on timeout (GAS cold start can take 20s)
+    if (retries < 1) {
+      setTimeout(function() { _gas(fn, args, onOk, onErr, 1); }, 1000);
+      return;
+    }
     if (onErr) onErr({ message: 'Network error. Check connection.' });
-    else _toast('Network error. Check connection.', 'err');
-  }, 15000);
+    else {
+      _toast('<i class="fas fa-wifi-slash"></i> Connection error — tap to retry', 'err', function(){ _gas(fn,args,onOk,onErr,0); });
+    }
+  }, 25000);
 
   window[cb] = function(data) {
     if (done) return;
@@ -8476,17 +8484,22 @@ function _gasX(fn, args, timeout, onOk, onErr) {
         _startAutoRefresh();
 
       }, function() {
-        // Fallback: getAllData itself failed/timed out. Still fetch
-        // appConfig separately (lightweight, dedicated call) before
-        // loading the dashboard — otherwise _D.appConfig never gets set on
-        // this path, which is exactly what made the GPS gate wait forever
-        // and show "Could not load location settings" even when location
-        // itself was working fine.
-        _gas('getAllAppConfigForFrontend', [], function(cfg) { _D.appConfig = cfg || {}; }, function() {});
+        // getAllData timed out — show retry screen
         _hideSplash();
-        _loadV('dash');
-        _updateMobNav && _updateMobNav('home');
-        _startAutoRefresh();
+        var ct = document.getElementById('content');
+        if (ct) {
+          ct.innerHTML =
+            '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:65vh;padding:24px;text-align:center">' +
+            '<div style="font-size:48px;margin-bottom:16px">📡</div>' +
+            '<div style="font-size:18px;font-weight:900;color:var(--tx);margin-bottom:8px">Connection Error</div>' +
+            '<div style="font-size:13px;color:var(--tx2);line-height:1.6;margin-bottom:24px;max-width:280px">' +
+            'Server se connect nahi ho pa raha.<br>Internet check karo aur retry karo.</div>' +
+            '<button class="btn" style="min-height:48px;padding:0 28px;font-size:15px" onclick="_bootApp()">' +
+            '<i class="fas fa-rotate-right"></i> Retry</button>' +
+            '<div style="font-size:11px;color:var(--tx3);margin-top:16px">GAS server cold start mein 30s lag sakta hai</div>' +
+            '</div>';
+        }
+        _updateMobNav && _upda
       });
     }
     function _bootNtfs() {
@@ -9892,7 +9905,7 @@ function _gasX(fn, args, timeout, onOk, onErr) {
       var l=document.getElementById('cmtList'); if(l) l.innerHTML=_skel(3);
       _gas('getTeamChecklistToday',[_cmtDate,dept], function(rows){
         _cmtData=rows||[]; _renderCmtList();
-      }, function(e){ if(l) l.innerHTML='<div class="te">'+_esc(e.message)+'</div>'; });
+      }, function(e){ if(l) l.innerHTML = (e&&e.message&&e.message.indexOf('Network')>-1) ? '<div style="text-align:center;padding:24px"><div style="font-size:28px;margin-bottom:8px">📡</div><div style="font-weight:700;color:var(--tx);margin-bottom:4px">Connection Error</div><div style="font-size:12px;color:var(--tx2);margin-bottom:12px">Server se connect nahi ho pa raha</div><button class="btn btn-sm" onclick="_forceRefresh()"><i class="fas fa-rotate-right"></i> Retry</button></div>' : '<div class="te">' + _esc(e.message) + '</div>'; });
     }
     function _cmtMarkDone(el) {
       var row = el.closest('[data-row]');
@@ -10082,7 +10095,7 @@ function _gasX(fn, args, timeout, onOk, onErr) {
           }).join('') +
           '</div>';
       }, function(e) {
-        grid.innerHTML = '<div class="te">Error: ' + _esc(e.message) + '</div>';
+        grid.innerHTML = (e&&e.message&&e.message.indexOf('Network')>-1) ? '<div style="text-align:center;padding:24px"><div style="font-size:28px;margin-bottom:8px">📡</div><div style="font-weight:700;color:var(--tx);margin-bottom:4px">Connection Error</div><div style="font-size:12px;color:var(--tx2);margin-bottom:12px">Server se connect nahi ho pa raha</div><button class="btn btn-sm" onclick="_forceRefresh()"><i class="fas fa-rotate-right"></i> Retry</button></div>' : '<div class="te">' + _esc(e.message) + '</div>';
       });
     }
 
@@ -10135,7 +10148,7 @@ function _gasX(fn, args, timeout, onOk, onErr) {
           }).join('') +
           '</tbody></table></div></div>';
       }, function(e) {
-        tblEl.innerHTML = '<div class="te">Error: ' + _esc(e.message) + '</div>';
+        tblEl.innerHTML = (e&&e.message&&e.message.indexOf('Network')>-1) ? '<div style="text-align:center;padding:24px"><div style="font-size:28px;margin-bottom:8px">📡</div><div style="font-weight:700;color:var(--tx);margin-bottom:4px">Connection Error</div><div style="font-size:12px;color:var(--tx2);margin-bottom:12px">Server se connect nahi ho pa raha</div><button class="btn btn-sm" onclick="_forceRefresh()"><i class="fas fa-rotate-right"></i> Retry</button></div>' : '<div class="te">' + _esc(e.message) + '</div>';
       });
     }
 
@@ -10253,7 +10266,7 @@ function _loadSetupTasks() {
       }).join('');
   }, function(e) {
     var el2 = document.getElementById('setupTaskList');
-    if (el2) el2.innerHTML = '<div class="te">Error: ' + _esc(e.message) + '</div>';
+    if (el2) el2.innerHTML = (e&&e.message&&e.message.indexOf('Network')>-1) ? '<div style="text-align:center;padding:24px"><div style="font-size:28px;margin-bottom:8px">📡</div><div style="font-weight:700;color:var(--tx);margin-bottom:4px">Connection Error</div><div style="font-size:12px;color:var(--tx2);margin-bottom:12px">Server se connect nahi ho pa raha</div><button class="btn btn-sm" onclick="_forceRefresh()"><i class="fas fa-rotate-right"></i> Retry</button></div>' : '<div class="te">' + _esc(e.message) + '</div>';
   });
 }
 
@@ -10474,7 +10487,13 @@ function _loadSetupTasks() {
       _gas('getMyDelegations', ['All'], function(dels) {
         _D.myDelegationsMine = dels;
         _renderDelegCards(dels, 'dminePane', false);
-      }, function(e) { pane.innerHTML = '<div class="te">' + _esc(e.message) + '</div>'; });
+      }, function(e) { pane.innerHTML = (e && e.message && e.message.indexOf('Network') > -1
+              ? '<div style="text-align:center;padding:32px 16px">' +
+                '<div style="font-size:32px;margin-bottom:10px">📡</div>' +
+                '<div style="font-size:14px;font-weight:800;color:var(--tx);margin-bottom:4px">Connection Error</div>' +
+                '<div style="font-size:12px;color:var(--tx2);margin-bottom:14px">Server se connect nahi ho pa raha. Thodi der mein retry karo.</div>' +
+                '<button class="btn btn-sm" onclick="_forceRefresh()"><i class="fas fa-rotate-right"></i> Retry</button></div>'
+              : '<div class="te">' + _esc(e.message) + '</div>'); });
     }
     function _loadDOut() {
       var pane = document.getElementById('doutPane');
@@ -10483,7 +10502,13 @@ function _loadSetupTasks() {
       _gas('getMyDelegatedOut', ['All'], function(dels) {
         _D.myDelegatedOut = dels;
         _renderDelegCards(dels, 'doutPane', true);
-      }, function(e) { pane.innerHTML = '<div class="te">' + _esc(e.message) + '</div>'; });
+      }, function(e) { pane.innerHTML = (e && e.message && e.message.indexOf('Network') > -1
+              ? '<div style="text-align:center;padding:32px 16px">' +
+                '<div style="font-size:32px;margin-bottom:10px">📡</div>' +
+                '<div style="font-size:14px;font-weight:800;color:var(--tx);margin-bottom:4px">Connection Error</div>' +
+                '<div style="font-size:12px;color:var(--tx2);margin-bottom:14px">Server se connect nahi ho pa raha. Thodi der mein retry karo.</div>' +
+                '<button class="btn btn-sm" onclick="_forceRefresh()"><i class="fas fa-rotate-right"></i> Retry</button></div>'
+              : '<div class="te">' + _esc(e.message) + '</div>'); });
     }
     function _loadDAll() {
       var pane = document.getElementById('dallPane');
@@ -10515,7 +10540,13 @@ function _loadSetupTasks() {
       _gas('getAllDelegations', [{ status: st }], function (dels) {
         _D.allDels = dels;
         _renderDelegCardsEl(dels, list, true);
-      }, function (e) { list.innerHTML = '<div class="te">' + _esc(e.message) + '</div>'; });
+      }, function (e) { list.innerHTML = (e && e.message && e.message.indexOf('Network') > -1
+              ? '<div style="text-align:center;padding:32px 16px">' +
+                '<div style="font-size:32px;margin-bottom:10px">📡</div>' +
+                '<div style="font-size:14px;font-weight:800;color:var(--tx);margin-bottom:4px">Connection Error</div>' +
+                '<div style="font-size:12px;color:var(--tx2);margin-bottom:14px">Server se connect nahi ho pa raha. Thodi der mein retry karo.</div>' +
+                '<button class="btn btn-sm" onclick="_forceRefresh()"><i class="fas fa-rotate-right"></i> Retry</button></div>'
+              : '<div class="te">' + _esc(e.message) + '</div>'); });
     }
     function _exportDelegAll() {
       var dels = _D.allDels || [];
@@ -11491,7 +11522,7 @@ function _loadSetupTasks() {
               '</tr>';
           }).join('') + '</tbody></table></div></div>';
         el.innerHTML = h;
-      }, function(e) { el.innerHTML = '<div class="te">Error: ' + _esc(e.message) + '</div>'; });
+      }, function(e) { el.innerHTML = (e&&e.message&&e.message.indexOf('Network')>-1) ? '<div style="text-align:center;padding:24px"><div style="font-size:28px;margin-bottom:8px">📡</div><div style="font-weight:700;color:var(--tx);margin-bottom:4px">Connection Error</div><div style="font-size:12px;color:var(--tx2);margin-bottom:12px">Server se connect nahi ho pa raha</div><button class="btn btn-sm" onclick="_forceRefresh()"><i class="fas fa-rotate-right"></i> Retry</button></div>' : '<div class="te">' + _esc(e.message) + '</div>'; });
     }
 
     function _approveReg(regId, status) {
@@ -11811,7 +11842,7 @@ function _loadSetupTasks() {
       _gas('getMyAttendance', [_U.emp_code, month], function(data) {
         _D.myAtt = data;
         _renderMyAtt(data, sumEl, tblEl, month);
-      }, function(e) { sumEl.innerHTML = '<div class="te">Error: ' + _esc(e.message) + '</div>'; });
+      }, function(e) { sumEl.innerHTML = (e&&e.message&&e.message.indexOf('Network')>-1) ? '<div style="text-align:center;padding:24px"><div style="font-size:28px;margin-bottom:8px">📡</div><div style="font-weight:700;color:var(--tx);margin-bottom:4px">Connection Error</div><div style="font-size:12px;color:var(--tx2);margin-bottom:12px">Server se connect nahi ho pa raha</div><button class="btn btn-sm" onclick="_forceRefresh()"><i class="fas fa-rotate-right"></i> Retry</button></div>' : '<div class="te">' + _esc(e.message) + '</div>'; });
     }
 
     function _renderMyAtt(data, sumEl, tblEl, month) {
@@ -11872,7 +11903,7 @@ function _loadSetupTasks() {
         if (!rows || !rows.length) { el.innerHTML = '<div class="te"><i class="fas fa-calendar-times"></i> No leave records for this month</div>'; return; }
         _D.leaveBalance = rows[0]; // update cache for other widgets
         _renderLeaveBalance(rows[0], el);
-      }, function(e) { el.innerHTML = '<div class="te">Error: ' + _esc(e.message) + '</div>'; });
+      }, function(e) { el.innerHTML = (e&&e.message&&e.message.indexOf('Network')>-1) ? '<div style="text-align:center;padding:24px"><div style="font-size:28px;margin-bottom:8px">📡</div><div style="font-weight:700;color:var(--tx);margin-bottom:4px">Connection Error</div><div style="font-size:12px;color:var(--tx2);margin-bottom:12px">Server se connect nahi ho pa raha</div><button class="btn btn-sm" onclick="_forceRefresh()"><i class="fas fa-rotate-right"></i> Retry</button></div>' : '<div class="te">' + _esc(e.message) + '</div>'; });
     }
 
     function _renderLeaveBalance(r, el) {
@@ -11965,7 +11996,7 @@ function _loadSetupTasks() {
               '</tr>';
           }).join('') +
           '</tbody></table></div></div>';
-      }, function (e) { el.innerHTML = '<div class="te">Error: ' + _esc(e.message) + '</div>'; });
+      }, function (e) { el.innerHTML = (e&&e.message&&e.message.indexOf('Network')>-1) ? '<div style="text-align:center;padding:24px"><div style="font-size:28px;margin-bottom:8px">📡</div><div style="font-weight:700;color:var(--tx);margin-bottom:4px">Connection Error</div><div style="font-size:12px;color:var(--tx2);margin-bottom:12px">Server se connect nahi ho pa raha</div><button class="btn btn-sm" onclick="_forceRefresh()"><i class="fas fa-rotate-right"></i> Retry</button></div>' : '<div class="te">' + _esc(e.message) + '</div>'; });
     }
     function _alaForm() {
       return '<div class="fbar">' +
@@ -12424,7 +12455,7 @@ function _loadSetupTasks() {
               '</tr>';
           }).join('') +
           '</tbody></table></div></div>';
-      }, function (e) { el.innerHTML = '<div class="te">Error: ' + _esc(e.message) + '</div>'; });
+      }, function (e) { el.innerHTML = (e&&e.message&&e.message.indexOf('Network')>-1) ? '<div style="text-align:center;padding:24px"><div style="font-size:28px;margin-bottom:8px">📡</div><div style="font-weight:700;color:var(--tx);margin-bottom:4px">Connection Error</div><div style="font-size:12px;color:var(--tx2);margin-bottom:12px">Server se connect nahi ho pa raha</div><button class="btn btn-sm" onclick="_forceRefresh()"><i class="fas fa-rotate-right"></i> Retry</button></div>' : '<div class="te">' + _esc(e.message) + '</div>'; });
     }
 
     /* ══════════════════════════════════════════════════════════
@@ -14057,7 +14088,7 @@ function _loadSetupTasks() {
             '</div></div>';
         });
         el.innerHTML = html;
-      }, function (e) { el.innerHTML = '<div class="te">Error: ' + _esc(e.message) + '</div>'; });
+      }, function (e) { el.innerHTML = (e&&e.message&&e.message.indexOf('Network')>-1) ? '<div style="text-align:center;padding:24px"><div style="font-size:28px;margin-bottom:8px">📡</div><div style="font-weight:700;color:var(--tx);margin-bottom:4px">Connection Error</div><div style="font-size:12px;color:var(--tx2);margin-bottom:12px">Server se connect nahi ho pa raha</div><button class="btn btn-sm" onclick="_forceRefresh()"><i class="fas fa-rotate-right"></i> Retry</button></div>' : '<div class="te">' + _esc(e.message) + '</div>'; });
     }
 
     function _toggleGrp(id) {
@@ -14124,7 +14155,7 @@ function _loadSetupTasks() {
           }).join('') +
           '</div>' +
           '</div>';
-      }, function (e) { el.innerHTML = '<div class="te">Error: ' + _esc(e.message) + '</div>'; });
+      }, function (e) { el.innerHTML = (e&&e.message&&e.message.indexOf('Network')>-1) ? '<div style="text-align:center;padding:24px"><div style="font-size:28px;margin-bottom:8px">📡</div><div style="font-weight:700;color:var(--tx);margin-bottom:4px">Connection Error</div><div style="font-size:12px;color:var(--tx2);margin-bottom:12px">Server se connect nahi ho pa raha</div><button class="btn btn-sm" onclick="_forceRefresh()"><i class="fas fa-rotate-right"></i> Retry</button></div>' : '<div class="te">' + _esc(e.message) + '</div>'; });
     }
 
     function _lcalForm() {
@@ -14248,7 +14279,7 @@ function _loadSetupTasks() {
             '</div></div>';
         });
         el.innerHTML = html;
-      }, function (e) { el.innerHTML = '<div class="te">Error: ' + _esc(e.message) + '</div>'; });
+      }, function (e) { el.innerHTML = (e&&e.message&&e.message.indexOf('Network')>-1) ? '<div style="text-align:center;padding:24px"><div style="font-size:28px;margin-bottom:8px">📡</div><div style="font-weight:700;color:var(--tx);margin-bottom:4px">Connection Error</div><div style="font-size:12px;color:var(--tx2);margin-bottom:12px">Server se connect nahi ho pa raha</div><button class="btn btn-sm" onclick="_forceRefresh()"><i class="fas fa-rotate-right"></i> Retry</button></div>' : '<div class="te">' + _esc(e.message) + '</div>'; });
     }
 
     function _approveLeave(requestId, status) {
@@ -17004,7 +17035,7 @@ function _loadSetupTasks() {
             '</div>' +
             '</div>';
         }).join('');
-      }, function (e) { el.innerHTML = '<div class="te">Error: ' + _esc(e.message) + '</div>'; });
+      }, function (e) { el.innerHTML = (e&&e.message&&e.message.indexOf('Network')>-1) ? '<div style="text-align:center;padding:24px"><div style="font-size:28px;margin-bottom:8px">📡</div><div style="font-weight:700;color:var(--tx);margin-bottom:4px">Connection Error</div><div style="font-size:12px;color:var(--tx2);margin-bottom:12px">Server se connect nahi ho pa raha</div><button class="btn btn-sm" onclick="_forceRefresh()"><i class="fas fa-rotate-right"></i> Retry</button></div>' : '<div class="te">' + _esc(e.message) + '</div>'; });
     }
 
     function _markDone(rowId) {
@@ -18474,7 +18505,7 @@ function _loadSetupTasks() {
             '</div>';
         }).join('');
       }, function (e) {
-        el.innerHTML = '<div class="te">Error: ' + _esc(e.message) + '</div>';
+        el.innerHTML = (e&&e.message&&e.message.indexOf('Network')>-1) ? '<div style="text-align:center;padding:24px"><div style="font-size:28px;margin-bottom:8px">📡</div><div style="font-weight:700;color:var(--tx);margin-bottom:4px">Connection Error</div><div style="font-size:12px;color:var(--tx2);margin-bottom:12px">Server se connect nahi ho pa raha</div><button class="btn btn-sm" onclick="_forceRefresh()"><i class="fas fa-rotate-right"></i> Retry</button></div>' : '<div class="te">' + _esc(e.message) + '</div>';
       });
     }
 
@@ -18542,7 +18573,7 @@ function _loadSetupTasks() {
             '</div>' +
             '</div>';
         }).join('');
-      }, function (e) { el.innerHTML = '<div class="te">Error: ' + _esc(e.message) + '</div>'; });
+      }, function (e) { el.innerHTML = (e&&e.message&&e.message.indexOf('Network')>-1) ? '<div style="text-align:center;padding:24px"><div style="font-size:28px;margin-bottom:8px">📡</div><div style="font-weight:700;color:var(--tx);margin-bottom:4px">Connection Error</div><div style="font-size:12px;color:var(--tx2);margin-bottom:12px">Server se connect nahi ho pa raha</div><button class="btn btn-sm" onclick="_forceRefresh()"><i class="fas fa-rotate-right"></i> Retry</button></div>' : '<div class="te">' + _esc(e.message) + '</div>'; });
     }
 
     function _filterAnnsByPriority(p, btn) {
@@ -18914,7 +18945,7 @@ function _loadSetupTasks() {
       _gas('getEmployeeDirectory', [], function(emps) {
         _D.empDir = emps || [];
         _renderEmpDir(emps);
-      }, function(e) { if(el) el.innerHTML = '<div class="te">Error: ' + _esc(e.message) + '</div>'; });
+      }, function(e) { if(el) el.innerHTML = (e&&e.message&&e.message.indexOf('Network')>-1) ? '<div style="text-align:center;padding:24px"><div style="font-size:28px;margin-bottom:8px">📡</div><div style="font-weight:700;color:var(--tx);margin-bottom:4px">Connection Error</div><div style="font-size:12px;color:var(--tx2);margin-bottom:12px">Server se connect nahi ho pa raha</div><button class="btn btn-sm" onclick="_forceRefresh()"><i class="fas fa-rotate-right"></i> Retry</button></div>' : '<div class="te">' + _esc(e.message) + '</div>'; });
     }
 
     function _renderEmpDir(emps) {
@@ -19307,7 +19338,7 @@ function _loadSetupTasks() {
 
         _loadProfileHistory(p.emp_id);
       }, function (e) {
-        if (cEl) cEl.innerHTML = '<div class="te">Error: ' + _esc(e.message) + '</div>';
+        if (cEl) cEl.innerHTML = (e&&e.message&&e.message.indexOf('Network')>-1) ? '<div style="text-align:center;padding:24px"><div style="font-size:28px;margin-bottom:8px">📡</div><div style="font-weight:700;color:var(--tx);margin-bottom:4px">Connection Error</div><div style="font-size:12px;color:var(--tx2);margin-bottom:12px">Server se connect nahi ho pa raha</div><button class="btn btn-sm" onclick="_forceRefresh()"><i class="fas fa-rotate-right"></i> Retry</button></div>' : '<div class="te">' + _esc(e.message) + '</div>';
       });
     }
 
