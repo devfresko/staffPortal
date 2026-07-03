@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="Fresko Portal">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-180.png">
-  <title>Fresko Staff Portal</title>
+  <title>Fresko Staff Portal — v3.0</title>
 
   <!-- External Assets -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -548,10 +548,32 @@
       display: none;
     }
 
-    .csetup-grid { display: grid; grid-template-columns: 380px 1fr; gap: 20px; }
+    .csetup-grid {
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      gap: 20px;
+      align-items: start; /* both cols independent height */
+    }
+    /* Right col: fixed height scroll so expand/collapse doesn't affect left */
+    .csetup-grid > div:last-child {
+      position: sticky;
+      top: 0;
+      max-height: calc(100vh - 160px);
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
     @media (max-width: 960px) {
       .csetup-grid { grid-template-columns: 1fr !important; }
+      .csetup-grid > div:last-child {
+        position: static !important;
+        max-height: none !important;
+        overflow-y: visible !important;
+      }
     }
+
+    /* Task Setup stability */
+    #setupTaskList { contain: layout; }
+    .csetup-grid .fgrp { scroll-margin-top: 80px; }
 
     /* ── Muster Table ─────────────────────────────────────── */
     .muster-tbl { border-collapse: collapse; font-size: 12px; min-width: 100%; }
@@ -10236,7 +10258,7 @@ function _loadSetupTasks() {
         return '<div style="margin-bottom:10px">' +
           // Group header — click to collapse/expand group
           '<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--sur2);border-radius:8px;margin-bottom:6px;cursor:pointer" ' +
-          'onclick="var b=document.getElementById(\'' + gid + '\');b.style.display=b.style.display===\'none\'?\'\':\'none\';this.querySelector(\'.gc\').style.transform=b.style.display===\'none\'?\'\':\' rotate(180deg)\'">' +
+          'onclick="event.preventDefault();var sy=document.getElementById(\'content\').scrollTop;var b=document.getElementById(\'' + gid + '\');b.style.display=b.style.display===\'none\'?\'\':\'none\';this.querySelector(\'.gc\').style.transform=b.style.display===\'none\'?\'\':\' rotate(180deg)\';document.getElementById(\'content\').scrollTop=sy;">' +
           '<i class="fas fa-building" style="color:var(--P);font-size:11px"></i>' +
           '<span style="font-size:11px;font-weight:800;color:var(--tx)">' + _esc(dept) + '</span>' +
           '<span style="font-size:10px;color:var(--tx3)">(' + items.length + ')</span>' +
@@ -10249,7 +10271,7 @@ function _loadSetupTasks() {
             return '<div id="' + tid + '" style="background:var(--bg);border:1px solid var(--bdr);border-radius:8px;margin-bottom:5px;overflow:hidden">' +
               // Task row header — click to expand/collapse single task
               '<div style="padding:8px 12px;display:flex;align-items:center;gap:10px;cursor:pointer" ' +
-              'onclick="var b=this.nextSibling;b.style.display=b.style.display===\'none\'?\'\':\'none\';this.querySelector(\'.tc\').style.transform=b.style.display===\'none\'?\'\':\' rotate(180deg)\'">' +
+              'onclick="event.preventDefault();var sy=document.getElementById(\'content\').scrollTop;var b=this.nextSibling;b.style.display=b.style.display===\'none\'?\'\':\'none\';this.querySelector(\'.tc\').style.transform=b.style.display===\'none\'?\'\':\' rotate(180deg)\';document.getElementById(\'content\').scrollTop=sy;">' +
               '<div style="width:5px;height:30px;border-radius:3px;background:' + fc + ';flex-shrink:0"></div>' +
               '<div style="flex:1;min-width:0">' +
               '<div style="font-size:12.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _esc(t.task_name) + '</div>' +
@@ -10280,8 +10302,9 @@ function _loadSetupTasks() {
 }
 
     function _setupExpandAll(expand) {
-      // Prevent scroll jump on mobile
-      var scrollY = window.scrollY || document.documentElement.scrollTop;
+      // Preserve scroll position in content area
+      var ct = document.getElementById('content');
+      var scrollY = ct ? ct.scrollTop : 0;
       // Expand/collapse all dept groups
       document.querySelectorAll('[id^="stg_"]').forEach(function(g) {
         g.style.display = expand ? '' : 'none';
@@ -10295,6 +10318,10 @@ function _loadSetupTasks() {
           if (!el.id || !el.id.startsWith('stg_')) el.style.display = '';
         });
       }
+      // Restore scroll position after DOM change
+      requestAnimationFrame(function() {
+        if (ct) ct.scrollTop = scrollY;
+      });
     }
 
     function _csEmpChg(sel) {
