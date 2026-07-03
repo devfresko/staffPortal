@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="Fresko Portal">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-180.png">
-  <title>Fresko Staff Portal</title>
+  <title>Fresko Staff Portal — v3.0</title>
 
   <!-- External Assets -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -3962,34 +3962,30 @@
     }
 
     .modal-ov.on {
-      display: block;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
       animation: fadein-fast .15s ease;
     }
 
     /* Modal hidden by default */
       .modal-box { display: none; }
       /* Desktop center modal when open */
-      .modal-box.open  {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
+      .modal-box.open {
       background: var(--sur);
       border-radius: 20px;
       padding: 0;
       width: 92%;
-      max-width: 500px;
-      max-height: 88vh;
-      z-index: calc(var(--z-modal) + 1);
+      max-width: 520px;
+      max-height: 88svh;
       box-shadow: var(--shad3);
-      display: none;
+      display: flex;
       flex-direction: column;
       overflow: hidden;
-    }
-
-    .modal-box.open {
-      display: flex;
-      animation: bounce-in .25s ease;
+      animation: safePop .22s cubic-bezier(.34,1.2,.64,1);
+      position: relative;
+      z-index: calc(var(--z-modal) + 1);
     }
 
     .modal-box.wide {
@@ -4523,102 +4519,12 @@
         padding: 0 !important;
       }
       /* Modal hidden by default — JS controls visibility via .open class */
-      .modal-box:not(.open) { display: none !important; }
-
-      /* Bottom sheet: only when .open */
-      .modal-box.open {
-        display: flex !important;
-        flex-direction: column !important;
-        position: fixed !important;
-        bottom: 0 !important; left: 0 !important; right: 0 !important;
-        top: auto !important;
-        transform: none !important;
-        width: 100% !important; max-width: 100% !important;
-        margin: 0 !important;
-        border-radius: 24px 24px 0 0 !important;
-        max-height: 88svh !important;
-        overflow: hidden !important;
-        animation: sheetUp .3s cubic-bezier(.34,1,.64,1) forwards !important;
-      }
       /* Drag handle pill — ONLY when modal is actually open */
-      .modal-box.open::before {
-        content: '';
-        display: block;
-        width: 40px; height: 4px;
-        border-radius: 2px;
-        background: var(--bdr2);
-        margin: 14px auto -6px;
-        flex-shrink: 0;
-      }
-      .modal-title {
-        padding: 14px 20px 12px !important;
-        font-size: 16px !important;
-        flex-shrink: 0;
-        border-bottom: 1px solid var(--bdr);
-        word-break: break-word;
-      }
-      .modal-body {
-        padding: 16px 20px !important;
-        overflow-y: auto !important;
-        overflow-x: hidden !important;
-        flex: 1;
-        -webkit-overflow-scrolling: touch;
-        /* Key: allow all text to wrap */
-        word-break: break-word;
-        overflow-wrap: break-word;
-        line-height: 1.6;
-      }
       /* All text inside modal wraps cleanly */
-      .modal-body p,
-      .modal-body span,
-      .modal-body div,
-      .modal-body label,
-      .modal-body .dc-title,
-      .modal-body .card,
-      .modal-body [style*="white-space:nowrap"] {
-        white-space: normal !important;
-        word-break: break-word;
-        overflow-wrap: break-word;
-      }
       /* Form labels in modals: stack label above input */
-      .modal-body label {
-        display: block;
-        font-size: 12px;
-        font-weight: 800;
-        color: var(--tx2);
-        margin-bottom: 4px;
-      }
       /* All inputs/selects in modal: full width */
-      .modal-body input,
-      .modal-body select,
-      .modal-body textarea {
-        width: 100% !important;
-        box-sizing: border-box;
-      }
       /* Inline flex rows inside modal: stack vertically */
-      .modal-body > div[style*="display:flex"],
-      .modal-body > div[style*="display: flex"] {
-        flex-wrap: wrap;
-        gap: 8px;
-      }
-      .modal-foot {
-        display: flex !important;
-        flex-direction: column !important;
-        gap: 8px !important;
-        padding: 12px 20px !important;
-        padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px) !important;
-        border-top: 1px solid var(--bdr);
-        flex-shrink: 0;
-      }
       /* Modal footer buttons: full-width stacked */
-      .modal-foot .btn, .modal-foot button {
-        width: 100% !important;
-        justify-content: center !important;
-        text-align: center !important;
-        min-height: 50px !important;
-        font-size: 14px !important;
-        border-radius: 14px !important;
-      }
 
       /* ══════════════════════════════════════════════════════════════
          PULL-TO-REFRESH
@@ -4747,6 +4653,36 @@
         overflow-wrap: break-word;
       }
     } /* end @media 640px */
+
+    /* ══ MODAL: Always centered on ALL screen sizes ══ */
+    @media (max-width: 640px) {
+      /* Overlay: flex center */
+      .modal-ov.on {
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 16px !important;
+      }
+      /* Box: centered, max 95% width */
+      .modal-box.open {
+        width: 95% !important;
+        max-width: 400px !important;
+        max-height: 85svh !important;
+        border-radius: 20px !important;
+        position: relative !important;
+        bottom: auto !important;
+        left: auto !important;
+        right: auto !important;
+        top: auto !important;
+        transform: none !important;
+        margin: 0 auto !important;
+        animation: safePop .22s cubic-bezier(.34,1.2,.64,1) !important;
+      }
+      .modal-box.open::before { display: none !important; }
+      .modal-title { font-size: 16px !important; padding: 18px 18px 12px !important; }
+      .modal-body  { padding: 0 18px 16px !important; }
+      .modal-foot  { padding: 12px 18px 16px !important; }
+      .modal-foot .btn { width: 100% !important; }
+    }
 
     /* ══ FINAL MOBILE POLISH ══════════════════════════════════════════ */
     @media (max-width: 640px) {
@@ -6947,9 +6883,7 @@
       .tw thead th { font-size: 10px !important; padding: 6px 7px !important; }
       .tw tbody td { font-size: 11.5px !important; padding: 7px 7px !important; }
 
-      .modal-ov{align-items:center!important;justify-content:center!important;padding:20px!important;}
-      .modal-box{border-radius:20px!important;max-height:85svh!important;width:100%!important;max-width:380px!important;margin:0 auto!important;position:relative!important;bottom:auto!important;left:auto!important;right:auto!important;top:auto!important;transform:none!important;animation:safePop .2s cubic-bezier(.34,1.2,.64,1) both!important;overflow-y:auto!important;}
-      .modal-box::before{display:none!important;}
+            .modal-box::before{display:none!important;}
       .modal-title{font-size:16px!important;font-weight:800!important;}
       .modal-foot .btn{width:100%!important;}
 
