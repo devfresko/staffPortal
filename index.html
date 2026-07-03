@@ -3979,13 +3979,14 @@
       width: 92%;
       max-width: 520px;
       max-height: 88svh;
-      box-shadow: var(--shad3);
+      box-shadow: 0 8px 40px rgba(0,0,0,.25);
       display: flex;
       flex-direction: column;
       overflow: hidden;
       animation: safePop .22s cubic-bezier(.34,1.2,.64,1);
       position: relative;
       z-index: calc(var(--z-modal) + 1);
+      flex-shrink: 0;
     }
 
     .modal-box.wide {
@@ -7230,12 +7231,13 @@
   </div>
 
   <!-- Modal overlay + box -->
-  <div class="modal-ov" id="mOv" onclick="_closeModal()"></div>
+  <div class="modal-ov" id="mOv" class="modal-ov" onclick="if(event.target===this)_closeModal()">
   <div class="modal-box" id="modal" style="display:none">
     <div class="modal-title" id="mTitle">Confirm</div>
     <div class="modal-body" id="mBody"></div>
     <div class="modal-foot" id="mFoot"></div>
   </div>
+</div>
 
   <!-- Notification panel -->
   <div class="ntf-panel" id="ntfPanel">
@@ -16840,7 +16842,11 @@ function _loadSetupTasks() {
     '<button class="btn btn-outline" onclick="_closeModal()"><i class="fas fa-times"></i> Cancel</button>' +
     (onConfirm ? '<button class="btn" id="mConfirmBtn">' + (confirmLabel || 'Confirm') + '</button>' : '');
 
+  // Show overlay + modal (use class-based show for CSS centering to work)
   ov.style.display    = 'flex';
+  ov.style.alignItems = 'center';
+  ov.style.justifyContent = 'center';
+  ov.style.padding    = '20px';
   modal.style.display = 'flex';
   modal.classList.add('open');
 
