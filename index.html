@@ -5812,7 +5812,7 @@
     @keyframes loginUp      { from{opacity:.1;transform:translateY(40px) scale(.95)} to{opacity:1;transform:none} }
     @keyframes logoSpin     { 0%{opacity:.1;transform:rotate(-15deg) scale(.7)} 60%{transform:rotate(5deg) scale(1.08)} 100%{opacity:1;transform:none} }
     @keyframes countUp      { from{opacity:.1;transform:translateY(6px)} to{opacity:1;transform:none} }
-    @keyframes tabSlide     { from{opacity:.1;transform:translateY(8px)} to{opacity:1;transform:none} }
+    @keyframes tabSlide     { from{opacity:.1} to{opacity:1} }
     @keyframes rippleOut    { from{transform:scale(0);opacity:.5} to{transform:scale(3.5);opacity:0} }
     @keyframes pulseRing    { 0%{box-shadow:0 0 0 0 var(--Pl)} 70%{box-shadow:0 0 0 8px transparent} 100%{box-shadow:0 0 0 0 transparent} }
 
@@ -5840,6 +5840,12 @@
     /* ── View / tab content entrance ─────────────────────────────────────── */
     .view-enter { animation: slideInUp .38s cubic-bezier(.34,1.2,.64,1) forwards; }
     .tab-enter  { animation: tabSlide  .28s cubic-bezier(.34,1.2,.64,1) forwards; }
+    @media (max-width: 768px) {
+      /* Disable tab slide animation on mobile — causes scroll jump */
+      .tab-enter { animation: none !important; }
+      .tab-pane  { animation: none !important; }
+      .tabpane.on { animation: none !important; }
+    }
 
     /* ── Staggered card list ─────────────────────────────────────────────── */
     .stagger > *, .stagger-list > * {
@@ -16681,7 +16687,7 @@ function _loadSetupTasks() {
       return '<div class="tabs">' +
         tabs.map(function (t) {
           return '<button class="tab' + (t.id === active ? ' active' : '') + '" ' +
-            'onclick="_switchTab(\'' + t.id + '\')" data-tab="' + t.id + '">' +
+            'onclick="event.preventDefault();_switchTab(\'' + t.id + '\')" data-tab="' + t.id + '">' +
             t.lbl +
             '</button>';
         }).join('') +
@@ -16706,13 +16712,13 @@ function _loadSetupTasks() {
         el.classList.toggle('active', el.getAttribute('data-tab') === tabId);
       });
 
-      // Panes — add tab-enter animation to newly activated pane
+      // Panes — switch active, NO animation on mobile (causes scroll jump)
+      var isMob = window.innerWidth <= 768;
       document.querySelectorAll('.tab-pane').forEach(function (el) {
         var isActive = el.id === tabId + 'Pane';
-        if (isActive && !el.classList.contains('active')) {
-          // Fresh activation — replay entrance animation
+        if (isActive && !el.classList.contains('active') && !isMob) {
+          // Only animate on desktop — mobile animation causes page jump
           el.classList.remove('tab-enter');
-          void el.offsetWidth;
           el.classList.add('tab-enter');
         }
         el.classList.toggle('active', isActive);
@@ -16780,6 +16786,7 @@ function _loadSetupTasks() {
       // 3. Stagger .anim-item cards — reset animation to replay
       var items = content.querySelectorAll('.anim-item');
       items.forEach(function(el, i) {
+        if (window.innerWidth <= 768) return; // skip stagger on mobile
         el.style.animation = 'none';
         void el.offsetWidth;
         el.style.animation = '';
