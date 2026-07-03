@@ -4722,6 +4722,79 @@
         overflow-wrap: break-word;
       }
     } /* end @media 640px */
+
+    /* ══ FINAL MOBILE POLISH ══════════════════════════════════════════ */
+    @media (max-width: 640px) {
+
+      /* Dashboard — content cards no overflow */
+      #content { overflow-x: hidden !important; }
+      #content .card, #content > div { max-width: 100% !important; overflow-x: hidden !important; }
+
+      /* Dashboard — ann/del/thisMonth cards */
+      #dashAnnList, #dashDelList, #dashAttSum { max-width: 100% !important; }
+      #dashAnnList > div, #dashDelList > div { 
+        overflow: hidden !important; 
+        text-overflow: ellipsis !important;
+      }
+
+      /* This Month — 3 cards fit properly */
+      #dashAttSum > div { gap: 6px !important; }
+      #dashAttSum > div > div {
+        padding: 8px 4px !important;
+        min-width: 0 !important;
+      }
+      #dashAttSum > div > div > div:first-child { font-size: 18px !important; }
+      #dashAttSum > div > div > div:last-child { 
+        font-size: 8.5px !important; 
+        letter-spacing: 0 !important;
+        word-break: break-word !important;
+        white-space: normal !important;
+      }
+
+      /* My Delegations — text no overflow */
+      #dashDelList .del-title, #dashDelList div div:first-child {
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+        max-width: 100% !important;
+      }
+
+      /* Checklist — filter bar */
+      #ckEmp, #ckDate { max-width: 100% !important; }
+
+      /* Delegation view */
+      .deleg-card { padding: 12px !important; }
+      .del-meta { flex-wrap: wrap !important; gap: 4px !important; }
+
+      /* Attendance cards */
+      .att-punch-card { padding: 14px 16px !important; }
+      .att-punch-card .btn-checkin { width: 100% !important; margin-top: 10px !important; }
+
+      /* Sec-head wrapping */
+      .sec-head { flex-wrap: wrap !important; gap: 6px !important; }
+      .sec-title { font-size: 14px !important; }
+
+      /* Tab bar overflow scroll */
+      .tabs-bar { overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; 
+                  flex-wrap: nowrap !important; white-space: nowrap !important; 
+                  scrollbar-width: none !important; }
+      .tabs-bar::-webkit-scrollbar { display: none !important; }
+      .tab-btn { flex-shrink: 0 !important; font-size: 12px !important; padding: 7px 12px !important; }
+
+      /* KPI row */
+      .krow { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
+      .krow > .card { padding: 12px !important; }
+
+      /* Quick action tiles */
+      #dashQuickAct { gap: 8px !important; }
+      .qa-tile { padding: 10px 6px !important; border-radius: 14px !important; }
+      .qa-icon { width: 38px !important; height: 38px !important; font-size: 16px !important; }
+      .qa-lbl { font-size: 10.5px !important; margin-top: 5px !important; }
+
+      /* Topbar icons */
+      .tb-actions { gap: 4px !important; }
+      .tb-ico { width: 32px !important; height: 32px !important; font-size: 14px !important; }
+    }
     
 
     /* ══════════════════════════════════════════════════════════════════════
@@ -9333,7 +9406,7 @@ function _gasX(fn, args, timeout, onOk, onErr) {
           [['Full Days', s.full_days || 0, 'var(--G)'], ['Half Days', s.half_days || 0, 'var(--O)'], ['Absent', s.absent || 0, 'var(--R)']].map(function (k) {
             return '<div style="text-align:center;padding:10px;background:var(--bg);border-radius:9px;border:1px solid var(--bdr)">' +
               '<div style="font-size:20px;font-weight:900;color:' + k[2] + '">' + k[1] + '</div>' +
-              '<div style="font-size:10px;color:var(--tx2);font-weight:700;margin-top:2px;text-transform:uppercase;letter-spacing:.3px">' + k[0] + '</div>' +
+              '<div style="font-size:9.5px;color:var(--tx2);font-weight:700;margin-top:2px;text-transform:uppercase;letter-spacing:0;line-height:1.2;word-break:keep-all">' + k[0] + '</div>' +
               '</div>';
           }).join('') +
           '</div>' +
@@ -9850,17 +9923,17 @@ function _gasX(fn, args, timeout, onOk, onErr) {
     }
 
     function _ctodayForm() {
-      return '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">' +
-        '<div style="display:flex;align-items:center;gap:8px">' +
+      return '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;align-items:center">' +
+        '<div style="display:flex;align-items:center;gap:6px;flex:1;min-width:160px">' +
         '<label style="font-size:12px;font-weight:700;color:var(--tx2);white-space:nowrap">Employee</label>' +
         '<select id="ckEmp" onchange="_loadToday()" style="flex:1;min-width:0">' +
         '<option value="' + _U.emp_code + '">' + _esc((_U&&_U.name)||'Me') + ' (Me)</option>' +
         '</select>' +
         '</div>' +
-        '<div style="display:flex;align-items:center;gap:8px">' +
+        '<div style="display:flex;align-items:center;gap:6px;flex:1;min-width:160px">' +
         '<label style="font-size:12px;font-weight:700;color:var(--tx2);white-space:nowrap">Date</label>' +
         '<input type="date" id="ckDate" value="' + _today() + '" onchange="_loadToday()" style="flex:1;min-width:0">' +
-        '<button class="btn btn-sm" style="flex-shrink:0" onclick="_loadToday()"><i class="fas fa-search"></i> Load</button>' +
+        '<button class="btn btn-sm" style="flex-shrink:0;white-space:nowrap" onclick="_loadToday()"><i class="fas fa-search"></i> Load</button>' +
         '</div>' +
         '</div>' +
         '<div id="ckProgress" style="margin-bottom:14px"></div>' +
@@ -19128,7 +19201,7 @@ function _loadSetupTasks() {
         var el = document.getElementById('dashAnnList');
         if (!el) return;
         var top3 = (anns || []).slice(0, 3);
-        if (!top3.length) { el.innerHTML = '<div style="font-size:12px;color:var(--tx3);text-align:center;padding:12px">No active announcements</div>'; return; }
+        if (!top3.length) { el.innerHTML = '<div style="font-size:12px;color:var(--tx3);text-align:center;padding:8px 12px;display:flex;align-items:center;justify-content:center;gap:8px"><i class="fas fa-bullhorn" style="opacity:.3"></i>No announcements</div>'; return; }
         el.innerHTML = top3.map(function(a) {
           var pClr = a.priority === 'High' ? 'var(--R)' : a.priority === 'Low' ? 'var(--tx3)' : 'var(--P)';
           return '<div style="padding:8px 0;border-bottom:1px solid var(--bdr2);font-size:12.5px;line-height:1.5">' +
@@ -19147,7 +19220,7 @@ function _loadSetupTasks() {
         if (!over.length) { el.innerHTML = '<div style="font-size:12px;color:var(--G);text-align:center;padding:12px"><i class="fas fa-check-circle"></i> No overdue tasks</div>'; return; }
         el.innerHTML = over.slice(0, 3).map(function(d) {
           return '<div style="padding:8px 0;border-bottom:1px solid var(--bdr2)">' +
-            '<div style="font-size:12.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _esc(d.task_desc) + '</div>' +
+            '<div style="font-size:12.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%">' + _esc((d.task_desc||'').slice(0,60)) + (d.task_desc&&d.task_desc.length>60?'…':'') + '</div>' +
             '<div style="font-size:11px;color:var(--R);margin-top:2px"><i class="fas fa-calendar-xmark"></i> Due: ' + _fmtDate(d.final_date) + '</div></div>';
         }).join('') + (over.length > 3 ? '<div style="font-size:11px;color:var(--tx3);font-weight:700;margin-top:6px">+' + (over.length - 3) + ' more…</div>' : '');
       }
