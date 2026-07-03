@@ -549,6 +549,9 @@
     }
 
     .csetup-grid { display: grid; grid-template-columns: 380px 1fr; gap: 20px; }
+    @media (max-width: 960px) {
+      .csetup-grid { grid-template-columns: 1fr !important; }
+    }
 
     /* ── Muster Table ─────────────────────────────────────── */
     .muster-tbl { border-collapse: collapse; font-size: 12px; min-width: 100%; }
@@ -10020,7 +10023,7 @@ function _gasX(fn, args, timeout, onOk, onErr) {
         '<i class="fas fa-info-circle" style="color:var(--P)"></i> ' +
         'Task will be saved to Task List and recurring checklist rows will be auto-generated in ChecklistMaster.' +
         '</div>' +
-        '<button class="btn btn-wide" id="btnSaveTask" onclick="_saveTask()" style="margin-top:14px"><i class="fas fa-plus"></i> Add Task & Generate Checklist</button>' +
+        '<button class="btn btn-wide" id="btnSaveTask" onclick="_saveTask()" style="margin-top:14px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;position:relative;z-index:1"><i class="fas fa-plus"></i> Add Task & Generate Checklist</button>' +
         '</div>' +
         '<div class="card card-nohover card-sm">' +
         '<div class="sec-title" style="margin-bottom:14px"><i class="fas fa-list" style="color:var(--tx2)"></i> Active Tasks</div>' +
@@ -10217,8 +10220,8 @@ function _loadSetupTasks() {
       '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">' +
       '<span style="font-size:11px;font-weight:700;color:var(--tx2)"><i class="fas fa-layer-group"></i> ' + list.length + ' tasks · ' + depts.length + ' depts</span>' +
       '<div style="display:flex;gap:6px">' +
-      '<button class="btn btn-xs btn-outline" onclick="_setupExpandAll(true)"><i class="fas fa-expand-alt"></i> All</button>' +
-      '<button class="btn btn-xs btn-outline" onclick="_setupExpandAll(false)"><i class="fas fa-compress-alt"></i> None</button>' +
+      '<button class="btn btn-xs btn-outline" onclick="_setupExpandAll(true)" style="min-width:44px;min-height:36px;touch-action:manipulation"><i class="fas fa-expand-alt"></i> All</button>' +
+      '<button class="btn btn-xs btn-outline" onclick="_setupExpandAll(false)" style="min-width:44px;min-height:36px;touch-action:manipulation"><i class="fas fa-compress-alt"></i> None</button>' +
       '</div></div>' +
       // Dept groups
       depts.map(function(dept) {
@@ -10271,6 +10274,8 @@ function _loadSetupTasks() {
 }
 
     function _setupExpandAll(expand) {
+      // Prevent scroll jump on mobile
+      var scrollY = window.scrollY || document.documentElement.scrollTop;
       // Expand/collapse all dept groups
       document.querySelectorAll('[id^="stg_"]').forEach(function(g) {
         g.style.display = expand ? '' : 'none';
