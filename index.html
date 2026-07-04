@@ -19,6 +19,24 @@
     href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap"
     rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
+  <!-- Early session check: prevents login screen flash when valid session exists -->
+  <script>
+    (function(){
+      try{
+        var raw=localStorage.getItem('fk_session_v2');
+        if(raw){
+          var s=JSON.parse(raw);
+          var validName=s&&s.user&&s.user.name&&s.user.name!=='User'&&s.user.name!=='Staff'&&s.user.name.trim()!=='';
+          if(s&&s.user&&s.token&&s.user.emp_code&&validName&&Date.now()<(s.exp||0)){
+            // Valid session found early — add pre-hidden class to sLogin
+            // This runs before DOMContentLoaded so we use document.write trick via style
+            // Instead, mark body with a class the CSS can pick up
+            document.documentElement.classList.add('has-session');
+          }
+        }
+      }catch(e){}
+    })();
+  </script>
 
   <style>
     /* ══════════════════════════════════════════════════════════════════════
@@ -176,6 +194,7 @@
       width: 100%;
       max-width: 100vw;
       height: 100vh;
+      height: 100svh;
       overflow: hidden;
     }
 
@@ -186,10 +205,17 @@
       animation: fadein .3s ease forwards;
     }
 
+    /* Suppress login screen flash when valid session detected early */
+    html.has-session #sLogin {
+      display: none !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+    }
+
     @keyframes fadein {
       from {
-        opacity:.1;
-        transform: translateY(8px);
+        opacity:.85;
+        transform: translateY(4px);
       }
 
       to {
@@ -4445,7 +4471,7 @@
       :root { --sbw: 264px; }
 
       .sb {
-        position: fixed; top: 0; left: 0; height: 100vh;
+        position: fixed; top: 0; left: 0; height: 100vh; height: 100svh;
         z-index: var(--z-sb);
         transform: translateX(-100%);
         transition: transform .25s cubic-bezier(.4,0,.2,1);
@@ -4944,8 +4970,8 @@
     @keyframes splashHide { to { opacity:0; transform:scale(1.04); } }
     @keyframes fkLogoSpin { to { transform:rotate(360deg); } }
     @keyframes fkBarSlide { 0%{transform:translateX(-100%)} 50%{transform:translateX(0%)} 100%{transform:translateX(110%)} }
-    @keyframes lbBrandIn { from{opacity:0;transform:translateY(-16px)} to{opacity:1;transform:translateY(0)} }
-    @keyframes lbSheetUp { from{transform:translateY(72px);opacity:0} to{transform:translateY(0);opacity:1} }
+    @keyframes lbBrandIn { from{opacity:.5;transform:translateY(-10px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes lbSheetUp { from{transform:translateY(48px);opacity:.7} to{transform:translateY(0);opacity:1} }
 
     /* ── NATIVE PERF ── */
     * { touch-action: manipulation; }
@@ -4956,6 +4982,8 @@
       .card{ transition:none!important; box-shadow:0 1px 3px rgba(0,0,0,.08)!important; }
       .modal-ov,.so-ov{ backdrop-filter:none!important; -webkit-backdrop-filter:none!important; }
       .mob-page{ animation-duration:.12s!important; }
+      /* Mobile: disable scr transition to prevent blank flash on slow devices */
+      .scr.on{ animation:none!important; opacity:1!important; transform:none!important; }
     }
 
     /* ── LOGIN MOBILE ── */
@@ -4969,6 +4997,7 @@
       #sLogin{
         flex-direction:column!important; align-items:stretch!important;
         justify-content:flex-end!important; padding:0!important;
+        height:100svh!important; min-height:-webkit-fill-available;
         background:linear-gradient(160deg,#003040 0%,#005F73 45%,#0A9396 72%,#94D2BD 100%)!important;
       }
       .l-mob-brand{ display:flex!important; }
@@ -5018,10 +5047,10 @@
     }
     /* ── Mobile card hover / press ── */
     @keyframes mobFadeUp {
-      from { opacity:.1; transform: translateY(10px); }
-      to   { opacity: 1; transform: translateY(0); }
+      from { opacity: .9; transform: translateY(5px); }
+      to   { opacity: 1;  transform: none; }
     }
-    .mob-page { animation: mobFadeUp .2s cubic-bezier(.4,0,.2,1) forwards; }
+    .mob-page { animation: mobFadeUp .15s cubic-bezier(.4,0,.2,1) forwards; }
     @keyframes sheetUp {
       from { transform: translateY(100%); opacity:.1; }
       to   { transform: translateY(0); opacity: 1; }
@@ -6240,7 +6269,7 @@
     ══════════════════════════════════════════════════════════════════════ */
 
     /* ── Login screen: smooth orchestrated entrance ─────────────────────── */
-    @keyframes loginBoxIn  { from{opacity:.3;transform:translateY(24px) scale(.96)} to{opacity:1;transform:none} }
+    @keyframes loginBoxIn  { from{opacity:.8;transform:translateY(12px) scale(.98)} to{opacity:1;transform:none} }
     @keyframes loginFieldIn{ from{opacity:.2;transform:translateX(-10px)} to{opacity:1;transform:none} }
     @keyframes loginBtnIn  { from{opacity:.2;transform:translateY(8px) scale(.96)} to{opacity:1;transform:none} }
 
@@ -6784,10 +6813,10 @@
 
     /* ── Mobile page transition ── */
     @keyframes mobFadeUp {
-      from { opacity: .3; transform: translateY(10px); }
+      from { opacity: .9; transform: translateY(5px); }
       to   { opacity: 1;  transform: none; }
     }
-    /* mob-page removed — was causing opacity:.3 blank on mobile */
+    /* mob-page animation kept but starts near-opaque so no blank flash */
 
     /* ══════════════════════════════════════════════════════════════════════
        @media (max-width: 640px) — Full mobile shell
@@ -6825,7 +6854,7 @@
 
       /* Sidebar: slide in from left */
       .sb {
-        position: fixed; top: 0; left: 0; height: 100vh;
+        position: fixed; top: 0; left: 0; height: 100vh; height: 100svh;
         z-index: var(--z-sb, 100);
         transform: translateX(-100%);
         transition: transform .26s cubic-bezier(.4,0,.2,1);
@@ -7075,8 +7104,8 @@
             <div class="online-dot"></div>
           </div>
           <div class="sb-prof-info">
-            <div class="sb-name" id="sbName">Loading...</div>
-            <div class="sb-role" id="sbRole">—</div>
+            <div class="sb-name" id="sbName">Fresko Staff</div>
+            <div class="sb-role" id="sbRole">Staff</div>
           </div>
           <i class="fas fa-chevron-right" style="font-size:10px;color:#475569;margin-left:auto;flex-shrink:0"></i>
         </div>
@@ -7883,7 +7912,11 @@
     ══════════════════════════════════════════════════════════ */
     function _soShow() {
       try{
-        var nm=(_U&&_U.name)||'User', rl=(_U&&_U.role?_U.role+' · '+(_U.dept||''):'Staff');
+        var sbNm = document.getElementById('sbName');
+        var sbRl = document.getElementById('sbRole');
+        var nm = (_U&&_U.name&&_U.name!=='User'&&_U.name!=='Staff'&&_U.name.trim()!=='')?_U.name:(sbNm&&sbNm.textContent&&sbNm.textContent!=='Fresko Staff'?sbNm.textContent:'');
+        var rl = (_U&&_U.role)?(_U.role+' · '+(_U.dept||'')):(sbRl&&sbRl.textContent?sbRl.textContent:'Staff');
+        if(!nm||nm.trim()==='') nm = 'Staff Member';
         var n=document.getElementById('soUserName'),r=document.getElementById('soUserDept');
         if(n)n.textContent=nm; if(r)r.textContent=rl;
       }catch(e){}
@@ -7898,6 +7931,7 @@
       try{ _clearSession(); localStorage.removeItem('fk_session_v2'); sessionStorage.clear(); }catch(e){}
       _U=null; _TOKEN=null;
       window._fkLoaded=false;
+      document.documentElement.classList.remove('has-session');
       try{
         if(window._autoRefreshTimer) clearInterval(window._autoRefreshTimer);
         if(window._refreshTimer) clearInterval(window._refreshTimer);
@@ -7916,11 +7950,17 @@
         // Clear content area so no stale UI shows next login
         var ct=document.getElementById('content'); if(ct)ct.innerHTML='';
       }
-      if(sLogin){sLogin.classList.add('on');sLogin.style.display='';}
+      if(sLogin){sLogin.classList.remove('pre-hidden');sLogin.classList.add('on');sLogin.style.display='';}
       var mn=document.getElementById('mobNav'); if(mn)mn.style.display='none';
+      // Reset sidebar to defaults for next login
+      try{
+        var sbn=document.getElementById('sbName'),sbr=document.getElementById('sbRole'),sbi=document.getElementById('sbAvaInitials');
+        if(sbn)sbn.textContent='Fresko Staff'; if(sbr)sbr.textContent='Staff'; if(sbi)sbi.textContent='?';
+      }catch(e){}
       setTimeout(function(){
         var em=document.getElementById('femail'),pw=document.getElementById('fpass'),er=document.getElementById('loginErr');
-        if(em)em.value=''; if(pw)pw.value=''; if(er)er.textContent='';
+        if(em)em.value=''; if(pw)pw.value=''; if(er){er.textContent='';er.classList.remove('on');}
+        if(em)em.focus();
       },100);
     }
 
@@ -8328,8 +8368,10 @@ function _gasX(fn, args, timeout, onOk, onErr) {
     function _bootApp() {
       _safeU(); // ensure _U has valid values before any access
       // Switch screens
-      document.getElementById('sLogin').classList.remove('on');
-      document.getElementById('sApp').classList.add('on');
+      var _sL=document.getElementById('sLogin'), _sA=document.getElementById('sApp');
+      if(_sL){_sL.classList.remove('on');_sL.style.display='none';}
+      if(_sA){_sA.classList.add('on');}
+      document.documentElement.classList.remove('has-session'); // clear early-hide class
       window._fkLoaded = false;
       var _mn=document.getElementById('mobNav'); if(_mn)_mn.style.display='';
       // Show animated skeleton IMMEDIATELY so user sees activity
@@ -8382,15 +8424,17 @@ function _gasX(fn, args, timeout, onOk, onErr) {
       var _su=_safeU(); var initials = _initials(_su.name);
       var avaEl    = document.getElementById('sbAva');
       var initEl   = document.getElementById('sbAvaInitials');
-      if (_U.photo) {
+      if (_U.photo && avaEl) {
         avaEl.innerHTML = '<img src="' + _su.photo + '" alt="' + _esc(_su.name) + '" onerror="this.outerHTML=\'' + initials + '\'">' +
           '<div class="online-dot"></div>';
       } else {
-        if (initEl) initEl.textContent = initials;
+        if (initEl) initEl.textContent = initials || '?';
       }
 
-      document.getElementById('sbName').textContent = _su.name || 'User';
-      document.getElementById('sbRole').textContent = (_su.role||'STAFF')+' · '+(_su.dept || '');
+      var sbNEl = document.getElementById('sbName');
+      var sbREl = document.getElementById('sbRole');
+      if(sbNEl) sbNEl.textContent = _su.name || 'Staff';
+      if(sbREl) sbREl.textContent = (_su.role||'STAFF')+' · '+(_su.dept || '');
 
       var _mA=document.getElementById('mbn-attend'),_nA=document.getElementById('nv-attend');
       if(_su.need_attendance===false){if(_mA)_mA.style.display='none';if(_nA)_nA.style.display='none';}
@@ -19596,6 +19640,8 @@ function _deactivateTask(uid) {
         var mn=document.getElementById('mobNav'); if(mn)mn.style.display='none';
       }
       try {
+        // Remove early-session CSS class (will be re-confirmed below)
+        document.documentElement.classList.remove('has-session');
         var saved=_loadSession();
         var good=saved&&saved.user&&saved.user.name
           &&saved.user.name!=='User'&&saved.user.name!=='Staff'&&saved.user.name.trim()!=='';
