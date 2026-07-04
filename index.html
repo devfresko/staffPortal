@@ -191,18 +191,29 @@
 ══════════════════════════════════════════════════════════════════════ */
     .scr {
       display: none;
+      position: fixed;
+      inset: 0;
       width: 100%;
       max-width: 100vw;
       height: 100vh;
       height: 100svh;
       overflow: hidden;
+      z-index: 0;
     }
 
     .scr.on {
       display: flex;
       align-items: center;
       justify-content: center;
-      animation: fadein .3s ease forwards;
+      z-index: 1;
+    }
+
+    #sLogin.on {
+      z-index: 10; /* login always on top when shown */
+    }
+
+    #sApp.on {
+      z-index: 1;
     }
 
     /* Suppress login screen flash when valid session detected early */
@@ -296,7 +307,6 @@
         radial-gradient(ellipse at 80% 10%, rgba(10, 147, 150, .55) 0%, transparent 50%),
         radial-gradient(ellipse at 10% 90%, rgba(0, 95, 115, .4) 0%, transparent 60%),
         linear-gradient(135deg, #001219 0%, #01353f 100%);
-      position: relative;
       overflow: hidden;
     }
 
@@ -360,6 +370,7 @@
         linear-gradient(90deg, rgba(255, 255, 255, .03) 1px, transparent 1px);
       background-size: 48px 48px;
       pointer-events: none;
+      z-index: 0;
     }
 
     .lbox {
@@ -7010,12 +7021,12 @@
 </head>
 
 <body>
-  <div class="login-grid"></div>
 
   <!-- ═══════════════════════════════════════════════════════════
      LOGIN SCREEN
 ═══════════════════════════════════════════════════════════ -->
   <div class="scr on" id="sLogin">
+    <div class="login-grid"></div>
     <div class="l-mob-brand">
       <img src="https://fresko.co.in/wp-content/uploads/2025/08/Untitled-design-21.png" style="width:68px;height:68px;object-fit:contain;filter:drop-shadow(0 4px 16px rgba(0,0,0,.25))" onerror="this.style.display='none'">
       <div style="color:#fff;font-size:22px;font-weight:900;margin-top:14px;letter-spacing:-.3px">Fresko Staff Portal</div>
